@@ -243,7 +243,7 @@ export function useCapabilityAssessments(): UseCapabilityAssessmentsReturn {
   /**
    * Calculate dimension scores from ratings.
    * Groups by dimension and uses the shared calculateDimensionScore function.
-   * Filters out organizational assessment ratings (outcomes, roles).
+   * Filters out organizational assessment ratings (all three sections).
    */
   function calculateDimensionScoresFromRatings(
     ratings: { dimensionId: RatingDimensionId; subDimensionId?: string; currentLevel: number }[]

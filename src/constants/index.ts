@@ -86,6 +86,25 @@ export function getOrganizationalSections(areaId: string): OrganizationalAssessm
   return isOrganizationalAssessmentArea(areaId) ? ORGANIZATIONAL_SECTIONS : null;
 }
 
+/**
+ * Type guard for a rating's `dimensionId` holding an organizational section
+ * rather than a standard ORBIT dimension.
+ *
+ * Prefer this over inline comparisons against section literals. Hand-written
+ * unions have drifted before: both dimension score tables checked only
+ * 'outcomes' and 'roles', so 'enterprise-architecture' ratings fell through to
+ * the standard-dimension lookup, resolved to `undefined`, and rendered raw
+ * aspect IDs in the results tables.
+ *
+ * @param dimensionId - The `dimensionId` from an OrbitRating or DimensionScore
+ * @returns True if the ID is one of the organizational sections
+ */
+export function isOrganizationalDimensionId(
+  dimensionId: string
+): dimensionId is OrganizationalAssessmentId {
+  return (ORGANIZATIONAL_SECTIONS as readonly string[]).includes(dimensionId);
+}
+
 // =============================================================================
 // Maturity Score Thresholds
 // =============================================================================

@@ -18,8 +18,8 @@ The MITA 4.0 State Self-Assessment Tool is a Progressive Web App (PWA) that enab
 
 | Term                  | Definition                                                                                                                                                                                     |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Capability Domain** | High-level capability grouping (e.g., "Provider Management"). 16 domains across 3 layers.                                                                                                      |
-| **Capability Area**   | Specific capability being assessed (e.g., "Provider Enrollment"). 66 total areas.                                                                                                              |
+| **Capability Domain** | High-level capability grouping (e.g., "Provider Management"). 14 domains across 3 layers (Strategic 3, Core 7, Support 4).                                                                     |
+| **Capability Area**   | Specific capability being assessed (e.g., "Provider Enrollment"). 72 total areas.                                                                                                              |
 | **ORBIT**             | Assessment framework: **O**utcomes, **R**oles, **B**usiness Architecture, **I**nformation, **T**echnology. B-I-T are required per-capability dimensions; O & R are organizational assessments. |
 | **Dimension**         | One of the 3 standard ORBIT categories assessed per capability (B, I, T). All required.                                                                                                        |
 | **Sub-Dimension**     | Only applies to Technology (2 sub-dimensions: Technical Infrastructure Management, Application Management)                                                                                     |
@@ -281,17 +281,19 @@ type ScoreMap = Record<string, number>;
 Use type guards for runtime type checking, especially with the capability model:
 
 ```typescript
-// Type guard for categorized domains (Enterprise Data Management, Enterprise Technology)
-export function isCategorizedDomain(
-  domain: CapabilityDomain
-): domain is CategorizedCapabilityDomain {
-  return 'categories' in domain && Array.isArray(domain.categories);
+// Type guard narrowing a rating's dimensionId to an organizational section.
+// Prefer this over inline literal comparisons — hand-written unions have
+// drifted before (see OBS-1 in docs/CODEBASE_OBSERVATIONS.md).
+export function isOrganizationalDimensionId(
+  dimensionId: string
+): dimensionId is OrganizationalAssessmentId {
+  return (ORGANIZATIONAL_SECTIONS as readonly string[]).includes(dimensionId);
 }
 
-// Usage
-const areas = isCategorizedDomain(domain)
-  ? domain.categories.flatMap((c) => c.areas)
-  : domain.areas;
+// Usage — the false branch narrows to OrbitDimensionId, no cast needed
+const aspect = isOrganizationalDimensionId(rating.dimensionId)
+  ? getOrganizationalAspect(rating.dimensionId, rating.aspectId)
+  : getAspect(rating.dimensionId, rating.aspectId, rating.subDimensionId);
 ```
 
 ### Path Aliases
@@ -386,7 +388,8 @@ Use the `useDebouncedSave` hook for text fields that auto-save:
 ```typescript
 import { useDebouncedSave } from '../../hooks';
 
-// In component
+// AspectCard passes 500 explicitly. UI.DEBOUNCE_MS (300) is NOT the value used
+// for assessment text fields — pass the delay you want rather than assuming it.
 const [localNotes, setLocalNotes] = useDebouncedSave(
   rating?.notes ?? '',
   onNotesChange,
@@ -632,7 +635,7 @@ db.version(2)
   });
 ```
 
-**Note**: Currently at version 1. Document any schema changes in PROJECT_FOUNDATION_v2.md.
+**Note**: Currently at version 4. Versions 2, 3, and 4 are all clean-break upgrades that clear every table, because each accompanied a model restructure that invalidated stored data. Document any schema change in PROJECT_FOUNDATION_v2.md.
 
 ---
 
@@ -673,7 +676,7 @@ const style = useMemo(() => ({ margin: 10 }), []);
 
 - Use `useLiveQuery` for automatic updates from IndexedDB
 - Implement loading states for async operations
-- The app loads all assessments/ratings upfront (66 areas × 26 standard aspects is manageable)
+- The app loads all assessments/ratings upfront (72 areas × 26 standard aspects is manageable)
 
 ### Bundle Size
 

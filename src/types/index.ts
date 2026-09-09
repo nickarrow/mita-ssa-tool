@@ -168,7 +168,8 @@ export interface TechnologyDimension {
 
 /**
  * Organizational assessment definition (from orbit-model.json)
- * Used for Outcomes and Roles which are assessed at the organizational level
+ * Used for the organizational sections, which are assessed once for the whole
+ * organization rather than per capability area
  */
 export interface OrganizationalAssessmentDefinition {
   id: OrganizationalAssessmentId;
@@ -260,7 +261,8 @@ export interface EvidenceResponse {
 /**
  * ORBIT Rating - one per aspect per capability assessment
  * For standard assessments: dimensionId is OrbitDimensionId (B, I, T)
- * For organizational assessments: dimensionId is OrganizationalAssessmentId ('outcomes' | 'roles')
+ * For organizational assessments: dimensionId is an OrganizationalAssessmentId
+ * ('outcomes' | 'roles' | 'enterprise-architecture')
  */
 export interface OrbitRating {
   id: string;

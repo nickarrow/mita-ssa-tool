@@ -32,12 +32,11 @@ import type {
   OrbitRating,
   Attachment,
   MaturityLevelWithNA,
-  OrbitDimensionId,
-  OrganizationalAssessmentId,
   LevelKey,
 } from '../../types';
 import { MATURITY_LEVEL_NAMES } from '../../types';
 import { getAspect, getMaturityLevelMeta, getOrganizationalAspect } from '../../services/orbit';
+import { isOrganizationalDimensionId } from '../../constants';
 import { SCORE_COLORS } from '../../utils';
 
 /**
@@ -114,19 +113,9 @@ function AspectDetailRow({
   onDownloadAttachment: (attachment: Attachment) => void;
 }): JSX.Element {
   // Get aspect name from ORBIT model - handle both standard and organizational assessments
-  let aspect;
-  if (rating.dimensionId === 'outcomes' || rating.dimensionId === 'roles') {
-    aspect = getOrganizationalAspect(
-      rating.dimensionId as OrganizationalAssessmentId,
-      rating.aspectId
-    );
-  } else {
-    aspect = getAspect(
-      rating.dimensionId as OrbitDimensionId,
-      rating.aspectId,
-      rating.subDimensionId
-    );
-  }
+  const aspect = isOrganizationalDimensionId(rating.dimensionId)
+    ? getOrganizationalAspect(rating.dimensionId, rating.aspectId)
+    : getAspect(rating.dimensionId, rating.aspectId, rating.subDimensionId);
   const aspectName = aspect?.name ?? rating.aspectId;
   const ratingAttachments = attachments.filter((a) => a.orbitRatingId === rating.id);
   const hasNotes = rating.notes.trim().length > 0;

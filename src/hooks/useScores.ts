@@ -312,8 +312,26 @@ export function useScores(): UseScoresReturn {
 
   /**
    * Get dimension scores for an assessment.
-   * For Technology dimension, calculates sub-dimension averages first,
-   * then averages those for the overall Technology score.
+   *
+   * Dimension roll-ups delegate to `calculateDimensionScore`, which is the
+   * canonical scorer: `finalizeAssessment` builds `overallScore` from it, and
+   * the aggregate calculations use it too. For Technology it averages the two
+   * sub-dimension means at full precision.
+   *
+   * The per-sub-dimension `averageLevel` values are rounded for display and must
+   * not be fed back into the dimension roll-up. Rounding twice made this function
+   * disagree with the canonical scorer by 0.1 — Infrastructure 2,2,2,2,1,1 plus
+   * Application 1,1,1,1,1 reported 1.4 here against 1.3 from finalize. Display
+   * rounds; scoring does not.
+   *
+   * Aspect scores are built from the ORBIT model rather than from ratings, so
+   * unassessed aspects appear at level 0 and ratings orphaned by a model change
+   * are excluded from both the listing and the score. `finalizeAssessment` feeds
+   * raw ratings instead, so the two can still differ if orphaned ratings exist.
+   *
+   * Note that PDF and CSV export do NOT yet use the canonical scorer — they
+   * compute Technology as a flat mean over all 11 aspects, which weights by
+   * aspect count rather than by sub-dimension. See OBS-25; scheduled for Wave 5.
    */
   const getDimensionScoresForAssessment = (assessmentId: string): DimensionScore[] | undefined => {
     if (!data) return undefined;
@@ -376,15 +394,27 @@ export function useScores(): UseScoresReturn {
           };
         });
 
-        // Technology dimension score = average of sub-dimension scores
-        const validSubScores = subDimensionScores
-          .map((s) => s.averageLevel)
-          .filter((v): v is number => v !== null);
-        avgLevel = calculateAverageScore(validSubScores);
+        // Delegate to the canonical scorer, feeding it the model-matched aspect
+        // levels tagged with their sub-dimension. It averages the sub-dimension
+        // means at full precision, unlike the rounded values displayed above.
+        avgLevel = calculateDimensionScore(
+          dimId,
+          subDimensionScores.flatMap((sub) =>
+            sub.aspectScores
+              .filter((a) => a.currentLevel > 0)
+              .map((a) => ({
+                currentLevel: a.currentLevel,
+                subDimensionId: sub.subDimensionId,
+              }))
+          )
+        );
       } else {
-        // For non-Technology dimensions: simple average of aspect scores
-        const assessed = aspectScores.filter((a) => a.currentLevel > 0);
-        avgLevel = calculateAverageScore(assessed.map((a) => a.currentLevel));
+        avgLevel = calculateDimensionScore(
+          dimId,
+          aspectScores
+            .filter((a) => a.currentLevel > 0)
+            .map((a) => ({ currentLevel: a.currentLevel }))
+        );
       }
 
       return {

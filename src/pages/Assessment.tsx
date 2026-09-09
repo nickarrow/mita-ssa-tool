@@ -68,7 +68,7 @@ interface NavItem {
   dimensionId?: OrbitDimensionId;
   /** For Technology sub-dimensions */
   subDimensionId?: TechnologySubDimensionId;
-  /** For organizational assessments: the type (outcomes/roles) */
+  /** For organizational assessments: the section (outcomes/roles/enterprise-architecture) */
   organizationalType?: OrganizationalAssessmentId;
   /** For organizational assessments: the aspect ID being navigated to */
   aspectId?: string;

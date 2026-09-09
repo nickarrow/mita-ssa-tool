@@ -50,7 +50,6 @@ interface DomainTableProps {
   onResumeAssessment: (areaId: string) => void;
   onEditAssessment: (areaId: string) => void;
   onViewAssessment: (areaId: string) => void;
-  onExportAssessment: (areaId: string) => void;
   onDeleteAssessment: (areaId: string) => void;
   onViewHistory: (historyId: string) => void;
   onDeleteHistory: (historyId: string) => void;
@@ -67,7 +66,6 @@ export function DomainTable({
   onResumeAssessment,
   onEditAssessment,
   onViewAssessment,
-  onExportAssessment,
   onDeleteAssessment,
   onViewHistory,
   onDeleteHistory,
@@ -334,7 +332,6 @@ export function DomainTable({
                             onResume={() => onResumeAssessment(area.id)}
                             onEdit={() => onEditAssessment(area.id)}
                             onView={() => onViewAssessment(area.id)}
-                            onExport={() => onExportAssessment(area.id)}
                             onDelete={() => onDeleteAssessment(area.id)}
                             onViewHistory={onViewHistory}
                             onDeleteHistory={onDeleteHistory}
