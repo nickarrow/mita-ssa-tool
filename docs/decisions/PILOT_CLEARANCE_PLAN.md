@@ -25,23 +25,95 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 **Read this section first if you are resuming with no prior context.**
 
-1. Read this file top to bottom. Section 4 is the source of truth for decisions;
-   Section 6 is the source of truth for progress.
-2. Find the first wave with unchecked boxes. That is the current position.
-3. Confirm the actual repo state before trusting the checkboxes — they can lag:
-   ```
-   git branch --show-current && git status --short && git log --oneline -5
-   npm run typecheck && npm run lint && npm test
-   ```
-4. Background you will need but that is not in this file:
-   - `docs/CODEBASE_OBSERVATIONS.md` — the audit backlog; `OBS-*` IDs referenced here
-   - `docs/decisions/CAPABILITY_MODEL_UPDATE_PLAN.md` — the v4 model and its decision log
-   - `.kiro/steering/development-standards.md` — coding standards. **Note: its domain/area
-     counts are wrong until OBS-17 is done (Wave 1). Trust `src/data/*.json` over it.**
-5. Update the checkboxes in Section 6 as you go, and append anything learned to
-   Section 8 (Working Notes) so the next session inherits it.
+### Where things stand
 
----
+|                |                                                                                          |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`            |
+| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3                                     |
+| Not yet pushed | The branch is **local only**. `origin` still has `feature/capability-model-v4` at v4.0.0 |
+| Green at       | 558 tests / 31 files; typecheck, lint, knip, build all clean                             |
+| Next wave      | **Wave 4 — accessibility audit.** See the pre-brief in Section 8c                        |
+
+### How to resume
+
+1. Read this file. Section 4 is the decision record, Section 6 is progress, Section 8 is
+   accumulated findings, Section 8c is the Wave 4 brief.
+2. Find the first wave with unchecked boxes — that is the current position.
+3. Confirm the repo agrees with the checkboxes before trusting them:
+   ```
+   git branch --show-current && git status --short && git log --oneline -4
+   npm run typecheck && npm run lint && npm test && npm run audit:code
+   ```
+4. Also read `docs/CODEBASE_OBSERVATIONS.md` — 27 `OBS-*` entries, referenced throughout
+   this plan. Entries resolved so far: OBS-1, 2, 6, 7, 16, 17, 21.
+5. Append what you learn to Section 8 so the next session inherits it.
+
+### Working agreements established with the user
+
+- **One commit per wave**, conventional-commit style, so each wave is a revertable
+  checkpoint. Write the message with `git commit -F -` and a heredoc; the body explains
+  _why_, not just what.
+- **Invoke a sub-agent reviewer before each wave's commit.** This has caught a real
+  regression or a false claim in the code every single time — three for three. Treat
+  `NEEDS_CHANGES` as blocking.
+- **Verify user-facing behaviour in a real browser**, not only in tests, for anything
+  touching data integrity or visual output. Recipe below.
+- Be explicit about what is verified versus assumed. The user values a stated limitation
+  over an implied guarantee.
+
+### Toolbox — things that cost time to rediscover
+
+**Browser verification.** Playwright MCP is available and the fastest way to check real
+rendering. Start the dev server as a background process (`npm run dev`, port 5173), then
+drive it. Seed data straight into IndexedDB rather than clicking through the UI:
+
+```js
+// In browser_evaluate. DB name is 'Mita4Database'; stores are
+// capabilityAssessments, orbitRatings, attachments, assessmentHistory, tags.
+() =>
+  new Promise((res, rej) => {
+    const r = indexedDB.open('Mita4Database');
+    r.onsuccess = () => {
+      const tx = r.result.transaction(['capabilityAssessments', 'orbitRatings'], 'readwrite');
+      tx.objectStore('capabilityAssessments').put({
+        /* CapabilityAssessment shape */
+      });
+      tx.oncomplete = () => res('seeded');
+      tx.onerror = () => rej(tx.error);
+    };
+  });
+```
+
+**Always clear the five stores afterwards** — the user's browser profile persists, and
+leaving seed data behind pollutes their view of the tool.
+
+**axe cannot evaluate colour contrast under jsdom.** It needs a canvas to sample rendered
+pixels, which is what the "getContext not implemented" notice in test output means. Any
+`toHaveNoViolations()` assertion in this repo silently skips contrast. Measure it in a real
+browser by reading `getComputedStyle` and computing the ratio.
+
+**Dev mode already runs axe and logs violations to the console** (`main.tsx` wires
+`@axe-core/react`). Reading the browser console while clicking around is free findings.
+
+**Test flake (OBS-27).** Running two arbitrary test files together flakes, because many
+tests gate on a Dexie `liveQuery` emission they do not need. Run the **full suite** or a
+**single file**; avoid arbitrary pairs. `asyncUtilTimeout` is 3000ms, deliberately under
+vitest's 5000ms `testTimeout` so failures report as assertion differences rather than
+timeouts.
+
+**knip fails the build on unused exports.** Do not add an export before its consumer
+exists — this bit twice, both times adding a constant one wave early.
+
+**zsh, not bash.** Unquoted `$VAR` does **not** word-split, so `git checkout -- $FILES`
+silently does nothing. And `$B:src/...` triggers zsh modifier expansion, mangling the path.
+Quote everything or write paths literally.
+
+**Sub-agent reviewers write to `semantic-review/`**, which is gitignored.
+
+**Pre-commit hooks** run prettier and eslint via lint-staged and will reformat staged
+files, so run `npx prettier --write` on what you touched before committing to keep the
+commit and the working tree identical.
 
 ## 2. Executive Summary
 
@@ -435,10 +507,13 @@ the next wave with a red repo.
 
 ### Wave 4 — Accessibility audit and remediation
 
-- [ ] Resolve **P2** (deliverable format and fix-versus-report policy)
+- [x] Resolve **P2** — settled: build to WCAG 2.1 AA, verify with our own automated plus
+      manual testing, fix what is safe, report the rest for a decision, no formal ACR. CMS
+      runs the official 508 review. Applies to the workbook as well as the app
 - [ ] Automated pass: axe via Playwright on Landing, Dashboard, Assessment (standard,
       organizational, aggregate variants), Results, Import/Export, Guide, History, 404
-- [ ] Measure banner and theme contrast for real; confirm `error.dark` and correct if not
+- [x] Banner contrast measured in a browser: 7.03:1 at 12.8px, passes AA and AAA. Theme
+      contrast beyond the banner is still open — see the known findings in Section 8c
 - [ ] Keyboard-only pass: full assessment flow, results drill-down, dialogs, skip link,
       focus visibility and focus order
 - [ ] Screen-reader-semantics review of the two custom widgets most likely to be wrong:
@@ -784,6 +859,65 @@ anywhere in `src/`, so a `flexShrink: 0` sibling degrades gracefully; both contr
 | OBS-17's correction list omitted the steering file's "Currently at version 1" schema claim (actual: v4)                                     | Added to Wave 1, along with the misleading `UI.DEBOUNCE_MS` constant                                                  |
 | The workbook is a gitignored build output, so in-app download links 404 under `npm run dev`                                                 | Dev-mode handling added to Wave 8                                                                                     |
 | Section 1 warned against committing `temp-transcript.md`, which no longer exists                                                            | Warning removed                                                                                                       |
+
+## 8c. Wave 4 Pre-Brief (accessibility audit)
+
+Written at the end of Wave 3 so the next session starts with what is already known rather
+than rediscovering it. **Wave 4 is the wave with genuinely unbounded scope** — the audit
+itself is a couple of hours, but remediation depends on what it finds.
+
+### Already-known findings
+
+Collected from dev-mode axe while verifying Waves 2 and 3, plus the audit in
+`CODEBASE_OBSERVATIONS.md`. These are the starting worklist:
+
+| #   | Finding                                                                                                                                                                                                                                                                                                                                                                                                                                      | Source                   |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 1   | Contrast **4.31:1** — `#ffffff` on `#1a7fc3`, 14px normal. Needs 4.5:1                                                                                                                                                                                                                                                                                                                                                                       | dev axe, assessment page |
+| 2   | Contrast **3.49:1** — `#757575` on `#e0e0e0`, 12px. Reported twice; looks like a disabled or greyed chip, so it likely recurs across components                                                                                                                                                                                                                                                                                              | dev axe, assessment page |
+| 3   | **Heading order invalid** — levels skip on the assessment page                                                                                                                                                                                                                                                                                                                                                                               | dev axe                  |
+| 4   | **OBS-24: expandable dimension rows are mouse-only.** `DimensionRow` in both `DimensionScoresTable.tsx` and `DimensionScoresTableWithTarget.tsx` puts `onClick` on the `TableRow` with `aria-expanded` but no `tabIndex`, no `role="button"`, no key handler. Everything behind the expansion — per-aspect levels, notes, barriers, attachments — is unreachable without a mouse. `aria-expanded` on a non-focusable element is also invalid | OBS-24                   |
+
+For #4 the fix pattern already exists in the codebase: `DomainTable` uses a real
+`IconButton` for its expand control and _is_ keyboard reachable. Prefer that over adding
+`role="button"` to the row, which also avoids a row-wide click target fighting text
+selection.
+
+### The item most likely to blow up the estimate
+
+`MaturityLevelSelector` (`src/components/assessment/MaturityLevelSelector.tsx`) is the
+most-used control in the app — it is how every one of the 26 aspects gets rated — and its
+markup is the riskiest in the codebase:
+
+- The level rows are `div`s carrying `role="radiogroup"` and `role="radio"` rather than real
+  inputs, so keyboard support (arrow-key navigation within the group, roving tabindex) is
+  hand-rolled or absent. Verify with keyboard only, not with axe: axe checks that roles are
+  _valid_, not that the interaction _works_.
+- Each radio row contains a **nested To-Be checkbox**. A checkbox inside a radio is not a
+  valid ARIA composition — interactive content must not nest inside a `role="radio"`.
+
+If this needs restructuring it is real surgery on the control states actually use, with
+regression risk. Two mitigations worth considering before touching it: it currently has no
+test file, so add coverage first; and the plan's Drop 1 date (Sept 12) is for a _reviewable_
+build, so a documented finding with a proposed fix may serve better than a rushed rewrite.
+Get the user's call rather than deciding unilaterally.
+
+### Scope guidance
+
+- P2 is settled: fix what is safe, report the rest with a recommendation, no formal ACR.
+- Pages to cover: Landing, Dashboard, Assessment (standard **and** organizational **and**
+  an enterprise-domain aggregate variant — they render different components), Results
+  (including the master-detail drill-down), Import/Export, Guide, History, 404.
+- `Layout` is a clean baseline: its two stale axe suppressions were removed in Wave 3 and
+  the full ruleset passes, so violations found now are in page content, not the shell.
+- Remember contrast must be measured in a browser (see the toolbox in Section 1).
+- Log anything structural as a new `OBS-*` entry rather than expanding this wave.
+
+### Deliverable
+
+Record pages covered, tools used, findings, and dispositions — that record is what the user
+points CMS at, and it is also the honest answer to "is it accessible?" which is otherwise
+unanswerable without assistive-technology testing by real users.
 
 ## 9. Out of Scope
 
