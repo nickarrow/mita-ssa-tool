@@ -27,13 +27,24 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 ### Where things stand
 
-|                |                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------- |
-| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`            |
-| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3                                     |
-| Not yet pushed | The branch is **local only**. `origin` still has `feature/capability-model-v4` at v4.0.0 |
-| Green at       | 558 tests / 31 files; typecheck, lint, knip, build all clean                             |
-| Next wave      | **Wave 4 — accessibility audit.** See the pre-brief in Section 8c                        |
+|                |                                                                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                 |
+| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3, `ef141e8` handoff docs                                                  |
+| Pushed         | Yes — tracking `origin/feature/pilot-clearance`                                                                               |
+| Deployed       | Yes. The user manually dispatches the Pages workflow from this branch, and **Shelley and Chris are reviewing that build now** |
+| Green at       | 558 tests / 31 files; typecheck, lint, knip, build all clean                                                                  |
+| Next wave      | **Wave 4 — accessibility audit.** See the pre-brief in Section 8c                                                             |
+
+> **Do not push to `main`.** `deploy.yml` auto-triggers on pushes to `main`, and
+> `origin/main` sits 10 commits behind at the pre-v4 capability model (`aa3708c`).
+> Anything landing there — including a merged dependabot PR — auto-deploys and silently
+> reverts the live site that stakeholders are reviewing back to the old model. Keep work
+> on this branch.
+
+> **Stakeholders are looking at the deployed build right now.** UI changes in Wave 4 will
+> change what they see mid-review. Prefer landing them as one deliberate deploy over a
+> trickle, and tell the user before anything visually disruptive goes out.
 
 ### How to resume
 
@@ -614,6 +625,9 @@ the next wave with a red repo.
       file and the three links would 404. Add a `predev` generation step or a graceful message
 - [ ] Resolve **P4** (PWA) and align the offline claims in Landing, About, README,
       PROJECT_FOUNDATION, and the steering file with reality
+- [ ] **OBS-28** — add `public/favicon.svg` and reference it as `%BASE_URL%favicon.svg`. No
+      favicon exists today and the root-absolute path would not respect the base path anyway.
+      Natural pairing with the PWA manifest, which needs an icon set
 - [ ] Mark the draft in `index.html`'s `<title>` and `<meta name="description">`. Those are
       what render as the link preview when the pilot URL is pasted into Teams or Slack, and
       they are currently unmarked — the runtime title suffix does not reach a crawler. Needs

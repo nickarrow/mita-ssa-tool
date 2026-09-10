@@ -657,3 +657,25 @@ example `getAssessedCount`, `getAverageLevelForDimension`). Roughly a dozen call
 that one file. `asyncUtilTimeout` is now 3000 in `src/test/setup.ts`, which raises the
 ceiling for the genuine cases while staying under vitest's 5000ms `testTimeout` so failures
 still report as assertion differences.
+
+### OBS-28 — The referenced favicon does not exist
+
+**Confirmed** by inspection and by request against the deployed site.
+
+`index.html:5` declares `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`, but no
+favicon file exists anywhere in the repository — `public/` contains only `404.html`. Both the
+base-path-relative and root URLs return 404 on the deployed site, so browsers fall back to a
+default tab icon.
+
+Two separate small problems in one line:
+
+1. **The file is missing.** Adding `public/favicon.svg` would fix the 404.
+2. **The path would still be wrong once it exists.** The `href` is a root-absolute `/favicon.svg`,
+   which does not pick up `VITE_BASE_PATH`, so on GitHub Pages it would resolve to
+   `nickarrow.github.io/favicon.svg` rather than `.../mita-ssa-tool/favicon.svg`. Use
+   `%BASE_URL%favicon.svg`, which Vite substitutes at build time.
+
+Purely cosmetic, and worth about ten minutes. Flagged because a missing tab icon is the kind of
+detail that registers during a "is this polished enough to ship" review, which is exactly the
+gate this tool is heading into. Reasonable to fold into Wave 8 alongside the PWA manifest work,
+which needs an icon set anyway.
