@@ -86,7 +86,10 @@ export function QuestionChecklist({
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <HelpOutlineIcon fontSize="small" color="primary" aria-hidden="true" />
-              <Typography variant="subtitle2">Assessment Questions for {levelName}</Typography>
+              {/* Inside MUI's <h3 class="MuiAccordion-heading">, so not a heading itself. */}
+              <Typography variant="subtitle2" component="span">
+                Assessment Questions for {levelName}
+              </Typography>
               <Chip
                 label={`${questionsAnswered}/${questions.length}`}
                 size="small"
@@ -144,7 +147,10 @@ export function QuestionChecklist({
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <DescriptionOutlinedIcon fontSize="small" color="secondary" aria-hidden="true" />
-              <Typography variant="subtitle2">Evidence Items for {levelName}</Typography>
+              {/* Inside MUI's <h3 class="MuiAccordion-heading">, so not a heading itself. */}
+              <Typography variant="subtitle2" component="span">
+                Evidence Items for {levelName}
+              </Typography>
               <Chip
                 label={`${evidenceProvided}/${evidence.length}`}
                 size="small"

@@ -244,6 +244,7 @@ function DimensionRow({
   subDimensionId?: string;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
+  const detailsId = `legacy-dimension-details-${subDimensionId ?? dimensionId}`;
 
   // Filter ratings for this dimension/sub-dimension
   const dimensionRatings = ratings.filter((r) => {
@@ -271,12 +272,48 @@ function DimensionRow({
           cursor: hasRatings ? 'pointer' : 'default',
           '&:hover': hasRatings ? { bgcolor: 'action.hover' } : {},
           '& > *': { borderBottom: open ? 'none' : undefined },
+          '&:focus-within': hasRatings
+            ? { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 }
+            : {},
         }}
-        aria-expanded={hasRatings ? open : undefined}
       >
         <TableCell sx={{ fontWeight: isSubDimension ? 400 : 600, pl: isSubDimension ? 4 : 2 }}>
-          {isSubDimension && '↳ '}
-          {dimensionName}
+          {/* `aria-expanded` belongs on a focusable control, not on the row:
+              it is invalid on role="row" outside a treegrid, and it promised an
+              expansion a keyboard user could not trigger (OBS-24). */}
+          {hasRatings ? (
+            /* `all: unset` makes this <button> render exactly as the previous
+               text node did - colour, font and weight all inherit - so the row
+               is unchanged for a mouse user. No chevron is added, and the `↳`
+               sub-dimension marker is kept in both branches so the two data
+               states are not marked differently. */
+            <Box
+              component="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRowClick();
+              }}
+              aria-expanded={open}
+              aria-controls={detailsId}
+              aria-label={dimensionName}
+              sx={{
+                all: 'unset',
+                cursor: 'pointer',
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                '&:focus': { outline: 'none' },
+              }}
+            >
+              {isSubDimension && '↳ '}
+              {dimensionName}
+            </Box>
+          ) : (
+            <>
+              {isSubDimension && '↳ '}
+              {dimensionName}
+            </>
+          )}
         </TableCell>
         <TableCell align="center">
           {assessedCount}/{totalCount}
@@ -294,7 +331,7 @@ function DimensionRow({
         </TableCell>
       </TableRow>
       {hasRatings && (
-        <TableRow>
+        <TableRow id={detailsId}>
           <TableCell colSpan={3} sx={{ py: 0, px: 0 }}>
             <Collapse in={open} timeout="auto" unmountOnExit>
               <Table size="small" sx={{ tableLayout: 'fixed' }}>
@@ -350,10 +387,36 @@ function TechnologyDimensionRows({
           bgcolor: 'grey.50',
           cursor: 'pointer',
           '&:hover': { bgcolor: 'action.hover' },
+          '&:focus-within': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: -2,
+          },
         }}
-        aria-expanded={parentOpen}
       >
-        <TableCell sx={{ fontWeight: 600 }}>{dim.dimensionName}</TableCell>
+        <TableCell sx={{ fontWeight: 600 }}>
+          <Box
+            component="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setParentOpen(!parentOpen);
+            }}
+            aria-expanded={parentOpen}
+            aria-controls="legacy-technology-subdimensions"
+            aria-label={dim.dimensionName}
+            sx={{
+              all: 'unset',
+              cursor: 'pointer',
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              fontWeight: 600,
+              '&:focus': { outline: 'none' },
+            }}
+          >
+            {dim.dimensionName}
+          </Box>
+        </TableCell>
         <TableCell align="center">
           {assessedAspects}/{totalAspects}
         </TableCell>
@@ -371,7 +434,7 @@ function TechnologyDimensionRows({
       </TableRow>
 
       {/* Technology sub-dimensions (collapsible) */}
-      <TableRow>
+      <TableRow id="legacy-technology-subdimensions">
         <TableCell colSpan={3} sx={{ py: 0, px: 0 }}>
           <Collapse in={parentOpen} timeout="auto" unmountOnExit>
             <Table size="small" sx={{ tableLayout: 'fixed' }}>
@@ -420,7 +483,11 @@ export default function DimensionScoresTable({
   return (
     <Paper sx={{ mb: 4 }}>
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6">Dimension Scores</Typography>
+        {/* Section heading directly under the page <h1>; `variant="h6"` alone
+            renders a real <h6> and skips h2-h5. */}
+        <Typography variant="h6" component="h2">
+          Dimension Scores
+        </Typography>
       </Box>
       <Divider />
       <TableContainer>

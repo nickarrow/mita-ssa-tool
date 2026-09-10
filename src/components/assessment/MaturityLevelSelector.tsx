@@ -63,7 +63,10 @@ export function MaturityLevelSelector({
     <Box>
       {/* Header */}
       <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Typography variant="subtitle2" color="text.secondary">
+        {/* A label for the group below, not a document heading. Without an
+            explicit `component`, MUI maps subtitle2 to a real <h6> and the
+            assessment page's heading order breaks (WCAG 1.3.1). */}
+        <Typography variant="subtitle2" component="p" color="text.secondary">
           Select Maturity Level
         </Typography>
         {previousAsIsValue !== undefined && previousAsIsValue > 0 && (

@@ -205,8 +205,12 @@ export function DomainTable({
                       py: 1,
                     }}
                   >
+                    {/* Layer group heading. The Dashboard's only <h1> is the page
+                        title, so these are its second level - without an explicit
+                        component MUI renders <h6> and skips h2-h5. */}
                     <Typography
                       variant="subtitle2"
+                      component="h2"
                       sx={{
                         fontWeight: 700,
                         color: layerConfig.color,

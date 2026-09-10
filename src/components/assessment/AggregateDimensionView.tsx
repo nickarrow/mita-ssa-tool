@@ -150,8 +150,11 @@ export function AggregateDimensionView({
               >
                 Aggregate Score
               </Typography>
+              {/* A score value, not a section heading. `variant="h2"` alone would
+                  render a real <h2> announcing "3.4" as document structure. */}
               <Typography
                 variant="h2"
+                component="p"
                 sx={{
                   fontWeight: 700,
                   color: getScoreColor(aggregateData.score!, theme),
@@ -174,7 +177,12 @@ export function AggregateDimensionView({
               >
                 Aggregate Score
               </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 600, color: 'text.disabled', mb: 1 }}>
+              {/* Empty-state text, not a heading (would render <h4> under an <h2>). */}
+              <Typography
+                variant="h4"
+                component="p"
+                sx={{ fontWeight: 600, color: 'text.disabled', mb: 1 }}
+              >
                 No Data Available
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -202,7 +210,8 @@ export function AggregateDimensionView({
               aria-controls="breakdown-content"
               id="breakdown-header"
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {/* Inside MUI's <h3 class="MuiAccordion-heading">, so not a heading itself. */}
+              <Typography variant="subtitle1" component="span" sx={{ fontWeight: 600 }}>
                 Score Breakdown by Capability Area
               </Typography>
             </AccordionSummary>

@@ -172,7 +172,12 @@ function EngagementItem({
     <Stack direction="row" spacing={1.5} alignItems="flex-start">
       {icon}
       <Box>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+        {/* Card title under the "Get involved" <h2>. */}
+        <Typography
+          variant="subtitle2"
+          component="h3"
+          sx={{ fontWeight: 700, color: 'text.primary' }}
+        >
           {title}
           {href && (
             <ArrowForwardIcon
@@ -242,7 +247,10 @@ export default function About(): JSX.Element {
               <Stack direction="row" spacing={1.5} alignItems="flex-start">
                 <Icon color="primary" aria-hidden="true" sx={{ mt: 0.25 }} />
                 <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  {/* Decorative card titles ("Private by design" etc.), not
+                      document structure. Promoting them to <h2> would put three
+                      blurbs in the outline ahead of the page's real sections. */}
+                  <Typography variant="subtitle2" component="p" sx={{ fontWeight: 700 }}>
                     {prop.title}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -295,7 +303,7 @@ export default function About(): JSX.Element {
                 {dim.letter}
               </Avatar>
               <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600 }}>
                   {dim.name}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -362,7 +370,7 @@ export default function About(): JSX.Element {
                   >
                     {level.level}
                   </Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  <Typography variant="subtitle2" component="h3" sx={{ fontWeight: 700 }}>
                     {level.name}
                   </Typography>
                 </Stack>

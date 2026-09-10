@@ -521,7 +521,20 @@ the row `role="button"`, `tabIndex={0}`, and Enter/Space handling. The `IconButt
 preferable — it matches existing precedent in the codebase and avoids a row-wide click
 target that interferes with text selection.
 
-Scheduled for **Wave 4** (accessibility remediation) in the pilot clearance plan.
+**Resolved.** It turned out to be two half-fixes in two commits:
+
+- `DimensionScoresTableWithTarget.tsx` — the **live** table — was fixed incidentally by the
+  Wave 1 OBS-1 work (`a0b53c2`), which gave the row a real `Box component="button"` with
+  `aria-expanded`, `aria-controls`, an `aria-label`, and Enter/Space handling. So the
+  keyboard-unreachable content described above stopped being reachable-only-by-mouse before
+  Wave 4 began.
+- `DimensionScoresTable.tsx` — reachable only via the orphaned `/results/:domainId/:areaId`
+  route (OBS-11) — still carried bare `aria-expanded` on two `TableRow`s. axe flags that as
+  `aria-conditional-attr` (serious): `aria-expanded` is valid on `treegrid` rows but not on
+  `table` rows. Fixed in **Wave 4** by porting the same button pattern from its sibling.
+
+Note this is exactly the OBS-10 duplication tax predicted: one bug, two files, fixed in two
+different waves.
 
 ### OBS-25 — PDF and CSV export weight the Technology score by aspect count, not by sub-dimension
 
@@ -679,3 +692,161 @@ Purely cosmetic, and worth about ten minutes. Flagged because a missing tab icon
 detail that registers during a "is this polished enough to ship" review, which is exactly the
 gate this tool is heading into. Reasonable to fold into Wave 8 alongside the PWA manifest work,
 which needs an icon set anyway.
+
+### OBS-29 — `MaturityLevelSelector` announces a radiogroup it does not implement
+
+**Confirmed** by keyboard-driving the real control in Chromium (Wave 4 audit), not merely by
+reading markup. This is the most-used control in the app: every one of the 26 aspects is
+rated through it.
+
+`src/components/assessment/MaturityLevelSelector.tsx` puts `role="radiogroup"` on a `Box`
+and `role="radio"` on six `Paper` elements (five levels plus N/A). Three distinct problems,
+in increasing order of severity:
+
+| Problem                                                                                           | Measured behaviour                                                                                                                              |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No arrow-key navigation.** The ARIA radiogroup pattern requires it                              | `ArrowDown` and `ArrowRight` with a radio focused leave focus exactly where it was. Only `Enter`/`Space` do anything                            |
+| **No roving tabindex.** All six radios carry `tabIndex={0}`                                       | The correct pattern is one tab stop per group. Measured: Tab order runs radio L1 → To-Be L1 → radio L2 → To-Be L2 …, so **12 stops per aspect** |
+| **A checkbox nested inside `role="radio"`.** axe reports `nested-interactive` at _serious_ impact | ARIA gives `radio` **presentational children**, so the To-Be checkbox's role is erased for assistive tech even though it remains focusable      |
+
+On a ten-aspect Information dimension that is roughly 120 tab stops to cross the page.
+
+**The important nuance: the control is operable, not unusable.** A keyboard user can Tab to a
+level and press Enter or Space to select it, and can Tab to the To-Be checkbox and press
+Space. What is broken is the _contract_ — the control tells a screen reader it is a radiogroup,
+then does not behave like one, and the To-Be affordance is announced as nothing in particular.
+So this is a WCAG 4.1.2 (Name, Role, Value) problem rather than a 2.1.1 (Keyboard) one.
+
+**Why it was not fixed in Wave 4.** Restructuring it is real surgery on the control every
+pilot state uses to enter data, it has **no test file**, and Drop 1 is a _reviewable_ build
+rather than a cleared one. Deliberately deferred for a decision instead of being rushed.
+
+Fix shape when it is taken on, cheapest first:
+
+1. Replace the hand-rolled roles with MUI `RadioGroup` + `FormControlLabel` + `Radio`, which
+   brings arrow keys, roving tabindex, and a real fieldset label for free.
+2. **Move the To-Be checkbox out of the radio row.** It cannot live inside a `role="radio"`
+   under any correct implementation. Options: a second column of checkboxes outside the
+   radiogroup, or a single "To-Be" select listing the six levels.
+3. Add a test file first — it has none, so there is currently no safety net.
+
+Note that option 2 is a visible layout change, so it needs stakeholder awareness, not just a
+code review.
+
+### OBS-30 — Twelve colour pairs fail WCAG 1.4.3, and the causes are structural not incidental
+
+**Confirmed** by measurement in Chromium with axe-core 4.11.1 (Wave 4). Worth stating plainly
+why this could not have been caught by the test suite: **axe cannot evaluate contrast under
+jsdom** — it needs a canvas to sample rendered pixels — so every `toHaveNoViolations()`
+assertion in this repo silently skips the contrast rule.
+
+| Ratio      | Foreground / background | Needs | Where                                                 | Root cause                                                  |
+| ---------- | ----------------------- | ----- | ----------------------------------------------------- | ----------------------------------------------------------- |
+| 2.09:1     | `#02bfe7` on `#fafafa`  | 4.5:1 | Outlined secondary chips ("Organization-wide"), Guide | `secondary.main` is a light cyan, unusable as text on white |
+| 2.15:1     | `#ff9800` on `#ffffff`  | 3:1   | 60px score number, AreaResults                        | `getScoreColor` returns raw orange                          |
+| 2.15:1     | `#ffffff` on `#ff9800`  | 4.5:1 | Score chips                                           | Same colour, used as a chip fill with white text            |
+| 2.33:1     | `#c48f00` on `#e9e8d8`  | 4.5:1 | Sidebar partial-progress chip                         | `warning.dark` on `alpha(warning.main, 0.15)`               |
+| 2.67:1     | `#9e9e9e` on `#ffffff`  | 4.5:1 | Tag helper text                                       | `grey.500` used for 12px body copy                          |
+| 3.15:1     | `#0095b6` on `#ebf4fa`  | 4.5:1 | To-Be chips                                           | `secondary.dark` on a tinted row                            |
+| 3.32:1     | `#0095b6` on `#f5f9fc`  | 4.5:1 | To-Be chips                                           | Same                                                        |
+| 3.37:1     | `#2e8540` on `#cae1dd`  | 4.5:1 | Sidebar complete chip                                 | `success.main` on `alpha(success.main, 0.15)`               |
+| 3.67:1     | `#2e8540` on `#dbe9de`  | 4.5:1 | Sidebar complete chip                                 | Same, different blend                                       |
+| 3.82:1     | `#2e8540` on `#e0ede2`  | 4.5:1 | Sidebar complete chip                                 | Same, different blend                                       |
+| 4.16:1     | `#0071bc` on `#d9eaf5`  | 4.5:1 | "AGG" chip, 11.2px                                    | `primary.main` on `alpha(primary.main, 0.15)`               |
+| **4.31:1** | `#ffffff` on `#1a7fc3`  | 4.5:1 | **Active header nav button, 5 pages**                 | `rgba(255,255,255,0.1)` overlay _lightens_ `primary.main`   |
+
+Three recurring patterns, which is what makes this structural:
+
+1. **`alpha(X, 0.15)` background with `X` as the foreground.** Tinting a colour toward white
+   and then writing in that same colour cannot reach 4.5:1 — the two move together. Affects
+   every sidebar progress chip and the AGG chip. The fix is a darker text token
+   (`success.dark`, `primary.dark`) rather than a different background.
+2. **`secondary.main` `#02bfe7` and `warning.main` `#fdb81e` are decorative-only colours**
+   being used as text. Neither can pass on white at any size the app uses.
+3. **The active nav button is lightened, not darkened.** `Layout.tsx` marks the current page
+   with `rgba(255,255,255,0.1)`, which raises the background luminance just enough to drop
+   white text from 4.68:1 (inactive, passing) to 4.31:1 (active, failing). Darkening instead —
+   `rgba(0,0,0,0.16)` — both fixes the contrast and still reads as selected. This is the
+   cheapest single fix in the table and covers five pages.
+
+Deferred out of Wave 4 because every item changes visible colour, and Shelley and Chris were
+mid-review of the deployed build at the time. Needs one deliberate batch, not a trickle.
+
+### OBS-31 — `ResultsMasterDetail`'s tree needs `Collapse` nested inside the `li`, not beside it
+
+**Resolved in Wave 4.** Recorded because the wrong fix and the right fix look almost
+identical, and the wrong one passes typecheck, lint and the whole test suite.
+
+The nav panel is a three-level expandable tree (layer → domain → area) built from MUI
+`List` / `ListItemButton` with `Collapse` between levels. `Collapse` renders a `div`. Three
+shapes, two of which are invalid:
+
+| Shape                                                               | Result                                                                                       |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Bare `ListItemButton` as a child of `List` (the original)           | `ul` has `div[role=button]` children → `aria-required-children`, **critical**                |
+| Rows wrapped in `ListItem`, `Collapse` as a **sibling** of the `li` | the domain and area `li`s land inside the `Collapse` div → `listitem`, **serious**, 14 nodes |
+| Rows wrapped in `ListItem`, `Collapse` **nested inside** the `li`   | **valid** — this is what shipped                                                             |
+
+The second shape is what the first Wave 4 attempt produced, and it was briefly documented
+here as proof that valid list markup was impossible. That was wrong. An `li` accepts flow
+content, so the `Collapse` can live _inside_ it, and each level then gets its own `ul`:
+
+```jsx
+<List>                                     {/* ul */}
+  <ListItem disablePadding sx={{ display: 'block' }}>   {/* li */}
+    <ListItemButton … />
+    <Collapse in={expanded} unmountOnExit>
+      <List disablePadding dense>          {/* ul, inside the li */}
+        …                                  {/* same pattern one level down */}
+      </List>
+    </Collapse>
+  </ListItem>
+</List>
+```
+
+`display: block` on the `ListItem` is required — its default is `flex`, which would put the
+button and its `Collapse` side by side. MUI's `List` sets `list-style: none`, so no marker
+appears.
+
+**The lesson is about the verification loop, not the markup.** The invalid shape was caught
+only by re-running axe in a browser after the fix; typecheck, lint and 558 tests were all
+green on it. `ResultsMasterDetail.test.tsx` now asserts that every `ul` contains only `li`
+children and that no `li` is orphaned, in the collapsed, domain-expanded and layer-collapsed
+states.
+
+Still open, and a better long-term answer: the ARIA **tree** pattern (`role="tree"` /
+`treeitem` / `group` with arrow-key traversal) fits an expandable hierarchy better than
+nested lists, and MUI's `SimpleTreeView` implements it. Worth pairing with the `height: 600`
+clipping noted under OBS-16.
+
+### OBS-32 — `variant="subtitle1|subtitle2"` silently emits `<h6>`, and it broke heading order on seven pages
+
+**Confirmed** on seven of twelve routes by axe (Wave 4); fixed in that wave, recorded here
+because the trap is still live for new code.
+
+MUI's default `variantMapping` maps `subtitle1` **and** `subtitle2` to `h6`, and `h1`–`h6`
+variants to their matching tags. So `<Typography variant="subtitle2">` renders a real
+document heading unless an explicit `component` overrides it. 18 sites existed; only 3 set
+`component`. The visible result was heading outlines like `h1 → h6` (Dashboard, Guide) and
+`h2 → h3 → h6` (assessment pages).
+
+Two sharper edges found along the way:
+
+- **MUI 6.5 wraps `AccordionSummary` in `<h3 class="MuiAccordion-heading">`.** Every aspect
+  card therefore had a `<h6>` (`AspectCard`'s `subtitle1` aspect name) nested _inside_ an
+  `<h3>` — a heading inside a heading. Not obvious from the JSX, since nothing in this repo
+  writes that `h3`.
+- **Score values were headings**, in four files: `AggregateDimensionView`, `AreaResults`,
+  `DomainResults` and `ResultsMasterDetail` all rendered big numbers with `variant="h2"`,
+  `"h3"` or `"h4"`, so "3.2" was announced as document structure. `ResultsMasterDetail` also
+  rendered the literal arrow glyph `→` between As-Is and To-Be as an `<h5>`, and two empty
+  states ("No Data Available", "No Assessment Results") as headings under an `<h2>`.
+- **Half the sites were only reachable by interaction.** The `ResultsMasterDetail` detail
+  panel renders nothing until a domain or area is clicked, and selection is component-local
+  state rather than URL state (OBS-12). A route-by-route sweep sees only the placeholder and
+  reports clean, which is exactly what the first Wave 4 pass did.
+
+**Guidance for new code:** treat `variant` as styling only, and always pass `component`
+explicitly on `Typography` — `component="p"` or `"span"` for text that merely looks like a
+heading, or the correct `component="hN"` for a genuine section heading. Worth adding to the
+steering file's React patterns section.

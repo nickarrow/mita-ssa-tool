@@ -415,34 +415,33 @@ export default function AreaResults(): JSX.Element {
         >
           {/* Radar Chart for standard assessments */}
           {radarChartData && !isOrganizationalAssessment && (
-            <Box
-              sx={{ width: 180, height: 180 }}
-              role="img"
-              aria-label="Radar chart showing maturity levels across B-I-T dimensions"
-            >
+            <Box sx={{ width: 180, height: 180 }}>
               <Radar
                 data={radarChartData}
                 options={radarChartOptions}
                 plugins={[radarDataLabelsPlugin]}
+                aria-label="Radar chart showing maturity levels across B-I-T dimensions"
               />
             </Box>
           )}
 
           {/* Bar Chart for organizational assessments */}
           {aspectBarChartData && isOrganizationalAssessment && (
-            <Box
-              sx={{ width: 220, height: 180 }}
-              role="img"
-              aria-label="Bar chart showing maturity levels for organizational assessment aspects"
-            >
-              <Bar data={aspectBarChartData} options={aspectBarChartOptions} />
+            <Box sx={{ width: 220, height: 180 }}>
+              <Bar
+                data={aspectBarChartData}
+                options={aspectBarChartOptions}
+                aria-label="Bar chart showing maturity levels for organizational assessment aspects"
+              />
             </Box>
           )}
 
           {/* Score + Edit button (right) */}
           <Box sx={{ textAlign: 'center', minWidth: 100 }}>
+            {/* A score value, not a section heading. */}
             <Typography
               variant="h2"
+              component="p"
               sx={{ fontWeight: 700, color: getScoreColor(scoreData.score), lineHeight: 1 }}
             >
               {scoreData.score?.toFixed(1) ?? '—'}
@@ -470,12 +469,12 @@ export default function AreaResults(): JSX.Element {
           <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
             Score Trend
           </Typography>
-          <Box
-            sx={{ height: 200 }}
-            role="img"
-            aria-label="Line chart showing score trend over time"
-          >
-            <Line data={trendChartData} options={trendChartOptions} />
+          <Box sx={{ height: 200 }}>
+            <Line
+              data={trendChartData}
+              options={trendChartOptions}
+              aria-label="Line chart showing score trend over time"
+            />
           </Box>
         </Paper>
       )}
@@ -494,7 +493,7 @@ export default function AreaResults(): JSX.Element {
       {organizationalSections?.map((section) => (
         <Paper key={section} sx={{ mb: 4 }}>
           <Box sx={{ p: 2 }}>
-            <Typography variant="h6">
+            <Typography variant="h6" component="h2">
               {getOrganizationalAssessment(section).name} Aspect Scores
             </Typography>
           </Box>

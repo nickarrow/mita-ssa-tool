@@ -59,15 +59,24 @@ async function waitForLoaded(): Promise<void> {
   });
 }
 
-/** Expand an aspect accordion and return its details region. */
+/**
+ * Expand an aspect accordion and return its details region.
+ *
+ * The region is located by id, which MUI's Accordion puts on its own
+ * `div.MuiAccordion-region` wrapper (matching the summary's `aria-controls`).
+ * Do not query `getByRole('region', { name: '' })` here: that used to match
+ * because `AccordionDetails` carried a duplicate, *unnamed* `role="region"`
+ * with the same id. That duplicate was removed as part of the Wave 4
+ * accessibility work, and the surviving region is correctly named.
+ */
 async function expandAspect(user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> {
   const header = await screen.findByRole('button', { name: new RegExp(ASPECT_NAME) });
   await user.click(header);
-  const region = await screen.findByRole('region', { name: '' }).catch(() => null);
-  // The details region is identified by id rather than an accessible name.
-  const details = region ?? document.getElementById(`aspect-${ASPECT_ID}-content`);
-  expect(details).not.toBeNull();
-  return details as HTMLElement;
+  const detailsId = `aspect-${ASPECT_ID}-content`;
+  await waitFor(() => {
+    expect(document.getElementById(detailsId)).not.toBeNull();
+  });
+  return document.getElementById(detailsId) as HTMLElement;
 }
 
 describe('Assessment page', () => {

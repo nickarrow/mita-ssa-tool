@@ -304,7 +304,7 @@ export default function ImportExport(): JSX.Element {
             </Card>
 
             {/* Secondary Exports */}
-            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
+            <Typography variant="subtitle1" component="h3" sx={{ mb: 2, fontWeight: 500 }}>
               Other Export Formats
             </Typography>
 
@@ -474,7 +474,7 @@ export default function ImportExport(): JSX.Element {
                   and JSON (data only) files.
                 </Typography>
 
-                <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                <Typography variant="subtitle2" component="h4" sx={{ mt: 2, mb: 1 }}>
                   Supported Formats
                 </Typography>
                 <List dense disablePadding>
@@ -514,7 +514,9 @@ export default function ImportExport(): JSX.Element {
                 borderColor: 'grey.200',
               }}
             >
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {/* A peer info box under the "Import" <h2>, not a child of the
+                  "Restore from Backup" card, so h3 rather than h4. */}
+              <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
                 How Import Works
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

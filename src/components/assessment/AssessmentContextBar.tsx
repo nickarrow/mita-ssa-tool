@@ -14,6 +14,7 @@ import {
   Paper,
   Popper,
   List,
+  ListItem,
   ListItemButton,
   ListItemText,
   ClickAwayListener,
@@ -244,16 +245,17 @@ export function AssessmentContextBar({
                   <Paper elevation={3} sx={{ mt: 0.5, minWidth: 150 }}>
                     <List dense disablePadding>
                       {filteredSuggestions.map((suggestion) => (
-                        <ListItemButton
-                          key={suggestion}
-                          onClick={() => handleSuggestionClick(suggestion)}
-                          sx={{ py: 0.5 }}
-                        >
-                          <ListItemText
-                            primary={suggestion}
-                            primaryTypographyProps={{ variant: 'body2' }}
-                          />
-                        </ListItemButton>
+                        <ListItem key={suggestion} disablePadding>
+                          <ListItemButton
+                            onClick={() => handleSuggestionClick(suggestion)}
+                            sx={{ py: 0.5 }}
+                          >
+                            <ListItemText
+                              primary={suggestion}
+                              primaryTypographyProps={{ variant: 'body2' }}
+                            />
+                          </ListItemButton>
+                        </ListItem>
                       ))}
                     </List>
                   </Paper>

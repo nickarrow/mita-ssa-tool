@@ -351,7 +351,10 @@ function DimensionRow({
               }}
               aria-expanded={open}
               aria-controls={detailsId}
-              aria-label={`${dimensionName}, ${assessedCount} of ${totalCount} assessed, As-Is ${averageLevel?.toFixed(1) ?? 'none'}, To-Be ${targetLevel?.toFixed(1) ?? 'none'}. Press Enter to ${open ? 'collapse' : 'expand'} details.`}
+              /* Name is just the dimension: `aria-expanded` already conveys
+                 state, the `button` role implies activation, and the counts and
+                 scores are in adjacent cells a screen reader reads anyway. */
+              aria-label={dimensionName}
               sx={{
                 all: 'unset',
                 cursor: 'pointer',
@@ -537,7 +540,7 @@ function TechnologyDimensionRows({
             }}
             aria-expanded={parentOpen}
             aria-controls="technology-subdimensions"
-            aria-label={`Technology, ${assessedAspects} of ${totalAspects} assessed, As-Is ${dim.averageLevel?.toFixed(1) ?? 'none'}, To-Be ${targetLevel?.toFixed(1) ?? 'none'}. Press Enter to ${parentOpen ? 'collapse' : 'expand'} sub-dimensions.`}
+            aria-label="Technology"
             sx={{
               all: 'unset',
               cursor: 'pointer',
@@ -646,7 +649,11 @@ export function DimensionScoresTableWithTarget({
   return (
     <Paper>
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6">Dimension Scores</Typography>
+        {/* Nested under the detail panel's <h2> title in ResultsMasterDetail,
+            this component's only consumer. */}
+        <Typography variant="h6" component="h3">
+          Dimension Scores
+        </Typography>
         <Typography variant="body2" color="text.secondary">
           Click a dimension to see aspect-level details
         </Typography>

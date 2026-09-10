@@ -27,14 +27,19 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 ### Where things stand
 
-|                |                                                                                                                               |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                 |
-| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3, `ef141e8` handoff docs                                                  |
-| Pushed         | Yes — tracking `origin/feature/pilot-clearance`                                                                               |
-| Deployed       | Yes. The user manually dispatches the Pages workflow from this branch, and **Shelley and Chris are reviewing that build now** |
-| Green at       | 558 tests / 31 files; typecheck, lint, knip, build all clean                                                                  |
-| Next wave      | **Wave 4 — accessibility audit.** See the pre-brief in Section 8c                                                             |
+|                |                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                    |
+| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3, `ef141e8` + `7710921` handoff docs, then one Wave 4 a11y commit                            |
+| Pushed         | Up to `7710921`. **The Wave 4 commit is local only — not pushed**                                                                                |
+| Deployed       | The user manually dispatches the Pages workflow from this branch. The deployed build is **pre-Wave 4** — that is what Shelley and Chris reviewed |
+| Green at       | 572 tests / 33 files; typecheck, lint, knip all clean                                                                                            |
+| Next wave      | **Wave 5 — draft notice in exports, plus PDF correctness.** Wave 4 is done; its audit record is Section 8d                                       |
+
+> **Two Wave 4 findings are deferred and need a decision before Wave 5 closes:** OBS-30
+> (12 colour-contrast failures — every fix is visible, so it wants one deliberate deploy) and
+> OBS-29 (`MaturityLevelSelector` announces a radiogroup it does not implement). Section 8d
+> records both, with the limitations of the audit stated explicitly.
 
 > **Do not push to `main`.** `deploy.yml` auto-triggers on pushes to `main`, and
 > `origin/main` sits 10 commits behind at the pre-v4 capability model (`aa3708c`).
@@ -56,8 +61,8 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    git branch --show-current && git status --short && git log --oneline -4
    npm run typecheck && npm run lint && npm test && npm run audit:code
    ```
-4. Also read `docs/CODEBASE_OBSERVATIONS.md` — 27 `OBS-*` entries, referenced throughout
-   this plan. Entries resolved so far: OBS-1, 2, 6, 7, 16, 17, 21.
+4. Also read `docs/CODEBASE_OBSERVATIONS.md` — 32 `OBS-*` entries, referenced throughout
+   this plan. Entries resolved so far: OBS-1, 2, 6, 7, 16, 17, 21, 24, 32.
 5. Append what you learn to Section 8 so the next session inherits it.
 
 ### Working agreements established with the user
@@ -521,18 +526,20 @@ the next wave with a red repo.
 - [x] Resolve **P2** — settled: build to WCAG 2.1 AA, verify with our own automated plus
       manual testing, fix what is safe, report the rest for a decision, no formal ACR. CMS
       runs the official 508 review. Applies to the workbook as well as the app
-- [ ] Automated pass: axe via Playwright on Landing, Dashboard, Assessment (standard,
-      organizational, aggregate variants), Results, Import/Export, Guide, History, 404
+- [x] Automated pass: axe via Playwright on Landing, Dashboard, Assessment (standard,
+      organizational, aggregate variants), Results, Import/Export, Guide, History, 404 —
+      plus both orphaned results routes. 12 routes, axe-core 4.11.1 in real Chromium
 - [x] Banner contrast measured in a browser: 7.03:1 at 12.8px, passes AA and AAA. Theme
-      contrast beyond the banner is still open — see the known findings in Section 8c
-- [ ] Keyboard-only pass: full assessment flow, results drill-down, dialogs, skip link,
+      contrast beyond the banner **measured and logged as OBS-30** — deferred, needs sign-off
+- [x] Keyboard-only pass: full assessment flow, results drill-down, dialogs, skip link,
       focus visibility and focus order
-- [ ] Screen-reader-semantics review of the two custom widgets most likely to be wrong:
-      `MaturityLevelSelector` (`role="radiogroup"` / `role="radio"` on `div`s, with a
-      nested To-Be checkbox per row) and `AssessmentSidebar` list structure
-- [ ] Fix findings per the P2 policy; log anything structural as new `OBS-*` entries
-- [ ] Record the audit result — pages covered, tools used, findings, dispositions
-- [ ] Verify green
+- [x] Screen-reader-semantics review of the two custom widgets most likely to be wrong:
+      `MaturityLevelSelector` (OBS-29, deferred for a decision) and `AssessmentSidebar`
+      list structure (fixed — it was a critical `aria-required-children` failure)
+- [x] Fix findings per the P2 policy; log anything structural as new `OBS-*` entries —
+      OBS-29, 30, 31, 32 filed; OBS-24 closed
+- [x] Record the audit result — see Section 8d
+- [x] Verify green — 567 tests / 32 files; typecheck, lint, knip clean
 
 ### Wave 5 — Draft notice in exports, plus PDF correctness
 
@@ -933,6 +940,182 @@ Record pages covered, tools used, findings, and dispositions — that record is 
 points CMS at, and it is also the honest answer to "is it accessible?" which is otherwise
 unanswerable without assistive-technology testing by real users.
 
+## 8d. Wave 4 Accessibility Audit Record
+
+**Date:** September 10, 2026 · **Branch:** `feature/pilot-clearance` · **Standard:** WCAG 2.1
+Level AA · **Policy:** Decision P2 — fix what is safe, report the rest, no formal ACR
+
+This is the record to point CMS at. It states what was tested, what was fixed, what was
+deliberately not fixed, and — importantly — **what this exercise cannot tell you**.
+
+### Method
+
+| Aspect                 | Detail                                                                                                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tool                   | axe-core **4.11.1**, injected into the running app from `node_modules` via the Vite dev server, driven by Playwright                                                            |
+| Rule sets              | `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, **plus** `best-practice`                                                                                                            |
+| Environment            | Real Chromium at 1280×720 and 1400×1000 — **not** jsdom, so colour contrast was genuinely evaluated                                                                             |
+| Data                   | IndexedDB seeded directly with 5 assessments / 109 ratings / 1 history snapshot, covering a standard area, an aggregate-dimension area, and the organizational area             |
+| Manual                 | Keyboard-only traversal, focus-indicator inspection via `getComputedStyle` **and screenshots**, dialog focus-trap and Escape, skip-link activation                              |
+| Routes (12)            | Landing, Dashboard, Assessment ×3 (standard / aggregate / organizational), Results, Import/Export, Guide, History detail, both orphaned results routes, 404                     |
+| Interaction states (7) | Results with a domain selected, an area selected, and a dimension row expanded; a collapsed layer; Assessment with 2 and 3 aspect accordions expanded; the finalize dialog open |
+
+Why `best-practice` was included: `heading-order` is **not** WCAG-tagged in axe. A run
+filtered to WCAG tags alone reports zero heading problems on this app, which is misleading —
+the first pass did exactly that and found nothing, while the app had heading-order failures
+on seven routes.
+
+Why interaction states are listed separately: **auditing routes by URL is not sufficient
+coverage for this app.** `ResultsMasterDetail` renders its detail panel only after a click and
+holds selection in component-local state rather than the URL (OBS-12), and the assessment
+page's aspect panels load collapsed. Two findings below — the last heading skips and
+`landmark-unique` — exist _only_ in states a route sweep cannot reach. The first pass of this
+audit reported `heading-order` clean on `/results` for precisely that reason; a reviewer caught
+the gap, and the states were then driven explicitly.
+
+### Result
+
+| Rule                     | Impact       | Before                                     | After                                                               |
+| ------------------------ | ------------ | ------------------------------------------ | ------------------------------------------------------------------- |
+| `aria-required-children` | **critical** | 4 routes                                   | **0** — fixed                                                       |
+| `role-img-alt`           | serious      | 3 routes                                   | **0** — fixed                                                       |
+| `aria-conditional-attr`  | serious      | 1 route (3 nodes)                          | **0** — fixed                                                       |
+| `heading-order`          | moderate     | 7 routes (19 nodes) + 2 interaction states | **0** — fixed, re-verified in the interaction states                |
+| `landmark-unique`        | moderate     | assessment, expanded panels only           | **0** — fixed                                                       |
+| `listitem`               | serious      | 0                                          | **0** — introduced by the first fix attempt, then resolved (OBS-31) |
+| `color-contrast`         | serious      | 12 distinct pairs                          | 12 — **deferred, OBS-30**                                           |
+| `nested-interactive`     | serious      | 3 assessment routes                        | 3 — **deferred, OBS-29**                                            |
+
+Landing and 404 were clean before and after. Every remaining automated violation is one of
+the two deferred items.
+
+Two findings surfaced only once panels were expanded, and both are worth knowing about
+because the same shape recurs easily:
+
+- **`landmark-unique`.** `AspectCard` set `role="region"` plus an `id` on `AccordionDetails`,
+  but MUI's `Accordion` already renders its own `div.MuiAccordion-region` carrying
+  `role="region"`, the same `id`, and `aria-labelledby`. Every expanded aspect therefore
+  produced **two identically-named landmarks and a duplicate DOM `id`**. Removing the manual
+  attributes took the landmark count on a five-aspect page from 16 to 6 and left zero
+  duplicate ids (verified by enumerating every `id` in the document).
+- `AttachmentUpload` used `role="region"` with the fixed label "File upload area", so it
+  appeared once per aspect. Changed to `role="group"`, which keeps the name without claiming
+  page-level structure.
+
+Plus one failure **axe never reported**, found only by manual testing and the most
+consequential thing in this audit:
+
+> **WCAG 2.4.7 Focus Visible failed across essentially the whole application.** MUI's
+> `ButtonBase` sets `outline: 0` and signals keyboard focus with a background tint from
+> `palette.action.focus`; this app's own `sx` backgrounds override that tint. Measured on the
+> assessment sidebar with focus on it: `outline: none`, `box-shadow: none`, background
+> `rgba(0,0,0,0.004)`. Confirmed by screenshot — the focused row was visually identical to
+> its neighbours. This affected every `ButtonBase`-derived control — `Button`, `IconButton`,
+> `ListItemButton`, `AccordionSummary`, `MenuItem`, `Checkbox`, `Radio`. Anchors and the few
+> `role="button"` divs were unaffected, because they still received the browser's default ring.
+>
+> Fixed at the theme level with `'&.Mui-focusVisible': { outline: '2px solid currentColor' }`.
+> `currentColor` was chosen deliberately: an outline cannot be clobbered by a background
+> rule, and it adapts to context — measured white (`rgb(255,255,255)`) on the dark blue
+> AppBar and near-black (`rgb(33,33,33)`) on light page backgrounds.
+>
+> **`currentColor` alone was not sufficient, and the first attempt shipped a ring nobody
+> could see.** On a _contained_ button the text colour is `palette[color].contrastText`
+> (white), and the default `outline-offset: 2px` draws the ring entirely outside the button
+> onto the white page — measured **1.00:1**, i.e. invisible, on the primary call to action of
+> five pages and on every dialog confirm. A reviewer caught this. Contained buttons now use
+> `outlineOffset: -4` so the white ring is drawn on the button's own fill: measured
+> **5.14:1** on primary and 4.67:1 on error, both clearing the 3:1 required for non-text
+> contrast, and confirmed by screenshot.
+>
+> **Scope limits worth stating.** `Chip` is `styled('div')` rather than `ButtonBase`, so the
+> clickable attachment-download chips are _not_ covered by this override and still signal
+> focus only with a background tint. Disabled controls resolve `currentColor` to
+> `text.disabled` and would give a sub-3:1 ring, but they are exempt under WCAG 1.4.11 and
+> MUI removes them from the tab order.
+>
+> Because the rule keys off `:focus-visible`, **mouse and touch users see no change.**
+
+### What was fixed
+
+| Fix                                                                                                                              | Visual impact                             |
+| -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Theme focus-visible outline on `ButtonBase` controls, inset on contained buttons and full-bleed rows                             | Keyboard focus only; none for mouse users |
+| `AssessmentSidebar` standard branch: rows wrapped in `ListItem`, Technology rollup row is an `li` — was `ul` with `div` children | None                                      |
+| `AssessmentContextBar` tag-suggestion list: rows wrapped in `ListItem`                                                           | None                                      |
+| `ResultsMasterDetail`: `Collapse` nested inside each `li` so the tree is valid list markup at every level (OBS-31)               | None                                      |
+| 24 `Typography` sites given explicit `component` so `variant` no longer emits stray headings (OBS-32)                            | None — `variant` still drives styling     |
+| Chart accessible names moved onto the `<canvas>` (where react-chartjs-2 sets `role="img"`) instead of a wrapper `div`            | None                                      |
+| `AspectCard`: removed the duplicate `role="region"` and duplicate DOM `id` that shadowed MUI's own accordion region              | None                                      |
+| `AttachmentUpload`: `role="region"` → `role="group"` so it is not a repeated landmark                                            | None                                      |
+| `DimensionScoresTable`: `aria-expanded` moved from `TableRow` to a real focusable button (OBS-24 remainder)                      | None                                      |
+
+**Every fix in this wave is invisible to a mouse user.** The first draft of the
+`DimensionScoresTable` fix added chevron icons and dropped the `↳` sub-dimension marker;
+both were reverted after review, since `all: unset` on the new `<button>` already makes it
+render identically to the text node it replaced.
+
+Tests added: 14 — 5 `AssessmentSidebar` standard-mode (two list-structure guards, two axe
+checks), 5 `ResultsMasterDetail` (list validity collapsed, domain-expanded and
+layer-collapsed, plus an axe check), 4 theme. Suite went 558 → **572**, files 31 → 33.
+
+### What was deliberately not fixed
+
+- **OBS-29 — `MaturityLevelSelector`.** Announces `role="radiogroup"` but has no arrow-key
+  navigation and no roving tabindex, and nests a checkbox inside `role="radio"`. Deferred
+  because it is the control every pilot state uses to enter data, it has **no test file**, and
+  Drop 1 is a reviewable build rather than a cleared one. **Nuance that matters for triage:
+  the control is operable — Enter/Space selects, Tab reaches the To-Be checkbox — so this is
+  WCAG 4.1.2 (Name, Role, Value), not 2.1.1 (Keyboard).**
+- **OBS-30 — 12 colour-contrast pairs.** Every one requires a visible colour change, and
+  stakeholders were mid-review of the deployed build. Wants one deliberate batch. Cheapest
+  high-value item: the active header nav button fails at 4.31:1 on five pages purely because
+  the selected state _lightens_ `primary.main`; darkening it instead fixes contrast and still
+  reads as selected.
+- **OBS-31 — proper ARIA `tree` semantics** for the results nav. The Wave 4 change makes the
+  markup valid; making it a real tree is a refactor.
+
+### Limitations — what this audit does not establish
+
+State these alongside any claim about accessibility:
+
+1. **No assistive-technology testing was performed.** No screen reader (NVDA, JAWS, VoiceOver)
+   was driven against the app. Every screen-reader claim here is inferred from the accessibility
+   tree and ARIA semantics, not heard. This is the single largest gap, and automated tooling
+   cannot close it.
+2. **Automated rules cover a minority of WCAG.** axe finds roughly a third of WCAG issues by
+   common estimates. A clean axe run is a floor, not a pass.
+3. **The two deferred items are real, open AA failures** — the tool does not currently meet
+   WCAG 2.1 AA. Contrast in particular is user-visible and affects the CMS submission surface.
+4. **Contrast was measured on the states that happened to render.** Hover, disabled, error and
+   validation states were not systematically enumerated.
+5. **Zoom and reflow (1.4.10), text spacing (1.4.12) and 400% magnification were not tested.**
+   The assessment page is a fixed-height shell with a 240px sidebar, which is where reflow
+   problems would concentrate.
+6. **No testing below 768px.** Accepted deliberately in Wave 3 — the fixed sidebar plus content
+   means phones are not a supported target.
+7. **Verified in Chromium only.** No Firefox or Safari pass, and `:focus-visible` heuristics
+   differ between engines.
+8. **Interaction-state coverage is representative, not exhaustive.** Seven states were driven
+   explicitly (listed under Method), chosen because they render different components. Others
+   were not enumerated — notably import/export progress and error states, snackbar alerts, the
+   tag editor's validation states, and the organizational assessment's review step. Given that
+   two findings in this audit existed _only_ in interaction states, assume more remain.
+9. **`Chip` focus indicators were not fixed.** Clickable chips are outside the `ButtonBase`
+   override (see the focus-ring note above) and still rely on a background tint.
+
+### Recommended next steps
+
+1. Take the OBS-30 contrast batch as one deploy, leading with the nav-button fix.
+2. Decide on OBS-29 — a test file first, then MUI `RadioGroup`, then move the To-Be control
+   out of the radio row.
+3. Before any "accessible" claim reaches states, do one screen-reader pass on the assessment
+   flow. That is the gap automation cannot fill.
+4. Give clickable `Chip`s a focus indicator; they are the one interactive control class the
+   theme override does not reach.
+5. When auditing again, drive interaction states rather than routes. A `.playwright-mcp`-driven
+   sweep that only visits URLs will report this app cleaner than it is.
+
 ## 9. Out of Scope
 
 | Item                                                        | Disposition                                                                                                                                                                                                 |
@@ -944,3 +1127,78 @@ unanswerable without assistive-technology testing by real users.
 | PRA submission                                              | Shelley; going in under the approved APD template PRA `[15:45]`                                                                                                                                             |
 | Formal ACR/VPAT                                             | Pending P2                                                                                                                                                                                                  |
 | Remaining `OBS-*` items                                     | OBS-4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 19 stay in the backlog. OBS-5 and OBS-8 are flagged as pre-pilot decisions in Section 4                                                                             |
+
+### Wave 4 notes — 2026-09-10
+
+Full audit record is Section 8d. What is here is the things that cost time to learn.
+
+**Run axe with `best-practice` included, or heading order is invisible.** `heading-order` is
+not WCAG-tagged in axe. My first sweep filtered to the four WCAG tags and reported zero
+heading problems; the app had them on seven routes. The pre-brief's "heading order invalid"
+item came from dev-mode axe, which uses the default ruleset — so the two sources disagreeing
+was the clue.
+
+**Injecting axe into the real browser is the whole game, and it is easy.** `page.addScriptTag({
+path: '<abs>/node_modules/axe-core/axe.min.js' })` after each `page.goto`. Note the path must
+be **absolute** — Playwright's cwd is not the repo root. This gives real contrast evaluation,
+which jsdom cannot do at all, and it took one Playwright call to sweep 12 routes.
+
+**The biggest finding was not automatable.** Focus-visible failed across nearly the whole app
+and axe reported nothing, because axe cannot tell whether a focus indicator is _perceivable_.
+It was found by tabbing and reading `getComputedStyle`, then confirmed by screenshot. Worth
+remembering for the workbook's 508 work in Wave 7: the same logic applies — the automated
+assertions are a floor.
+
+**`currentColor` is the right primitive for a focus ring in this app.** Two reasons, both
+learned the hard way. MUI `ButtonBase` sets `outline: 0` and expresses focus as a background
+tint — which the app's own `sx` backgrounds silently override, so a background-based fix would
+have been fragile in exactly the places that were already broken. And the ring has to work on
+both the dark blue AppBar and light page backgrounds; `currentColor` resolves to white on the
+former and near-black on the latter, measured on both.
+
+**My first fix for the results tree was wrong twice, and each time a different check caught
+it.** Wrapping `ListItemButton` in `ListItem` is the correct fix for the sidebar and silenced
+the critical `aria-required-children` there. Applying the same shape to `ResultsMasterDetail`
+traded one violation for another: because `Collapse` renders a `div` between the levels, the
+new `li`s were not inside a `ul`, producing `listitem` × 14. Re-running axe in the browser
+caught that — typecheck, lint and 558 tests were green on it.
+
+I then concluded the tree _could not_ be valid list markup and documented that as a
+limitation. **That was also wrong**, and the sub-agent reviewer disproved it with a
+counter-example: nest the `Collapse` **inside** the `li` rather than beside it, give each level
+its own `ul`, and it passes clean. Shipped that instead. The general lesson: "this cannot be
+done accessibly" is a claim that deserves a counter-example before it goes in a document
+headed for CMS. See OBS-31.
+
+**MUI 6.5 wraps `AccordionSummary` in `<h3 class="MuiAccordion-heading">`.** Nothing in this
+repo writes that heading, so the assessment page's `h2 → h3 → h6` outline looked inexplicable
+until I queried the live DOM for it. Every aspect card had a heading nested inside a heading.
+Do not try to reason about heading order in this app from the JSX alone.
+
+**Two things are deferred with a decision attached, not quietly dropped:** OBS-30 (contrast)
+and OBS-29 (`MaturityLevelSelector`). For OBS-29 the useful distinction, which changes how
+urgent it is, is that the control **is** operable by keyboard — Enter/Space selects, Tab reaches
+the To-Be checkbox — so it fails WCAG 4.1.2, not 2.1.1. It is announced wrong rather than
+unusable, which is what makes "document it for Drop 1" defensible.
+
+**A URL sweep under-reports this app, and two findings hid behind clicks.** `/results` renders
+its detail panel only after a selection, held in component-local state (OBS-12), and assessment
+aspect panels load collapsed. Driving those states found the last heading skips plus
+`landmark-unique` — and behind the latter, a **duplicate DOM `id`**: `AspectCard` set
+`role="region"` and `id` on `AccordionDetails`, not knowing MUI's `Accordion` already renders a
+`div.MuiAccordion-region` with the same id and a proper `aria-labelledby`. Removing the manual
+copy took a five-aspect page from 16 landmarks to 6 with zero duplicate ids. Removing it also
+broke a test helper that had been matching the _unnamed duplicate_ via
+`getByRole('region', { name: '' })` — worth knowing that a test can silently depend on a bug.
+
+**`currentColor` needed one exception.** On contained buttons the text colour is white, and the
+default outward `outline-offset` drew the ring on the white page instead of the button: 1.00:1,
+invisible, on the primary CTA of five pages. The reviewer caught it. Contained buttons now use
+`outlineOffset: -4`, measured 5.14:1. Generalisable point — an adaptive colour still needs
+checking against every surface it can land on, not just the two you looked at.
+
+**Seed and clean up.** The 12-route sweep needs data on Dashboard/Results/Assessment/History.
+Seeded 5 assessments / 109 ratings / 1 snapshot straight into IndexedDB, then cleared all five
+stores afterwards and **read the counts back to prove they were zero** — the user's browser
+profile persists. `.playwright-mcp/` (screenshots, console logs) is now gitignored; it was not
+before, and it would otherwise have landed in this commit.
