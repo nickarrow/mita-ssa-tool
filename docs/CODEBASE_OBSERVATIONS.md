@@ -703,13 +703,13 @@ rated through it.
 and `role="radio"` on six `Paper` elements (five levels plus N/A). Three distinct problems,
 in increasing order of severity:
 
-| Problem                                                                                           | Measured behaviour                                                                                                                              |
-| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **No arrow-key navigation.** The ARIA radiogroup pattern requires it                              | `ArrowDown` and `ArrowRight` with a radio focused leave focus exactly where it was. Only `Enter`/`Space` do anything                            |
-| **No roving tabindex.** All six radios carry `tabIndex={0}`                                       | The correct pattern is one tab stop per group. Measured: Tab order runs radio L1 → To-Be L1 → radio L2 → To-Be L2 …, so **12 stops per aspect** |
-| **A checkbox nested inside `role="radio"`.** axe reports `nested-interactive` at _serious_ impact | ARIA gives `radio` **presentational children**, so the To-Be checkbox's role is erased for assistive tech even though it remains focusable      |
+| Problem                                                                                           | Measured behaviour                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **No arrow-key navigation.** The ARIA radiogroup pattern requires it                              | `ArrowDown` and `ArrowRight` with a radio focused leave focus exactly where it was. Only `Enter`/`Space` do anything                                                                                                                 |
+| **No roving tabindex.** All six radios carry `tabIndex={0}`                                       | The correct pattern is one tab stop per group. Measured: Tab order runs radio L1 → To-Be L1 → radio L2 → To-Be L2 …, so **11 stops per aspect** — six rows plus the five To-Be checkbox inputs (Not Applicable has no To-Be control) |
+| **A checkbox nested inside `role="radio"`.** axe reports `nested-interactive` at _serious_ impact | ARIA gives `radio` **presentational children**, so the To-Be checkbox's role is erased for assistive tech even though it remains focusable                                                                                           |
 
-On a ten-aspect Information dimension that is roughly 120 tab stops to cross the page.
+On a ten-aspect Information dimension that is 110 tab stops to cross the page.
 
 **The important nuance: the control is operable, not unusable.** A keyboard user can Tab to a
 level and press Enter or Space to select it, and can Tab to the To-Be checkbox and press
@@ -721,17 +721,38 @@ So this is a WCAG 4.1.2 (Name, Role, Value) problem rather than a 2.1.1 (Keyboar
 pilot state uses to enter data, it has **no test file**, and Drop 1 is a _reviewable_ build
 rather than a cleared one. Deliberately deferred for a decision instead of being rushed.
 
-Fix shape when it is taken on, cheapest first:
+**Resolved**, on the instruction to fix it properly rather than defend it.
 
-1. Replace the hand-rolled roles with MUI `RadioGroup` + `FormControlLabel` + `Radio`, which
-   brings arrow keys, roving tabindex, and a real fieldset label for free.
-2. **Move the To-Be checkbox out of the radio row.** It cannot live inside a `role="radio"`
-   under any correct implementation. Options: a second column of checkboxes outside the
-   radiogroup, or a single "To-Be" select listing the six levels.
-3. Add a test file first — it has none, so there is currently no safety net.
+A 28-test file was written **first**, against the old implementation, to establish a
+behavioural baseline: 12 passed and 13 failed, and the 13 failures were exactly the defects
+above. That baseline is what made the rewrite safe on a control with no prior coverage.
 
-Note that option 2 is a visible layout change, so it needs stakeholder awareness, not just a
-code review.
+| Before                                                        | After                                                                               |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `role="radiogroup"` / `role="radio"` on `div`s                | Native `<input type="radio">`, two groups distinguished by `name`                   |
+| Arrow keys inert                                              | Browser-native: arrows move focus **and** select, both directions, within the group |
+| `tabIndex={0}` on all six rows, checkbox interleaved          | Roving tabindex from the browser. Measured in Chromium: **2 tab stops, was 11**     |
+| To-Be checkbox nested inside `role="radio"`                   | To-Be is a **sibling** radio group, never a descendant                              |
+| To-Be modelled as a checkbox that toggled off when re-clicked | Modelled as what it is — single-select-or-none — with an explicit clear button      |
+
+Two details worth carrying into anything similar:
+
+- **Radio grouping is by `name`, not by DOM ancestry.** The assessment page renders one
+  selector per aspect and several can be expanded at once, so names derive from `useId()`. A
+  shared name would have merged every aspect into a single group, and choosing a level for one
+  aspect would silently clear another. A test asserts two instances never share names.
+- **One `fieldset` wraps both groups**, because they interleave row by row so neither can own a
+  fieldset of its own. Each radio therefore carries a self-describing accessible name — the
+  To-Be ones include the level, since the visible text is just "To-Be" on every row.
+
+The visual layout is essentially unchanged: one row per level, selection control on the left,
+To-Be flag on the right.
+
+**A caveat on the tab-stop measurement.** jsdom does not implement the roving tabindex for a
+radio group with nothing checked — it lets Tab visit every unchecked radio, where Chrome
+exposes only the first. So the 12-to-2 figure is measured in Chromium, and the jsdom test
+asserts the count only in the state where both engines agree (both groups having a checked
+member). Do not "fix" a tab-stop count by trusting jsdom here.
 
 ### OBS-30 — Twelve colour pairs fail WCAG 1.4.3, and the causes are structural not incidental
 
@@ -771,6 +792,63 @@ Three recurring patterns, which is what makes this structural:
 
 Deferred out of Wave 4 because every item changes visible colour, and Shelley and Chris were
 mid-review of the deployed build at the time. Needs one deliberate batch, not a trickle.
+
+**Resolved.** Fixing the root causes rather than the reported instances found the count above
+was **too low**, because axe can only measure what happens to render:
+
+- **All five `SCORE_COLORS` failed in every role**, at 2.16:1 to 3.68:1 — not the two axe
+  flagged. They are used as chip fills behind white text, as text on white, and as chart
+  fills; the same luminance constraint governs all three, so one value per band serves all.
+  The palette's own docstring had asserted AA compliance.
+- **`info` was never defined in the theme**, so MUI's default `#0288d1` was in play: 3.86:1 as
+  chip text and 3.41:1 as an Alert icon, the latter under even the 3:1 non-text floor.
+- **Alert icons are painted from `palette[severity].main`**, a fill-grade token. Every severity
+  failed: warning 1.65:1, info 3.41:1, error 3.98:1, success 4.08:1.
+- **Outlined chips take text _and border_ from `.main`** too, so `success` and `warning` chips
+  failed on the page background.
+- Two more only reachable in transient states: `success.main` at 4.24:1 on a hovered Dashboard
+  row, and `#1b5e20` at 3.91:1 against the darker stripe of the striped progress bar.
+
+Fixed at the source rather than per call site: theme `MuiChip` and `MuiAlert` overrides
+redirect to the `.dark` tokens, so the pattern is corrected wherever it appears. The fourth
+independent `getScoreColor` (in `AggregateDimensionView`) now delegates to the shared one.
+
+Verified 0 `color-contrast` violations in Chromium across 11 routes and 9 interaction states.
+Contrast is now pinned by tests that compute real ratios — necessary because **axe cannot
+check contrast in this suite at all**: it needs a canvas to sample rendered pixels, which jsdom
+does not provide, so every `toHaveNoViolations()` silently skips the rule.
+
+**Documented trade-off.** Forcing all five bands to ~5:1 against white puts them at similar
+luminance: they differ from each other by at most 1.21:1, and amber from red by 1.08:1, which
+is plausibly confusable under protanopia. Acceptable only because colour is never the sole
+carrier of meaning — chips print the score beside the colour, and the two bar charts encode
+value as length against a labelled axis. The charts print **no** numbers, so the axis is
+load-bearing. A test pins the constraint.
+
+### OBS-33 — Every aspect's level selector renders even when its panel is collapsed
+
+**Confirmed** by a measurable test-timing regression, then by reading the markup.
+
+`AspectCard` renders a MUI `Accordion` with no `unmountOnExit` on the transition, so the
+contents of every collapsed aspect panel stay mounted. That was already true before OBS-29 —
+the old selector mounted five real checkbox inputs per aspect — but the rewrite raises the count
+per aspect from 5 to 11, so a five-aspect dimension goes from 25 to 55 mounted inputs and the
+ten-aspect Information dimension mounts 110, essentially all of them invisible. Roughly 2.2×,
+not a change from nothing.
+
+The symptom that surfaced it: `Assessment.test.tsx`'s OBS-6 test types into a notes field, and
+`user.type` re-renders the page per keystroke. With a 22-character string it began exceeding its
+4s gate on roughly **one full-suite run in three** — a flake that had never reached the full
+suite before (contrast OBS-27, which is about two-file runs). Shortening the typed string
+restored stability across four consecutive runs, but that treats the symptom.
+
+Fix shape: `slotProps={{ transition: { unmountOnExit: true } }}` on the `Accordion`.
+
+**Not done here, deliberately.** MUI's `Collapse` unmounts its own wrapper when exited, and
+that wrapper is the element carrying `id="aspect-<id>-content"` — the target of the summary's
+`aria-controls`. Removing it leaves `aria-controls` pointing at a non-existent id, which needs
+its own accessibility verification. Landing that the day before a stakeholder drop was the wrong
+trade. Worth doing next, with an axe pass over the expanded and collapsed states.
 
 ### OBS-31 — `ResultsMasterDetail`'s tree needs `Collapse` nested inside the `li`, not beside it
 
@@ -850,3 +928,65 @@ Two sharper edges found along the way:
 explicitly on `Typography` — `component="p"` or `"span"` for text that merely looks like a
 heading, or the correct `component="hN"` for a genuine section heading. Worth adding to the
 steering file's React patterns section.
+
+### OBS-34 — Hardcoded element ids in components that render many times
+
+**Confirmed** twice, in two different components, both found only by expanding panels.
+
+Two components baked fixed `id` values into markup that renders once per aspect:
+
+| Component           | Hardcoded ids                                                  | Result on a five-aspect dimension                |
+| ------------------- | -------------------------------------------------------------- | ------------------------------------------------ |
+| `AspectCard`        | `aspect-<id>-content` **plus** `role="region"`                 | Duplicated MUI's own accordion region and its id |
+| `QuestionChecklist` | `evidence-header` / `evidence-content`, and the questions pair | 5 identical ids; 5 landmarks all named the same  |
+
+Both produced duplicate DOM ids and `landmark-unique` violations, and in the
+`QuestionChecklist` case every region's `aria-labelledby` resolved to the _first_ matching
+header, so four of the five panels were mislabelled for assistive technology.
+
+Both are fixed — `AspectCard` by deleting the manual attributes, since MUI's `Accordion`
+already renders a correctly-wired `div.MuiAccordion-region`, and `QuestionChecklist` by
+deriving ids from `useId()`. With all five aspects and their evidence panels expanded there are
+now zero duplicate ids, verified by enumerating every `id` in the document.
+
+**The general point, which is the reason this is logged rather than just fixed:** a hardcoded
+`id` in a React component is a latent bug the moment that component can render more than once,
+and it is invisible until two instances are on screen together. Both instances here were behind
+an expand interaction, which is why a route-level audit missed them. Prefer `useId()`, and
+check whether the UI library already provides the wiring before adding `id`/`role` by hand.
+
+A related trap in the same class: `useId()` returns values like `:r3:`. Colons are legal in an
+`id` or `name` attribute but break unescaped CSS attribute selectors, so strip them.
+
+### OBS-35 — Arrow-key level selection writes once per step, over a non-atomic upsert
+
+**Confirmed** as a mechanism by reading the code; **not reproduced** — six rapid arrow presses
+did not trigger it. Surfaced by the OBS-29 review.
+
+Native radio groups select as focus moves, which is correct and expected behaviour. The
+consequence here is that arrowing from Level 1 to Level 5 fires `onAsIsChange` four times, so
+four saves are dispatched in as many milliseconds. Before OBS-29 the only way to change a level
+was a deliberate click per row, so this rate was not reachable.
+
+Three things line up badly underneath:
+
+- `updateLevel` in `useOrbitRatings.ts` is a read-then-write upsert: it resolves the existing row
+  via `findExistingRating` and then either updates or adds. Two interleaved calls for an aspect
+  with **no** existing row can both observe "missing" and both `add`.
+- `runSave` in `Assessment.tsx` does not serialise; nothing queues or debounces level writes the
+  way `useDebouncedSave` does for text.
+- The compound index in `db.ts` is declared `[capabilityAssessmentId+dimensionId+aspectId]`
+  without a leading `&`, so it is **not** unique and the database will not reject a duplicate.
+
+The window is a single Dexie round trip and only exists on the first rating for an aspect, which
+is presumably why it has never been seen. But the failure mode is duplicate `orbitRatings` rows
+for one aspect, which would then double-count in `getAssessedCount` and skew a dimension average
+— a data-integrity bug in the artifact states submit to CMS, not just a cosmetic one.
+
+Cheapest durable fix is the schema: make the compound index unique (`&[...]`) so the database
+enforces what the code assumes. That is a Dexie version bump, and every previous version bump in
+this project has been a clean-break that clears all tables, so it is not free — it needs to ride
+along with a migration that is happening anyway. Debouncing level changes, or serialising writes
+per aspect, would narrow the window without a schema change.
+
+Worth deciding before real state data exists rather than after.

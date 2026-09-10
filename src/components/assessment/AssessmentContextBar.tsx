@@ -159,34 +159,26 @@ export function AssessmentContextBar({
           </IconButton>
         </Tooltip>
 
-        {/* Capability Area Name + Expand Toggle */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-            '&:hover': { opacity: 0.8 },
-          }}
-          onClick={() => setExpanded(!expanded)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setExpanded(!expanded);
-            }
-          }}
-          aria-expanded={expanded}
-          aria-controls="capability-details"
-        >
+        {/* Capability Area Name + Expand Toggle.
+            The disclosure is a single real IconButton. It used to be a
+            `Box role="button" tabIndex={0}` wrapping this IconButton, with
+            `tabIndex={-1}` on the inner one to keep it out of the tab order — but
+            a negative tabindex does not stop assistive technology reaching a
+            nested control, which axe reports as `nested-interactive`. Making the
+            heading a child of the button instead is not an option either: a
+            heading may contain a button, not the reverse. So the button stands
+            alone, matching the pattern `DomainTable` already uses. */}
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Typography variant="h6" component="h1" sx={{ fontWeight: 600 }}>
             {areaName}
           </Typography>
           <IconButton
             size="small"
             sx={{ ml: 0.5, color: 'text.secondary' }}
+            onClick={() => setExpanded(!expanded)}
+            aria-expanded={expanded}
+            aria-controls="capability-details"
             aria-label={expanded ? 'Collapse capability details' : 'Expand capability details'}
-            tabIndex={-1}
           >
             {expanded ? (
               <ExpandLessIcon aria-hidden="true" />

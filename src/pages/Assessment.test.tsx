@@ -93,15 +93,20 @@ describe('Assessment page', () => {
   describe('view mode', () => {
     /**
      * Note on what this does and does not cover. Activating a level in view mode
-     * is blocked twice: `MaturityLevelSelector.handleRowClick` returns early when
-     * `disabled`, and the page's `save()` funnel refuses to write. Only the first
-     * layer is observable from here, so this test pins the user-visible guarantee
+     * is blocked twice: the level radios are rendered `disabled`, and the page's
+     * `save()` funnel refuses to write. This test pins the user-visible guarantee
      * (view mode does not mutate data) and would still pass if the funnel's guard
      * were removed. The funnel is defense in depth and is unreachable through the
      * UI by design — worth keeping, but not something this test isolates.
+     *
+     * `pointerEventsCheck: 0` is needed because MUI sets `pointer-events: none`
+     * on disabled controls, so userEvent would otherwise refuse to click and the
+     * test would pass without ever exercising the click path. Clicking through
+     * proves the browser's own disabled-input behaviour is what stops the write,
+     * not merely that the cursor cannot reach it.
      */
     it('does not write when a maturity level is activated', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
       renderAssessment({ viewMode: true });
       await waitForLoaded();
 
@@ -111,8 +116,9 @@ describe('Assessment page', () => {
 
       const levelOption = screen
         .getAllByRole('radio')
-        .find((el) => (el.getAttribute('aria-label') ?? '').startsWith('Level 3'));
+        .find((el) => (el.getAttribute('aria-label') ?? '').startsWith('L3:'));
       expect(levelOption).toBeDefined();
+      expect(levelOption).toBeDisabled();
       await user.click(levelOption as HTMLElement);
 
       // Give any in-flight write a chance to land before asserting absence
@@ -134,7 +140,7 @@ describe('Assessment page', () => {
 
       const levelOption = screen
         .getAllByRole('radio')
-        .find((el) => (el.getAttribute('aria-label') ?? '').startsWith('Level 3'));
+        .find((el) => (el.getAttribute('aria-label') ?? '').startsWith('L3:'));
       await user.click(levelOption as HTMLElement);
 
       // The status region reports the failure, assertively
@@ -157,13 +163,18 @@ describe('Assessment page', () => {
       const details = await expandAspect(user);
 
       const notes = within(details).getByLabelText('Notes');
-      await user.type(notes, 'Recorded before rating');
+      // Kept deliberately short. `user.type` re-renders the whole page per
+      // keystroke, and the page mounts every aspect's level selector — including
+      // collapsed ones — so each character is expensive. A longer string pushed
+      // this past the 4s gate on roughly one full-suite run in three once the
+      // selector moved to real radio inputs. See OBS-33.
+      await user.type(notes, 'Pre-rating');
 
       await waitFor(
         async () => {
           const stored = await db.orbitRatings.toArray();
           expect(stored).toHaveLength(1);
-          expect(stored[0]?.notes).toBe('Recorded before rating');
+          expect(stored[0]?.notes).toBe('Pre-rating');
         },
         { timeout: 4000 }
       );

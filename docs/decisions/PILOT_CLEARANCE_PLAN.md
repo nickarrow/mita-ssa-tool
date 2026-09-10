@@ -30,16 +30,17 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 |                |                                                                                                                                                  |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                    |
-| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3, `ef141e8` + `7710921` handoff docs, then one Wave 4 a11y commit                            |
-| Pushed         | Up to `7710921`. **The Wave 4 commit is local only — not pushed**                                                                                |
+| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3, `ef141e8` + `7710921` handoff docs, then three accessibility commits                       |
+| Pushed         | Up to `7710921`. **All three accessibility commits are local only — not pushed**                                                                 |
 | Deployed       | The user manually dispatches the Pages workflow from this branch. The deployed build is **pre-Wave 4** — that is what Shelley and Chris reviewed |
-| Green at       | 572 tests / 33 files; typecheck, lint, knip all clean                                                                                            |
-| Next wave      | **Wave 5 — draft notice in exports, plus PDF correctness.** Wave 4 is done; its audit record is Section 8d                                       |
+| Green at       | 628 tests / 34 files; typecheck, lint, knip all clean                                                                                            |
+| Next wave      | **Wave 5 — draft notice in exports, plus PDF correctness.** Wave 4 is done, including both of its original deferrals; record in Section 8d       |
 
-> **Two Wave 4 findings are deferred and need a decision before Wave 5 closes:** OBS-30
-> (12 colour-contrast failures — every fix is visible, so it wants one deliberate deploy) and
-> OBS-29 (`MaturityLevelSelector` announces a radiogroup it does not implement). Section 8d
-> records both, with the limitations of the audit stated explicitly.
+> **The unpushed commits change what stakeholders see.** Wave 4's semantic fixes are invisible to
+> a mouse user, but the contrast batch changes the score-chip palette, the selected nav item and
+> several chips, and the rewritten level selector now uses standard radio buttons. Nothing has
+> been pushed or deployed — brief Shelley and Chris before dispatching, since they reviewed the
+> previous appearance.
 
 > **Do not push to `main`.** `deploy.yml` auto-triggers on pushes to `main`, and
 > `origin/main` sits 10 commits behind at the pre-v4 capability model (`aa3708c`).
@@ -1059,21 +1060,40 @@ Tests added: 14 — 5 `AssessmentSidebar` standard-mode (two list-structure guar
 checks), 5 `ResultsMasterDetail` (list validity collapsed, domain-expanded and
 layer-collapsed, plus an axe check), 4 theme. Suite went 558 → **572**, files 31 → 33.
 
-### What was deliberately not fixed
+### Follow-up — both Wave 4 deferrals were subsequently fixed
 
-- **OBS-29 — `MaturityLevelSelector`.** Announces `role="radiogroup"` but has no arrow-key
-  navigation and no roving tabindex, and nests a checkbox inside `role="radio"`. Deferred
-  because it is the control every pilot state uses to enter data, it has **no test file**, and
-  Drop 1 is a reviewable build rather than a cleared one. **Nuance that matters for triage:
-  the control is operable — Enter/Space selects, Tab reaches the To-Be checkbox — so this is
-  WCAG 4.1.2 (Name, Role, Value), not 2.1.1 (Keyboard).**
-- **OBS-30 — 12 colour-contrast pairs.** Every one requires a visible colour change, and
-  stakeholders were mid-review of the deployed build. Wants one deliberate batch. Cheapest
-  high-value item: the active header nav button fails at 4.31:1 on five pages purely because
-  the selected state _lightens_ `primary.main`; darkening it instead fixes contrast and still
-  reads as selected.
+Wave 4 first deferred OBS-29 and OBS-30 as open AA failures, on the grounds that both change
+what stakeholders see mid-review. The instruction was to fix them properly rather than defend
+them, so both were completed in two further commits, each independently reviewed.
+
+**The automated result is now zero violations across 12 routes and 9 interaction states**, under
+`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` **and** `best-practice`.
+
+- **OBS-30 — contrast.** Fixing root causes rather than reported instances showed the audit had
+  under-counted: **all five** `SCORE_COLORS` failed in every role at 2.16-3.68:1, not the two axe
+  flagged, because axe measures only what renders. `info` was never defined, so MUI's failing
+  default was in play; Alert icons and outlined chips both paint from fill-grade `.main` tokens.
+  Fixed with theme overrides so the patterns are corrected wherever they appear, plus two states
+  reachable only on hover or in a striped progress bar.
+- **OBS-29 — `MaturityLevelSelector`.** Rewritten onto native radio inputs: arrow keys work in
+  both directions, tab stops fell from 11 per aspect to 2, and the To-Be control is a sibling
+  radio group rather than a checkbox nested inside a `role="radio"`. A 28-test file was written
+  **first**, against the old implementation — 13 of its tests failed there, describing exactly
+  the defects — which is what made the rewrite safe on a control that had no coverage.
+- Two more defects surfaced only by expanding panels, both fixed: duplicate DOM ids and duplicate
+  landmarks from hardcoded ids in `QuestionChecklist` and `AspectCard` (OBS-34), and a
+  `div role="button"` wrapping a real `<button>` in `AssessmentContextBar`.
+
+### What remains deliberately unfixed
+
 - **OBS-31 — proper ARIA `tree` semantics** for the results nav. The Wave 4 change makes the
   markup valid; making it a real tree is a refactor.
+- **OBS-33 — collapsed aspect panels stay mounted**, so the ten-aspect Information dimension
+  mounts ~110 invisible radio inputs. The fix is one MUI prop, but it removes the element that
+  the summary's `aria-controls` points at, so it needs its own accessibility pass rather than
+  landing the day before a stakeholder drop.
+- **Clickable `Chip` focus indicators.** `Chip` is `styled('div')`, not `ButtonBase`, so the
+  theme focus ring does not reach it.
 
 ### Limitations — what this audit does not establish
 
@@ -1085,8 +1105,10 @@ State these alongside any claim about accessibility:
    cannot close it.
 2. **Automated rules cover a minority of WCAG.** axe finds roughly a third of WCAG issues by
    common estimates. A clean axe run is a floor, not a pass.
-3. **The two deferred items are real, open AA failures** — the tool does not currently meet
-   WCAG 2.1 AA. Contrast in particular is user-visible and affects the CMS submission surface.
+3. **"Zero automated violations" is not "meets WCAG 2.1 AA."** Both originally-deferred failures
+   are now fixed and every rule axe can evaluate passes, but that is a floor, not a pass — see
+   points 1 and 2. The honest statement is: no known open AA failure, and no assistive-technology
+   testing to confirm it.
 4. **Contrast was measured on the states that happened to render.** Hover, disabled, error and
    validation states were not systematically enumerated.
 5. **Zoom and reflow (1.4.10), text spacing (1.4.12) and 400% magnification were not tested.**
@@ -1106,15 +1128,16 @@ State these alongside any claim about accessibility:
 
 ### Recommended next steps
 
-1. Take the OBS-30 contrast batch as one deploy, leading with the nav-button fix.
-2. Decide on OBS-29 — a test file first, then MUI `RadioGroup`, then move the To-Be control
-   out of the radio row.
-3. Before any "accessible" claim reaches states, do one screen-reader pass on the assessment
-   flow. That is the gap automation cannot fill.
-4. Give clickable `Chip`s a focus indicator; they are the one interactive control class the
-   theme override does not reach.
-5. When auditing again, drive interaction states rather than routes. A `.playwright-mcp`-driven
-   sweep that only visits URLs will report this app cleaner than it is.
+1. **Before any "accessible" claim reaches states, do one screen-reader pass on the assessment
+   flow.** This is now the single largest remaining gap, and automation cannot fill it. It also
+   matters more than it did: the rewritten level selector is the control states will spend all
+   their time in, and its semantics have only been verified through the accessibility tree.
+2. Resolve OBS-33 (unmount collapsed aspect panels) with an axe pass over both states.
+3. Give clickable `Chip`s a focus indicator; they are the one interactive control class the theme
+   override does not reach.
+4. When auditing again, drive interaction states rather than routes. Four of this audit's findings
+   existed only behind an expand or a selection, so a sweep that only visits URLs will report this
+   app cleaner than it is.
 
 ## 9. Out of Scope
 
@@ -1202,3 +1225,56 @@ Seeded 5 assessments / 109 ratings / 1 snapshot straight into IndexedDB, then cl
 stores afterwards and **read the counts back to prove they were zero** — the user's browser
 profile persists. `.playwright-mcp/` (screenshots, console logs) is now gitignored; it was not
 before, and it would otherwise have landed in this commit.
+
+### Wave 4 follow-up notes — 2026-09-10
+
+The two Wave 4 deferrals were fixed rather than documented. Lessons worth inheriting.
+
+**Reported instances are not root causes, and axe only sees what renders.** OBS-30 was filed as
+"twelve failing colour pairs". Chasing the causes instead found that **all five** score colours
+failed in every role they are used in, at 2.16-3.68:1 — axe had flagged two of the five, being
+the two that happened to render during the sweep. Same shape for `info`, which the theme never
+defined, so MUI's failing default was silently in play everywhere. If a contrast finding looks
+like a short list, check the token rather than the list.
+
+**Fix the token or the theme, not the call site.** MUI paints outlined-chip text and Alert icons
+from `palette[x].main`, which is a fill-grade colour. Two `styleOverrides` entries fixed every
+outlined success/warning/info chip and every Alert icon in the app at once. Chasing call sites
+would have missed the conditional ones — three `color="info"` chips only render in states the
+sweep never reached.
+
+**Compute contrast, do not eyeball it.** A throwaway Node script computing luminance ratios
+settled every palette choice in minutes and caught that `#b26500` misses at 4.42:1 while
+`#a15c00` passes at 5.19:1 — a distinction no amount of looking would reveal. The maths then went
+into tests, because the old palette's docstring _claimed_ AA compliance while failing everywhere,
+and a comment cannot enforce anything.
+
+**Write the tests before the rewrite, especially with no existing coverage.**
+`MaturityLevelSelector` had no test file. Writing 28 tests against the _old_ implementation first
+produced a baseline of 12 passing and 13 failing, where the 13 failures were precisely the
+defects OBS-29 described. After the rewrite the same file went green without being rewritten to
+match the implementation — which is the only real evidence that behaviour was preserved.
+
+**jsdom is not a browser, and knowing where it lies matters.** It does not implement the roving
+tabindex for a radio group with nothing checked: Tab visits every unchecked radio, where Chrome
+exposes only the first. A tab-stop count measured in jsdom would therefore have been wrong. The
+12-to-2 figure is measured in Chromium; the jsdom test asserts the count only in the state where
+both engines agree. Separately, MUI puts `pointer-events: none` on disabled controls, so
+`userEvent` refuses to click them — a disabled-state test that does not set
+`pointerEventsCheck: 0` passes without exercising anything.
+
+**Expanding panels is where the remaining bugs were.** Four findings across this work existed
+only behind an interaction: two heading skips, `landmark-unique`, and duplicate DOM ids in both
+`QuestionChecklist` and `AspectCard`. Hardcoded `id` attributes in a component that renders once
+per aspect are invisible until two instances are on screen, and in the `QuestionChecklist` case
+every region's `aria-labelledby` resolved to the _first_ matching header, so four of five panels
+were mislabelled. Prefer `useId()`, and check whether MUI already provides the wiring before
+adding `id`/`role` by hand. `useId()` returns `:r3:`-style values — strip the colons, they break
+unescaped CSS selectors.
+
+**A performance regression showed up as a test flake.** Moving to real radio inputs took a
+five-aspect dimension from 25 to 55 mounted inputs per page, because collapsed accordion
+panels stay mounted. The OBS-6 notes test started missing its 4s gate on about one full-suite run
+in three. Shortening the typed string restored stability across four consecutive runs, but the
+underlying cost is real and is logged as OBS-33 — the one-prop fix removes the element
+`aria-controls` points at, so it needs its own accessibility pass rather than a rushed landing.
