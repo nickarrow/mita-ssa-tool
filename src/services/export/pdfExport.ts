@@ -594,7 +594,11 @@ function generateDimensionDetails(
       if (aspectLevel) {
         levelDesc = aspectLevel.description;
       }
-    } else if (rating.currentLevel === 0) {
+    } else if (rating.currentLevel === -1) {
+      // -1 is N/A; 0 means not assessed and falls through to "Not Rated". This
+      // branch previously tested 0, so every unrated aspect was reported to
+      // stakeholders as a deliberate not-applicable determination (OBS-2). Rows
+      // carrying only notes make that a common case, not a corner one.
       levelName = 'N/A';
       levelDesc = 'Not applicable to this capability area';
     }

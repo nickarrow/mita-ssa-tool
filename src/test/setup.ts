@@ -1,6 +1,14 @@
 import '@testing-library/jest-dom/vitest';
 import * as matchers from 'vitest-axe/matchers';
 import { expect } from 'vitest';
+import { configure } from '@testing-library/react';
+
+// Dexie's liveQuery can exceed the 1000ms default before its first emission when
+// fake-indexeddb is under concurrent load, which surfaced as intermittent
+// `waitFor` timeouts in the hook suites. Kept below vitest's 5000ms testTimeout on
+// purpose: if this matched or exceeded it, a failing `waitFor` would blow the test
+// timeout and report "Test timed out" instead of the actual assertion difference.
+configure({ asyncUtilTimeout: 3000 });
 
 // Extend vitest expect with axe matchers
 expect.extend(matchers);

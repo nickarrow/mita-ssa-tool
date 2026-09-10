@@ -32,7 +32,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+import type { SaveStatus } from '../../hooks';
 
 interface AssessmentContextBarProps {
   domainName: string;
@@ -360,12 +360,20 @@ export function AssessmentContextBar({
             </>
           )}
           {saveStatus === 'error' && (
-            <>
+            // Only the failure is announced. Making the whole region live would
+            // read "Saving...", "Saved", then a timestamp on every autosave, which
+            // is unusable while typing notes. A save that did not land is the one
+            // state worth interrupting for, so it is assertive.
+            <Box
+              role="alert"
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+              title="Your last change could not be saved"
+            >
               <ErrorIcon sx={{ fontSize: 16, color: 'error.main' }} />
               <Typography variant="caption" color="error.main">
-                Error
+                Not saved
               </Typography>
-            </>
+            </Box>
           )}
         </Box>
       </Box>

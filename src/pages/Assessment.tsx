@@ -4,10 +4,11 @@
  * Main page for conducting ORBIT maturity assessments.
  * Shows capability context, sidebar navigation, and dimension-based assessment flow.
  * Supports both standard capability assessments (B-I-T dimensions) and
- * organizational assessments (Outcomes/Roles with direct aspect navigation).
+ * organizational assessments (the combined Enterprise Governance area, navigated
+ * one aspect at a time across its three sections).
  */
 
-import { JSX, useState, useCallback, useMemo } from 'react';
+import { JSX, useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -40,6 +41,7 @@ import {
   useCapabilityAssessments,
   useTags,
   useScores,
+  useSaveStatus,
 } from '../hooks';
 import {
   AssessmentContextBar,
@@ -55,9 +57,9 @@ import type {
   OrbitRating,
   Attachment,
   OrganizationalAssessmentId,
+  RatingDimensionId,
 } from '../types';
-
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+import { AssessmentError } from '../utils/errors';
 
 /**
  * Navigation item for sidebar
@@ -232,9 +234,8 @@ export default function Assessment(): JSX.Element {
   const [currentNavIndex, setCurrentNavIndex] = useState(0);
   const [isReviewSelected, setIsReviewSelected] = useState(false);
 
-  // Save status
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [lastSaved, setLastSaved] = useState<Date | undefined>();
+  // Save status, driven by the real outcome of each write
+  const { status: saveStatus, lastSaved, runSave } = useSaveStatus();
 
   // Finalize dialog
   const [finalizeDialogOpen, setFinalizeDialogOpen] = useState(false);
@@ -250,6 +251,18 @@ export default function Assessment(): JSX.Element {
 
   // Ensure currentNav is always defined
   const currentNav = navItems[currentNavIndex] ?? navItems[0];
+
+  /**
+   * The key ratings are stored under for the current nav item: the organizational
+   * section id in organizational mode, the ORBIT dimension id otherwise.
+   * Undefined only while nav items are still resolving.
+   */
+  const currentDimensionKey: RatingDimensionId | undefined = useMemo(() => {
+    if (!currentNav) return undefined;
+    return currentNav.isOrganizational && currentNav.organizationalType
+      ? currentNav.organizationalType
+      : currentNav.dimensionId;
+  }, [currentNav]);
 
   // Build ratings map for current dimension/aspect
   const ratingsMap = useMemo(() => {
@@ -400,75 +413,64 @@ export default function Assessment(): JSX.Element {
   const overallProgress =
     totalAspects > 0 ? Math.round((getAssessedCount() / totalAspects) * 100) : 0;
 
-  // Auto-save indicator
-  const triggerSave = useCallback(() => {
-    setSaveStatus('saving');
-    setTimeout(() => {
-      setSaveStatus('saved');
-      setLastSaved(new Date());
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    }, 300);
-  }, []);
+  /**
+   * Single funnel for every write on this page.
+   *
+   * Two jobs: the save indicator reflects the operation's real outcome rather
+   * than a timer (OBS-7), and view mode gets one enforcement point instead of
+   * relying on each child being passed `disabled`.
+   */
+  const save = useCallback(
+    (operation: () => Promise<void>): Promise<boolean> => {
+      if (isViewMode) return Promise.resolve(false);
+      return runSave(operation);
+    },
+    [isViewMode, runSave]
+  );
 
   // Tag handlers
   const handleTagAdd = useCallback(
     async (tag: string) => {
       if (!assessmentId || !assessment) return;
       const newTags = [...assessment.tags, tag];
-      await updateTags(assessmentId, newTags);
-      triggerSave();
+      await save(() => updateTags(assessmentId, newTags));
     },
-    [assessmentId, assessment, updateTags, triggerSave]
+    [assessmentId, assessment, updateTags, save]
   );
 
   const handleTagRemove = useCallback(
     async (tag: string) => {
       if (!assessmentId || !assessment) return;
       const newTags = assessment.tags.filter((t) => t !== tag);
-      await updateTags(assessmentId, newTags);
-      triggerSave();
+      await save(() => updateTags(assessmentId, newTags));
     },
-    [assessmentId, assessment, updateTags, triggerSave]
+    [assessmentId, assessment, updateTags, save]
   );
 
   // Rating handlers
   const handleLevelChange = useCallback(
     async (aspectId: string, level: MaturityLevelWithNA) => {
-      if (!currentNav) return;
-      // For organizational assessments, use organizationalType as dimensionId
-      const dimId =
-        currentNav.isOrganizational && currentNav.organizationalType
-          ? currentNav.organizationalType
-          : currentNav.dimensionId;
-      if (!dimId) return;
-      await updateLevel(dimId, aspectId, level, currentNav.subDimensionId);
-      triggerSave();
+      if (!currentDimensionKey) return;
+      await save(() =>
+        updateLevel(currentDimensionKey, aspectId, level, currentNav?.subDimensionId)
+      );
     },
-    [updateLevel, currentNav, triggerSave]
+    [updateLevel, currentDimensionKey, currentNav?.subDimensionId, save]
   );
 
   const handleTargetLevelChange = useCallback(
     async (aspectId: string, level: MaturityLevelWithNA | undefined) => {
-      if (!currentNav) return;
-      const dimId =
-        currentNav.isOrganizational && currentNav.organizationalType
-          ? currentNav.organizationalType
-          : currentNav.dimensionId;
-      if (!dimId) return;
-      await updateTargetLevel(dimId, aspectId, level, currentNav.subDimensionId);
-      triggerSave();
+      if (!currentDimensionKey) return;
+      await save(() =>
+        updateTargetLevel(currentDimensionKey, aspectId, level, currentNav?.subDimensionId)
+      );
     },
-    [updateTargetLevel, currentNav, triggerSave]
+    [updateTargetLevel, currentDimensionKey, currentNav?.subDimensionId, save]
   );
 
   const handleQuestionChange = useCallback(
     async (aspectId: string, index: number, checked: boolean) => {
-      if (!currentNav) return;
-      const dimId =
-        currentNav.isOrganizational && currentNav.organizationalType
-          ? currentNav.organizationalType
-          : currentNav.dimensionId;
-      if (!dimId) return;
+      if (!currentDimensionKey) return;
 
       const rating = ratingsMap.get(aspectId);
       const responses = [...(rating?.questionResponses ?? [])];
@@ -480,31 +482,27 @@ export default function Assessment(): JSX.Element {
         responses.push({ questionIndex: index, answer: checked });
       }
 
-      await saveRating({
-        dimensionId: dimId,
-        subDimensionId: currentNav.subDimensionId,
-        aspectId,
-        currentLevel: rating?.currentLevel ?? 0,
-        targetLevel: rating?.targetLevel,
-        questionResponses: responses,
-        evidenceResponses: rating?.evidenceResponses ?? [],
-        notes: rating?.notes ?? '',
-        barriers: rating?.barriers ?? '',
-        plans: rating?.plans ?? '',
-      });
-      triggerSave();
+      await save(() =>
+        saveRating({
+          dimensionId: currentDimensionKey,
+          subDimensionId: currentNav?.subDimensionId,
+          aspectId,
+          currentLevel: rating?.currentLevel ?? 0,
+          targetLevel: rating?.targetLevel,
+          questionResponses: responses,
+          evidenceResponses: rating?.evidenceResponses ?? [],
+          notes: rating?.notes ?? '',
+          barriers: rating?.barriers ?? '',
+          plans: rating?.plans ?? '',
+        })
+      );
     },
-    [ratingsMap, saveRating, currentNav, triggerSave]
+    [ratingsMap, saveRating, currentDimensionKey, currentNav?.subDimensionId, save]
   );
 
   const handleEvidenceChange = useCallback(
     async (aspectId: string, index: number, checked: boolean) => {
-      if (!currentNav) return;
-      const dimId =
-        currentNav.isOrganizational && currentNav.organizationalType
-          ? currentNav.organizationalType
-          : currentNav.dimensionId;
-      if (!dimId) return;
+      if (!currentDimensionKey) return;
 
       const rating = ratingsMap.get(aspectId);
       const responses = [...(rating?.evidenceResponses ?? [])];
@@ -516,118 +514,127 @@ export default function Assessment(): JSX.Element {
         responses.push({ evidenceIndex: index, provided: checked });
       }
 
-      await saveRating({
-        dimensionId: dimId,
-        subDimensionId: currentNav.subDimensionId,
-        aspectId,
-        currentLevel: rating?.currentLevel ?? 0,
-        targetLevel: rating?.targetLevel,
-        questionResponses: rating?.questionResponses ?? [],
-        evidenceResponses: responses,
-        notes: rating?.notes ?? '',
-        barriers: rating?.barriers ?? '',
-        plans: rating?.plans ?? '',
-      });
-      triggerSave();
+      await save(() =>
+        saveRating({
+          dimensionId: currentDimensionKey,
+          subDimensionId: currentNav?.subDimensionId,
+          aspectId,
+          currentLevel: rating?.currentLevel ?? 0,
+          targetLevel: rating?.targetLevel,
+          questionResponses: rating?.questionResponses ?? [],
+          evidenceResponses: responses,
+          notes: rating?.notes ?? '',
+          barriers: rating?.barriers ?? '',
+          plans: rating?.plans ?? '',
+        })
+      );
     },
-    [ratingsMap, saveRating, currentNav, triggerSave]
+    [ratingsMap, saveRating, currentDimensionKey, currentNav?.subDimensionId, save]
   );
 
   const handleNotesChange = useCallback(
     async (aspectId: string, notes: string) => {
-      if (!currentNav) return;
-      const dimId =
-        currentNav.isOrganizational && currentNav.organizationalType
-          ? currentNav.organizationalType
-          : currentNav.dimensionId;
-      if (!dimId) return;
-      await updateNotes(dimId, aspectId, notes, currentNav.subDimensionId);
-      triggerSave();
+      if (!currentDimensionKey) return;
+      await save(() =>
+        updateNotes(currentDimensionKey, aspectId, notes, currentNav?.subDimensionId)
+      );
     },
-    [updateNotes, currentNav, triggerSave]
+    [updateNotes, currentDimensionKey, currentNav?.subDimensionId, save]
   );
 
   const handleBarriersChange = useCallback(
     async (aspectId: string, barriers: string) => {
-      if (!currentNav) return;
-      const dimId =
-        currentNav.isOrganizational && currentNav.organizationalType
-          ? currentNav.organizationalType
-          : currentNav.dimensionId;
-      if (!dimId) return;
-      await updateBarriers(dimId, aspectId, barriers, currentNav.subDimensionId);
-      triggerSave();
+      if (!currentDimensionKey) return;
+      await save(() =>
+        updateBarriers(currentDimensionKey, aspectId, barriers, currentNav?.subDimensionId)
+      );
     },
-    [updateBarriers, currentNav, triggerSave]
+    [updateBarriers, currentDimensionKey, currentNav?.subDimensionId, save]
   );
 
   const handlePlansChange = useCallback(
     async (aspectId: string, plans: string) => {
-      if (!currentNav) return;
-      const dimId =
-        currentNav.isOrganizational && currentNav.organizationalType
-          ? currentNav.organizationalType
-          : currentNav.dimensionId;
-      if (!dimId) return;
-      await updatePlans(dimId, aspectId, plans, currentNav.subDimensionId);
-      triggerSave();
+      if (!currentDimensionKey) return;
+      await save(() =>
+        updatePlans(currentDimensionKey, aspectId, plans, currentNav?.subDimensionId)
+      );
     },
-    [updatePlans, currentNav, triggerSave]
+    [updatePlans, currentDimensionKey, currentNav?.subDimensionId, save]
   );
 
   const handleAttachmentUpload = useCallback(
     async (aspectId: string, file: File, description?: string) => {
-      if (!currentNav || !assessmentId) return;
-      const dimId =
-        currentNav.isOrganizational && currentNav.organizationalType
-          ? currentNav.organizationalType
-          : currentNav.dimensionId;
-      if (!dimId) return;
+      if (!currentDimensionKey || !assessmentId) return;
+      const subDimensionId = currentNav?.subDimensionId;
 
-      const rating = ratingsMap.get(aspectId);
+      // Unlike the autosave paths, this one must reject on failure. AttachmentUpload
+      // has its own recovery UI — it keeps the dialog open and shows a retry message —
+      // and `save()` resolving on failure would let its success branch run, closing
+      // the dialog and clearing the description as if the file had been stored.
+      const succeeded = await save(async () => {
+        // An attachment needs a rating to hang off, so create a placeholder if the
+        // aspect has not been rated yet.
+        if (!ratingsMap.get(aspectId)) {
+          await saveRating({
+            dimensionId: currentDimensionKey,
+            subDimensionId,
+            aspectId,
+            currentLevel: 0,
+          });
+        }
 
-      if (!rating) {
-        // Create a rating first if it doesn't exist
-        await saveRating({
-          dimensionId: dimId,
-          subDimensionId: currentNav.subDimensionId,
+        // Re-query rather than trust the live-query snapshot, which may not have
+        // caught up with a row created moments ago. Technology aspects need the
+        // 4-part compound index; everything else the 3-part one.
+        let rating: OrbitRating | undefined;
+        if (subDimensionId) {
+          rating = await db.orbitRatings
+            .where('[capabilityAssessmentId+dimensionId+subDimensionId+aspectId]')
+            .equals([assessmentId, currentDimensionKey, subDimensionId, aspectId])
+            .first();
+        } else {
+          const candidates = await db.orbitRatings
+            .where('[capabilityAssessmentId+dimensionId+aspectId]')
+            .equals([assessmentId, currentDimensionKey, aspectId])
+            .toArray();
+          rating = candidates.find((r) => !r.subDimensionId);
+        }
+
+        if (!rating) {
+          throw new AssessmentError(
+            'Could not locate the rating to attach the file to',
+            'RATING_NOT_FOUND',
+            { assessmentId, aspectId, dimensionId: currentDimensionKey }
+          );
+        }
+
+        await uploadAttachment(rating.id, file, description);
+      });
+
+      if (!succeeded) {
+        throw new AssessmentError('Attachment upload failed', 'ATTACHMENT_ERROR', {
+          assessmentId,
           aspectId,
-          currentLevel: 0,
+          fileName: file.name,
         });
       }
-
-      // Get the rating ID (may have just been created)
-      // Use the appropriate compound index based on whether this is a technology sub-dimension
-      let updatedRating: OrbitRating | undefined;
-      if (currentNav.subDimensionId) {
-        // Technology sub-dimension - use 4-part compound index
-        updatedRating = await db.orbitRatings
-          .where('[capabilityAssessmentId+dimensionId+subDimensionId+aspectId]')
-          .equals([assessmentId, dimId, currentNav.subDimensionId, aspectId])
-          .first();
-      } else {
-        // Non-technology dimension or organizational assessment - use 3-part compound index
-        const candidates = await db.orbitRatings
-          .where('[capabilityAssessmentId+dimensionId+aspectId]')
-          .equals([assessmentId, dimId, aspectId])
-          .toArray();
-        updatedRating = candidates.find((r) => !r.subDimensionId);
-      }
-
-      if (updatedRating) {
-        await uploadAttachment(updatedRating.id, file, description);
-        triggerSave();
-      }
     },
-    [ratingsMap, saveRating, currentNav, assessmentId, uploadAttachment, triggerSave]
+    [
+      ratingsMap,
+      saveRating,
+      currentDimensionKey,
+      currentNav?.subDimensionId,
+      assessmentId,
+      uploadAttachment,
+      save,
+    ]
   );
 
   const handleAttachmentDelete = useCallback(
     async (_aspectId: string, attachmentId: string) => {
-      await deleteAttachment(attachmentId);
-      triggerSave();
+      await save(() => deleteAttachment(attachmentId));
     },
-    [deleteAttachment, triggerSave]
+    [deleteAttachment, save]
   );
 
   // Navigation handlers
@@ -663,6 +670,22 @@ export default function Assessment(): JSX.Element {
     setIsReviewSelected(true);
     setFinalizeDialogOpen(true);
   }, []);
+
+  /**
+   * Surface save failures with something actionable. The status chip alone reads
+   * "Not saved", which says nothing about what to do — and because assessment data
+   * lives only in this browser, a lost write has no server copy to recover from.
+   */
+  useEffect(() => {
+    if (saveStatus === 'error') {
+      setSnackbar({
+        open: true,
+        message:
+          'Could not save your last change. Assessment data is stored only in this browser — copy any unsaved text elsewhere before leaving this page.',
+        severity: 'error',
+      });
+    }
+  }, [saveStatus]);
 
   const handleFinalize = useCallback(async () => {
     if (!assessmentId) return;

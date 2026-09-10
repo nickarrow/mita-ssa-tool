@@ -410,16 +410,16 @@ the next wave with a red repo.
 
 ### Wave 2 — Pilot data integrity
 
-- [ ] **OBS-6** — `updateNotes`, `updateBarriers`, `updatePlans` in `useOrbitRatings.ts`
+- [x] **OBS-6** — `updateNotes`, `updateBarriers`, `updatePlans` in `useOrbitRatings.ts`
       silently discard input when no rating row exists. Add the create-if-missing branch
       that `updateLevel` already has, so notes typed before a level is chosen persist
-- [ ] Bump `capabilityAssessments.updatedAt` in those three, matching every other write,
+- [x] Bump `capabilityAssessments.updatedAt` in those three, matching every other write,
       so text-only edits affect dashboard ordering
-- [ ] **OBS-7** — `triggerSave` reports success on a 300ms timer without observing the
+- [x] **OBS-7** — `triggerSave` reports success on a 300ms timer without observing the
       promise. Await the handler and surface rejection through the `'error'` state that
       `AssessmentContextBar` already implements but nothing can currently trigger
-- [ ] Tests: notes-before-level persists; a rejected save shows the error state
-- [ ] Verify green
+- [x] Tests: notes-before-level persists; a rejected save shows the error state
+- [x] Verify green
 
 ### Wave 3 — Draft banner (app surfaces)
 
@@ -452,10 +452,11 @@ the next wave with a red repo.
 
 - [ ] PDF: draft band on the cover and a footer line, from the shared module
 - [ ] CSV: notice line above the profile header; teach `parseMaturityProfileCsv` to skip it
-- [ ] **OBS-2** — `pdfExport.ts` labels `currentLevel === 0` as "N/A" in
-      `generateDimensionDetails` while `generateOrganizationalDetails` correctly uses
-      `-1`. Align to the project convention (`-1` = N/A, `0` = not assessed) so
-      unassessed aspects stop being reported to stakeholders as not applicable
+- [x] **OBS-2** — done early, in Wave 2. `pdfExport.ts` labelled `currentLevel === 0` as
+      "N/A" in `generateDimensionDetails` while `generateOrganizationalDetails` correctly
+      used `-1`. Pulled forward because the OBS-6 fix makes notes-only rows (level 0) a
+      common case, so shipping Wave 2 without it would have amplified a stakeholder-facing
+      misreport. Still needs the export-side test in this wave
 - [ ] **OBS-3** — aggregate dimensions are omitted from the PDF entirely because the
       generator iterates actual ratings and aggregates have none. Emit the aggregated
       dimension with its score and an "(Aggregate from N assessments)" note, matching
@@ -583,6 +584,55 @@ Append findings here as waves complete, so later sessions inherit them.
 - **2026-09-09** — Confirmed the reference implementation sets `selectLockedCells: true`,
   avoiding the common 508 trap of hiding locked reference cells from assistive tech.
   Keep that.
+
+### Wave 2 notes — 2026-09-09
+
+Verified the OBS-6 fix end to end in a real browser, not just in unit tests, because it is a
+data-loss fix shipping into a pilot: typed notes into a fresh aspect with **no** level
+selected, confirmed the row persisted at `currentLevel: 0`, confirmed sidebar progress stayed
+at 0%, reloaded and confirmed the text rendered back, then picked a level and confirmed the
+notes survived (`updateLevel` patches only the level, so it does not clobber text).
+
+The save indicator now reports the real outcome and is a polite live region.
+
+**Head start on Wave 4.** The app already runs axe in dev mode, and it reported these on the
+assessment page during the check above — so Wave 4's remediation looks bounded rather than
+structural:
+
+| Finding               | Detail                                                     |
+| --------------------- | ---------------------------------------------------------- |
+| Contrast 4.31:1       | `#ffffff` on `#1a7fc3`, 14px normal — needs 4.5:1          |
+| Contrast 3.49:1       | `#757575` on `#e0e0e0`, 12px — needs 4.5:1, reported twice |
+| Heading order invalid | Heading levels skip on the assessment page                 |
+
+Plus OBS-24 (mouse-only expandable dimension rows), already logged. Note the second contrast
+pair looks like a disabled/greyed chip, so it may recur across several components.
+
+**Test-suite flake — diagnosed and fixed, and my first diagnosis was wrong.** I initially
+recorded this as a `waitFor` timeout to be fixed by raising the timeout. Measurement said
+otherwise:
+
+| Invocation                                | Failures |
+| ----------------------------------------- | -------- |
+| `useOrbitRatings.test.ts` alone           | 0 / 8    |
+| With a second file (`useDebounce`)        | 1 / 8    |
+| With a fake-timers file (`useSaveStatus`) | 5 / 10   |
+| Full suite (what CI runs)                 | 0 / 5    |
+
+Raising `asyncUtilTimeout` to 5000 made it _worse-looking_, not better: it matched vitest's
+5000ms `testTimeout`, so a failing `waitFor` blew the test timeout and reported "Test timed
+out" instead of the actual assertion difference. It is now 3000, deliberately below the test
+timeout.
+
+The real cause was unnecessary synchronization. Many tests gate on a Dexie `liveQuery`
+emission (`await waitFor(() => expect(result.current.ratings).toEqual([]))`) before mutating
+— but the mutation paths resolve rows straight from IndexedDB via `findExistingRating` and
+never read `ratings`. That gate only made the tests sensitive to liveQuery scheduling under
+CPU contention. Removing it from the tests added in this wave took the two-file failure rate
+from **5/10 to 0/10**, with the full suite still clean 4/4.
+
+The same unnecessary pattern remains in roughly a dozen pre-existing tests in that file.
+Logged as OBS-27 rather than changed here, to keep this wave's diff reviewable.
 
 ### Wave 0 baseline — 2026-09-09, `feature/pilot-clearance` @ `33e7963`
 

@@ -563,3 +563,97 @@ Two further wrinkles in the same code:
 Scheduled for **Wave 5** (export correctness) in the pilot clearance plan, which lands before
 the workbook formulas in Wave 7 — so the workbook has one canonical rule to implement rather
 than three candidates.
+
+### OBS-26 — `useDebouncedSave` can clobber keystrokes with the echo of its own save
+
+**Confirmed** by reading the hook; the window is narrow, so not reproduced live. Found while
+verifying the OBS-6 fix in Wave 2.
+
+`useDebouncedSave` (`src/hooks/useDebounce.ts`) syncs local state down from the external
+value unconditionally:
+
+```ts
+useEffect(() => {
+  setLocalValue(externalValue);
+}, [externalValue]);
+```
+
+The save effect depends on `[localValue, ...]` and clears its timer on every change, so no
+save fires during continuous typing — only after a 500ms pause. That creates this sequence:
+
+1. User pauses 500ms; the debounce dispatches a save with `"Hello"`
+2. User resumes typing, local becomes `"Hello wor"`
+3. The write lands and `useLiveQuery` pushes the new rating, so `externalValue` becomes `"Hello"`
+4. The sync effect runs `setLocalValue("Hello")` — the `" wor"` is discarded and the caret jumps
+
+The window is only as long as a Dexie write plus a live-query round trip (roughly tens of
+milliseconds), and the user has to resume typing inside it, immediately after a deliberate
+pause. That narrowness is presumably why it survived the pilot.
+
+**Pre-existing, and the OBS-6 fix does not widen the window** — it only makes the race
+reachable in one more situation. Before, typing into a fresh notes field never created a
+rating, so `externalValue` stayed `''` and there was no echo to clobber with; the race
+already occurred whenever a rating existed, which is the normal flow after picking a level.
+
+Proposed fix, kept out of Wave 2 because it changes shared behavior that three fields and ten
+existing tests depend on: accept a new external value only when the user has no unsaved local
+edit.
+
+```ts
+// If the user has diverged from the last external value we saw, their text wins —
+// the pending debounce will reconcile it. Otherwise accept the incoming value.
+useEffect(() => {
+  setLocalValue((current) => (current === lastExternalRef.current ? externalValue : current));
+  lastExternalRef.current = externalValue;
+}, [externalValue]);
+```
+
+That keeps legitimate external updates working (import, revert-edit, carry-forward) while
+making in-progress typing authoritative. Worth pairing with a test that types across a save
+boundary.
+
+### OBS-27 — Hook tests gate on a live-query emission they do not need, making them flaky
+
+**Confirmed** by measurement during Wave 2.
+
+Many tests in `src/hooks/useOrbitRatings.test.ts` follow this shape:
+
+```ts
+const { result } = renderHook(() => useOrbitRatings(assessmentId));
+await waitFor(() => {
+  expect(result.current.ratings).toHaveLength(1); // load gate, not an assertion
+});
+await act(async () => {
+  await result.current.updateNotes(/* ... */);
+});
+const stored = await db.orbitRatings.get('r1'); // asserts against the DB, not the hook
+```
+
+The `waitFor` is there to ensure the hook has "loaded" before mutating. It is not needed: the
+mutation paths (`updateLevel`, `updateTargetLevel`, `updateTextField`, `saveRating`) resolve
+the target row directly from IndexedDB through `findExistingRating` and never read
+`result.current.ratings`. The gate only couples the test to Dexie `liveQuery` scheduling.
+
+That coupling is the flake. Measured failure rates for
+`vitest run useOrbitRatings.test.ts <second file>`:
+
+| Invocation                                      | Failures |
+| ----------------------------------------------- | -------- |
+| Alone                                           | 0 / 8    |
+| Plus `useDebounce.test.ts`                      | 1 / 8    |
+| Plus `useSaveStatus.test.ts` (uses fake timers) | 5 / 10   |
+| Full suite                                      | 0 / 5    |
+
+Under CPU contention from a concurrently running file, the first `liveQuery` emission
+sometimes does not arrive within seconds. Removing the gate from the tests added in Wave 2
+dropped the two-file rate from 5/10 to **0/10**.
+
+CI is unaffected — the full suite has never flaked — so this is a developer-ergonomics
+problem: running two files at once during development fails for no real reason.
+
+Fix: drop the load gate wherever the test asserts against the database rather than the hook,
+keeping `waitFor` only where the hook's own returned state is what is being tested (for
+example `getAssessedCount`, `getAverageLevelForDimension`). Roughly a dozen call sites in
+that one file. `asyncUtilTimeout` is now 3000 in `src/test/setup.ts`, which raises the
+ceiling for the genuine cases while staying under vitest's 5000ms `testTimeout` so failures
+still report as assertion differences.

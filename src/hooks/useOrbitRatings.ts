@@ -275,82 +275,98 @@ export function useOrbitRatings(capabilityAssessmentId: string | undefined): Use
   };
 
   /**
-   * Update notes for an aspect
+   * Update one free-text field on a rating, creating the rating if it does not
+   * exist yet.
+   *
+   * Creating on demand is the point. These three fields were previously dropped
+   * silently when no rating row existed (OBS-6), so a user who read the criteria
+   * and typed a note *before* choosing a maturity level lost that text — while the
+   * indicator still said "Saved". `updateLevel` and `updateTargetLevel` already
+   * created rows on demand; this brings text in line with them.
+   *
+   * A row created here carries `currentLevel: 0`, which every assessed-count
+   * filter excludes, so notes cannot inflate progress or scores.
+   */
+  const updateTextField = async (
+    field: 'notes' | 'barriers' | 'plans',
+    dimensionId: RatingDimensionId,
+    aspectId: string,
+    value: string,
+    subDimensionId?: TechnologySubDimensionId
+  ): Promise<void> => {
+    if (!capabilityAssessmentId) return;
+
+    const existing = await findExistingRating(
+      capabilityAssessmentId,
+      dimensionId,
+      aspectId,
+      subDimensionId
+    );
+
+    // Nothing to record: an empty value with no existing row would only create an
+    // entirely blank rating. Not reachable from the UI, but worth not persisting.
+    if (!existing && value === '') return;
+
+    const now = new Date();
+
+    if (existing) {
+      const patch: Partial<OrbitRating> = { updatedAt: now };
+      patch[field] = value;
+      await db.orbitRatings.update(existing.id, patch);
+    } else {
+      const rating: OrbitRating = {
+        id: uuidv4(),
+        capabilityAssessmentId,
+        dimensionId,
+        subDimensionId,
+        aspectId,
+        currentLevel: 0,
+        questionResponses: [],
+        evidenceResponses: [],
+        notes: field === 'notes' ? value : '',
+        barriers: field === 'barriers' ? value : '',
+        plans: field === 'plans' ? value : '',
+        carriedForward: false,
+        attachmentIds: [],
+        updatedAt: now,
+      };
+      await db.orbitRatings.add(rating);
+    }
+
+    // Keep the assessment timestamp in step with every other write path, so
+    // text-only edits still affect the dashboard's recently-updated ordering.
+    await db.capabilityAssessments.update(capabilityAssessmentId, { updatedAt: now });
+  };
+
+  /**
+   * Update notes for an aspect, creating the rating if needed
    */
   const updateNotes = async (
     dimensionId: RatingDimensionId,
     aspectId: string,
     notes: string,
     subDimensionId?: TechnologySubDimensionId
-  ): Promise<void> => {
-    if (!capabilityAssessmentId) return;
-
-    const existing = await findExistingRating(
-      capabilityAssessmentId,
-      dimensionId,
-      aspectId,
-      subDimensionId
-    );
-
-    if (existing) {
-      await db.orbitRatings.update(existing.id, {
-        notes,
-        updatedAt: new Date(),
-      });
-    }
-  };
+  ): Promise<void> => updateTextField('notes', dimensionId, aspectId, notes, subDimensionId);
 
   /**
-   * Update barriers for an aspect
+   * Update barriers for an aspect, creating the rating if needed
    */
   const updateBarriers = async (
     dimensionId: RatingDimensionId,
     aspectId: string,
     barriers: string,
     subDimensionId?: TechnologySubDimensionId
-  ): Promise<void> => {
-    if (!capabilityAssessmentId) return;
-
-    const existing = await findExistingRating(
-      capabilityAssessmentId,
-      dimensionId,
-      aspectId,
-      subDimensionId
-    );
-
-    if (existing) {
-      await db.orbitRatings.update(existing.id, {
-        barriers,
-        updatedAt: new Date(),
-      });
-    }
-  };
+  ): Promise<void> => updateTextField('barriers', dimensionId, aspectId, barriers, subDimensionId);
 
   /**
-   * Update advancement plans for an aspect
+   * Update advancement plans for an aspect, creating the rating if needed
    */
   const updatePlans = async (
     dimensionId: RatingDimensionId,
     aspectId: string,
     plans: string,
     subDimensionId?: TechnologySubDimensionId
-  ): Promise<void> => {
-    if (!capabilityAssessmentId) return;
-
-    const existing = await findExistingRating(
-      capabilityAssessmentId,
-      dimensionId,
-      aspectId,
-      subDimensionId
-    );
-
-    if (existing) {
-      await db.orbitRatings.update(existing.id, {
-        plans,
-        updatedAt: new Date(),
-      });
-    }
-  };
+  ): Promise<void> => updateTextField('plans', dimensionId, aspectId, plans, subDimensionId);
 
   /**
    * Get rating for a specific aspect
