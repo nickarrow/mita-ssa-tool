@@ -8,25 +8,60 @@ const theme = createTheme({
       dark: '#004c8c',
       contrastText: '#ffffff',
     },
+    /**
+     * `secondary` marks To-Be / target values. The original `#02bfe7` is a
+     * decorative cyan that measures **2.19:1** on white — it cannot legally
+     * carry text (4.5:1) or even an icon (3:1), yet it was used for both.
+     * Darkened to 5.27:1 while keeping the cyan hue so the To-Be signal reads
+     * the same.
+     *
+     * `dark` exists for text on a *tinted* surface. The To-Be caption in
+     * `MaturityLevelSelector` sits on `alpha(secondary.main, 0.1)` layered over a
+     * row that is itself tinted when selected and/or hovered, so the background
+     * shifts with state: `main` measures 4.58:1 on an idle row but only 4.13:1
+     * once that row is both selected and hovered. `dark` holds 5.47-6.06:1
+     * across every combination. See OBS-30.
+     */
     secondary: {
-      main: '#02bfe7',
+      main: '#00768f',
       light: '#4dd2ed',
-      dark: '#0095b6',
+      dark: '#00636f',
     },
     success: {
       main: '#2e8540',
       light: '#4caf50',
       dark: '#1e5a2c',
     },
+    /**
+     * `warning.main` is a decorative amber at **1.74:1** on white. It is not
+     * safe for text or icons, so `MuiAlert` below redirects the warning icon to
+     * `dark` — MUI would otherwise paint it in `main` at 1.65:1 against the
+     * alert's own background.
+     *
+     * `dark` is the text-bearing token. It was `#c48f00`, which measured
+     * **2.89:1** on white and 2.64:1 on the `alpha(warning.main, 0.15)` chip
+     * background it was actually painted on. Now 6.92:1 and 6.34:1.
+     */
     warning: {
       main: '#fdb81e',
       light: '#ffc94d',
-      dark: '#c48f00',
+      dark: '#7a5200',
     },
     error: {
       main: '#e31c3d',
       light: '#e94d64',
       dark: '#b0142f',
+    },
+    /**
+     * `info` was never defined, so MUI fell back to its default `#0288d1`, which
+     * measures 3.86:1 on white and 3.54:1 on the page background — failing as
+     * chip text (`color="info"` chips appear in three places) and failing even
+     * the 3:1 non-text minimum as an Alert icon at 3.41:1. Defined explicitly.
+     */
+    info: {
+      main: '#01579b',
+      light: '#4d8ecb',
+      dark: '#01426f',
     },
     background: {
       default: '#f5f5f5',
@@ -121,6 +156,58 @@ const theme = createTheme({
             outlineOffset: -4,
           },
         },
+      },
+    },
+    /**
+     * Outlined chips paint their text AND border from `palette[color].main`,
+     * which is a fill-grade colour. Measured on the default `#f5f5f5` page
+     * background: `success.main` 4.23:1 and `warning.main` 1.59:1 for text, and
+     * the border misses the 3:1 non-text minimum too. Redirect both to the
+     * `.dark` token so any outlined success/warning chip is compliant wherever
+     * it is used, rather than fixing call sites one at a time.
+     */
+    MuiChip: {
+      styleOverrides: {
+        // MUI has no `outlinedSuccess` / `outlinedWarning` / `outlinedInfo`
+        // slot, so target the generated class pairs from `root`. Requiring both
+        // classes means filled chips cannot match.
+        root: ({ theme: t }) => ({
+          '&.MuiChip-outlined.MuiChip-colorSuccess': {
+            color: t.palette.success.dark,
+            borderColor: t.palette.success.dark,
+          },
+          '&.MuiChip-outlined.MuiChip-colorWarning': {
+            color: t.palette.warning.dark,
+            borderColor: t.palette.warning.dark,
+          },
+          '&.MuiChip-outlined.MuiChip-colorInfo': {
+            color: t.palette.info.dark,
+            borderColor: t.palette.info.dark,
+          },
+        }),
+      },
+    },
+    /**
+     * A standard `Alert` paints its icon in `palette[severity].main`, which is a
+     * fill-grade colour. Measured against MUI's own tinted alert backgrounds,
+     * every severity failed the 4.5:1 text minimum and warning and info failed
+     * even the 3:1 non-text minimum: warning 1.65:1, info 3.41:1, error 3.98:1,
+     * success 4.08:1. Redirected to the `.dark` tokens, which give 5.99-7.26:1.
+     */
+    MuiAlert: {
+      styleOverrides: {
+        standardWarning: ({ theme: t }) => ({
+          '& .MuiAlert-icon': { color: t.palette.warning.dark },
+        }),
+        standardInfo: ({ theme: t }) => ({
+          '& .MuiAlert-icon': { color: t.palette.info.dark },
+        }),
+        standardSuccess: ({ theme: t }) => ({
+          '& .MuiAlert-icon': { color: t.palette.success.dark },
+        }),
+        standardError: ({ theme: t }) => ({
+          '& .MuiAlert-icon': { color: t.palette.error.dark },
+        }),
       },
     },
     MuiPaper: {

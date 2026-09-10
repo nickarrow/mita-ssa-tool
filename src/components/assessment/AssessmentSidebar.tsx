@@ -102,7 +102,13 @@ export function AssessmentSidebar({
               py: 0.25,
               borderRadius: 1,
               bgcolor: alpha(theme.palette.primary.main, 0.15),
-              color: 'primary.main',
+              /**
+               * `.dark`, not `.main`. Tinting a colour toward white and then
+               * writing in that same colour cannot reach 4.5:1 — both sides move
+               * together. `primary.main` on `alpha(primary.main, 0.15)` measured
+               * 4.17:1; `primary.dark` on the same background is 7.06:1.
+               */
+              color: 'primary.dark',
               minWidth: 40,
               justifyContent: 'center',
             }}
@@ -139,7 +145,10 @@ export function AssessmentSidebar({
             : isStarted
               ? alpha(theme.palette.warning.main, 0.15)
               : 'transparent',
-          color: isComplete ? 'success.main' : isStarted ? 'warning.dark' : 'text.secondary',
+          // Same alpha-tint trap as the aggregate chip above: `success.main` on
+          // `alpha(success.main, 0.15)` measured 3.37-3.82:1 depending on the row
+          // beneath it. `success.dark` on the same tints is 6.81:1.
+          color: isComplete ? 'success.dark' : isStarted ? 'warning.dark' : 'text.secondary',
           minWidth: 40,
           justifyContent: 'center',
         }}

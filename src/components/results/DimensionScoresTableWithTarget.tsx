@@ -65,12 +65,24 @@ interface DimensionScoresTableWithTargetProps {
 }
 
 /**
- * Get color for score - uses primary blue for As-Is/To-Be comparison view
+ * Colour for an As-Is chip in this view.
+ *
+ * Deliberately a single blue rather than the banded `SCORE_COLORS` scale: this
+ * table's job is As-Is vs To-Be comparison, so banding both columns by score
+ * would compete with the comparison. `SCORE_COLORS.developing` is reused rather
+ * than a local hex so there is one blue to keep compliant — the previous
+ * `#1976d2` cleared 4.5:1 only barely, at 4.60:1.
  */
 function getScoreColor(score: number | null): string {
   if (score === null) return SCORE_COLORS.none;
-  return '#1976d2'; // Use primary blue for all scores in comparison view
+  return SCORE_COLORS.developing;
 }
+
+/**
+ * Colour for a To-Be chip. `SCORE_COLORS.excellent` (5.13:1 on white) replaces a
+ * hardcoded `#4caf50`, which measured 2.78:1 as chip text and as a border.
+ */
+const TO_BE_COLOR = SCORE_COLORS.excellent;
 
 /**
  * Get maturity level display with name
@@ -153,8 +165,8 @@ function AspectDetailRow({
             variant="outlined"
             sx={{
               borderColor:
-                rating.targetLevel && rating.targetLevel > 0 ? '#4caf50' : 'text.disabled',
-              color: rating.targetLevel && rating.targetLevel > 0 ? '#4caf50' : 'text.secondary',
+                rating.targetLevel && rating.targetLevel > 0 ? TO_BE_COLOR : 'text.disabled',
+              color: rating.targetLevel && rating.targetLevel > 0 ? TO_BE_COLOR : 'text.secondary',
               fontWeight: 600,
             }}
           />
@@ -428,7 +440,7 @@ function DimensionRow({
               label={targetLevel.toFixed(1)}
               size="small"
               variant="outlined"
-              sx={{ borderColor: '#4caf50', color: '#4caf50', fontWeight: 600 }}
+              sx={{ borderColor: TO_BE_COLOR, color: TO_BE_COLOR, fontWeight: 600 }}
             />
           ) : (
             <Typography variant="body2" color="text.disabled">
@@ -584,7 +596,7 @@ function TechnologyDimensionRows({
               label={targetLevel.toFixed(1)}
               size="small"
               variant="outlined"
-              sx={{ borderColor: '#4caf50', color: '#4caf50', fontWeight: 600 }}
+              sx={{ borderColor: TO_BE_COLOR, color: TO_BE_COLOR, fontWeight: 600 }}
             />
           ) : (
             <Typography variant="body2" color="text.disabled">

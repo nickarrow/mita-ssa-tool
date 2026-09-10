@@ -288,7 +288,10 @@ export function AssessmentContextBar({
             <Typography
               variant="caption"
               sx={{
-                color: 'text.disabled',
+                // Active instructional text, so the WCAG exception for inactive
+                // content does not apply. `text.disabled` resolves to #9e9e9e =
+                // 2.67:1; `text.secondary` is 6.69:1.
+                color: 'text.secondary',
                 fontStyle: 'italic',
               }}
             >

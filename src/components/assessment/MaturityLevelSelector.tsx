@@ -234,7 +234,13 @@ export function MaturityLevelSelector({
                   <Typography
                     variant="caption"
                     sx={{
-                      color: isToBeSelected ? 'secondary.main' : 'text.secondary',
+                      // `.dark`, not `.main`. This 12px caption sits on
+                      // `alpha(secondary.main, 0.1)` layered over a row that is
+                      // itself tinted when selected and/or hovered, so the
+                      // background moves: `.main` measures 4.58:1 idle but drops
+                      // to 4.13:1 on a selected+hovered row. `.dark` holds
+                      // 5.47-6.06:1 across every combination.
+                      color: isToBeSelected ? 'secondary.dark' : 'text.secondary',
                       fontWeight: isToBeSelected ? 600 : 400,
                       userSelect: 'none',
                     }}

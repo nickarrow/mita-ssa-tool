@@ -118,7 +118,14 @@ export default function Layout({ children }: LayoutProps): JSX.Element {
                 aria-current={isActive ? 'page' : undefined}
                 sx={{
                   mr: item.path !== '/guide' ? 1 : 0,
-                  backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  /**
+                   * The selected state must DARKEN the AppBar, not lighten it.
+                   * `rgba(255,255,255,0.1)` raised `primary.main` to `#1a7fc3`,
+                   * dropping white text to 4.31:1 — so the *current* page was
+                   * the only nav item failing AA, on five pages. Darkening to
+                   * `#005f9e` gives 6.71:1 and still reads as selected.
+                   */
+                  backgroundColor: isActive ? 'rgba(0,0,0,0.16)' : 'transparent',
                 }}
               >
                 {item.label}

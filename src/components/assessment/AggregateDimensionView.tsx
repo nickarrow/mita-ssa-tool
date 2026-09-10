@@ -26,14 +26,13 @@ import {
   Chip,
   alpha,
   useTheme,
-  Theme,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import type { AggregateDimensionScore } from '../../hooks';
 import type { OrbitDimensionId } from '../../types';
-import { formatScore } from '../../utils';
+import { formatScore, getScoreColor as getSharedScoreColor } from '../../utils';
 
 interface AggregateDimensionViewProps {
   dimensionId: OrbitDimensionId;
@@ -42,13 +41,24 @@ interface AggregateDimensionViewProps {
 }
 
 /**
- * Get color for score
+ * Colour for a score, delegating to the shared banded palette.
+ *
+ * This used to be a fourth independent implementation reading straight off the
+ * theme, and two of its four branches failed AA as text on white:
+ * `info.main` **3.86:1** — MUI's default `#0288d1`, because this theme did not
+ * define `info` at the time — and `warning.main` **1.74:1**. The other two
+ * passed, narrowly: `success.main` 4.62:1 and `error.main` 4.67:1.
+ *
+ * It is used at two sizes: the 60px aggregate score, where the 3:1 large-text
+ * threshold applies and only `warning.main` failed, and a `body2` per-area
+ * figure, where 4.5:1 applies and `info.main` failed too.
+ *
+ * Delegating keeps one compliant palette instead of four drifting copies. Band
+ * thresholds are unchanged — `MATURITY_THRESHOLDS` is `{4, 3, 2}`, matching the
+ * `>= 4 / >= 3 / >= 2` this replaced. See OBS-30.
  */
-function getScoreColor(score: number, theme: Theme): string {
-  if (score >= 4) return theme.palette.success.main;
-  if (score >= 3) return theme.palette.info.main;
-  if (score >= 2) return theme.palette.warning.main;
-  return theme.palette.error.main;
+function getScoreColor(score: number): string {
+  return getSharedScoreColor(score);
 }
 
 /**
@@ -157,7 +167,7 @@ export function AggregateDimensionView({
                 component="p"
                 sx={{
                   fontWeight: 700,
-                  color: getScoreColor(aggregateData.score!, theme),
+                  color: getScoreColor(aggregateData.score!),
                   mb: 1,
                 }}
               >
@@ -177,11 +187,14 @@ export function AggregateDimensionView({
               >
                 Aggregate Score
               </Typography>
-              {/* Empty-state text, not a heading (would render <h4> under an <h2>). */}
+              {/* Empty-state text, not a heading (would render <h4> under an
+                  <h2>). `text.secondary` not `text.disabled`: this is active
+                  content, and `text.disabled` resolves to #9e9e9e = 2.68:1,
+                  which fails even the 3:1 large-text floor. */}
               <Typography
                 variant="h4"
                 component="p"
-                sx={{ fontWeight: 600, color: 'text.disabled', mb: 1 }}
+                sx={{ fontWeight: 600, color: 'text.secondary', mb: 1 }}
               >
                 No Data Available
               </Typography>
@@ -253,7 +266,7 @@ export function AggregateDimensionView({
                               variant="body2"
                               sx={{
                                 fontWeight: 600,
-                                color: getScoreColor(item.dimensionScore, theme),
+                                color: getScoreColor(item.dimensionScore),
                               }}
                             >
                               {formatScore(item.dimensionScore)}

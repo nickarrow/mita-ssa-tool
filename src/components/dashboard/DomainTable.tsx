@@ -298,10 +298,12 @@ export function DomainTable({
                           />
                         </TableCell>
                         <TableCell align="center">
+                          {/* `success.main` is only 4.62:1 on white and drops to
+                              4.24:1 once the row is hovered, so use `.dark`. */}
                           <Typography
                             variant="body2"
                             fontWeight={500}
-                            color={totalCompletion === 100 ? 'success.main' : 'text.secondary'}
+                            color={totalCompletion === 100 ? 'success.dark' : 'text.secondary'}
                           >
                             {totalCompletion}%
                           </Typography>
