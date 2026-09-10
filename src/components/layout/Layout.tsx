@@ -1,4 +1,4 @@
-import { JSX, ReactNode } from 'react';
+import { JSX, ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AppBar, Box, Button, Container, Link, Toolbar, Typography } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -6,6 +6,8 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { ScrollToTop } from './ScrollToTop';
+import { DraftBanner } from './DraftBanner';
+import { DRAFT_NOTICE_LABEL, IS_DRAFT } from '../../constants';
 
 interface LayoutProps {
   children: ReactNode;
@@ -24,6 +26,25 @@ function isNavActive(currentPath: string, navPath: string): boolean {
 export default function Layout({ children }: LayoutProps): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // The skip link jumps to #main-content, which sits below the banner, so anyone
+  // using it never encounters the notice. Marking the title covers that, since it
+  // is announced on load regardless.
+  //
+  // The guard keys on the parenthesised marker rather than the bare word, so a
+  // title that merely contains "Draft" in prose still gets marked. It also omits
+  // any leading whitespace on purpose: the DOM trims `document.title`, so a guard
+  // written as `' (Draft)'` never matches once the value has round-tripped, and
+  // the marker gets appended again on every mount.
+  //
+  // Layout wraps <Routes> and so never unmounts, making this a genuine once-only
+  // effect; the guard also absorbs StrictMode's double invocation.
+  useEffect(() => {
+    const marker = `(${DRAFT_NOTICE_LABEL})`;
+    if (IS_DRAFT && !document.title.endsWith(marker)) {
+      document.title = document.title ? `${document.title} ${marker}` : marker;
+    }
+  }, []);
 
   // Hide footer on assessment pages (full-screen working area)
   const isAssessmentPage = location.pathname.startsWith('/assessment/');
@@ -106,6 +127,8 @@ export default function Layout({ children }: LayoutProps): JSX.Element {
           })}
         </Toolbar>
       </AppBar>
+
+      {IS_DRAFT && <DraftBanner />}
 
       <Box
         component="main"

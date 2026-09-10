@@ -173,7 +173,7 @@ every surface — app, PDF, CSV, XLSX — reads from the same place:
 
 ```ts
 export const IS_DRAFT = import.meta.env.VITE_DRAFT_MODE !== 'false';
-export const DRAFT_NOTICE_TITLE = 'Draft';
+export const DRAFT_NOTICE_LABEL = 'Draft'; // lives in constants/draftNotice.ts
 export const DRAFT_NOTICE_BODY =
   'This is a draft version of the MITA 4.0 State Self-Assessment Tool. ' +
   'It is still being piloted and is subject to change.';
@@ -423,15 +423,15 @@ the next wave with a red repo.
 
 ### Wave 3 — Draft banner (app surfaces)
 
-- [ ] Create the draft-notice module per 5.1 (`IS_DRAFT`, title, body)
-- [ ] Add the `VITE_DRAFT_MODE` declaration to `src/vite-env.d.ts`
-- [ ] Build `DraftBanner` component: slim, single-line, non-dismissible, `error.dark`,
+- [x] Create the draft-notice module per 5.1 (`IS_DRAFT`, title, body)
+- [x] Add the `VITE_DRAFT_MODE` declaration to `src/vite-env.d.ts`
+- [x] Build `DraftBanner` component: slim, single-line, non-dismissible, `error.dark`,
       labeled region — **not** `role="alert"`
-- [ ] Wire into `Layout.tsx` below the `AppBar`, above `<main>`, with `flexShrink: 0`
-- [ ] Confirm the assessment page's fixed-height working area still fits: sidebar,
+- [x] Wire into `Layout.tsx` below the `AppBar`, above `<main>`, with `flexShrink: 0`
+- [x] Confirm the assessment page's fixed-height working area still fits: sidebar,
       content, and context bar all usable at 1280×720
-- [ ] Tests: renders when `IS_DRAFT`, absent when disabled, no axe violations
-- [ ] Verify green
+- [x] Tests: renders when `IS_DRAFT`, absent when disabled, no axe violations
+- [x] Verify green
 
 ### Wave 4 — Accessibility audit and remediation
 
@@ -539,6 +539,12 @@ the next wave with a red repo.
       file and the three links would 404. Add a `predev` generation step or a graceful message
 - [ ] Resolve **P4** (PWA) and align the offline claims in Landing, About, README,
       PROJECT_FOUNDATION, and the steering file with reality
+- [ ] Mark the draft in `index.html`'s `<title>` and `<meta name="description">`. Those are
+      what render as the link preview when the pilot URL is pasted into Teams or Slack, and
+      they are currently unmarked — the runtime title suffix does not reach a crawler. Needs
+      a Vite HTML transform so `VITE_DRAFT_MODE=false` still removes it; deferred here rather
+      than hardcoding "(Draft)" into static HTML, which would survive go-live. Pair with the
+      PWA manifest name, which has the same problem
 - [ ] Full check: `npm run typecheck && npm run lint && npm test && npm run build`
 - [ ] Manual smoke on a `workflow_dispatch` deploy: banner on every page, workbook
       downloads and opens cleanly, exports carry the notice
@@ -633,6 +639,80 @@ from **5/10 to 0/10**, with the full suite still clean 4/4.
 
 The same unnecessary pattern remains in roughly a dozen pre-existing tests in that file.
 Logged as OBS-27 rather than changed here, to keep this wave's diff reviewable.
+
+### Wave 3 notes — 2026-09-09
+
+Banner measured in a real browser rather than asserted from theory, because axe-core
+**cannot evaluate colour contrast under jsdom** — it needs a canvas to sample rendered
+pixels, which is what the "getContext not implemented" notice in the test output means. The
+`toHaveNoViolations()` assertion in `DraftBanner.test.tsx` therefore does _not_ cover
+contrast, which is this banner's main accessibility risk. Noted in the test itself so nobody
+reads it as broader coverage than it is.
+
+Measured at `error.dark` (`#b0142f`) on white text:
+
+| Property       | Value         | Verdict                                             |
+| -------------- | ------------- | --------------------------------------------------- |
+| Contrast ratio | **7.03:1**    | Passes AA (4.5:1) and AAA (7:1) for normal text     |
+| Font size      | 12.8px normal | Below the large-text threshold, so 4.5:1 is the bar |
+| Banner height  | 27px          | Slimmer than the 32-36px target                     |
+
+Layout impact on the fixed-height shell at 1280x720, with the banner present: document
+scroll height equals the viewport (no overflow), the sidebar still reaches the bottom, and
+"Review & Finalize" remains visible. The assessment working area survives the banner.
+
+Responsive behaviour: one line down to 768px, wrapping to three lines (66px) at 390px. That
+is a real bite out of a phone viewport, but the assessment page already needs a 240px fixed
+sidebar plus content, so phones are not a supported target for this tool. Accepted rather
+than special-cased.
+
+Document title becomes "MITA 4.0 State Self-Assessment Tool (Draft)". That is the fix for
+the skip-link gap: `#main-content` sits below the banner, so anyone using the skip link never
+reaches the notice, but the title is announced on load regardless.
+
+**The go-live switch removes the copy, not just the banner.** Verified against real builds:
+with `VITE_DRAFT_MODE=false` the phrase "still being piloted" is absent from
+`dist/assets/*.js` entirely — Rollup tree-shakes the whole branch, since `IS_DRAFT` resolves
+to a constant at build time. The default build contains it. So Decision 5's "easily
+removable" is satisfied by one workflow variable with no dead copy left in the artifact, and
+the change is verifiable by grepping the bundle rather than clicking through the app.
+
+Tests also pin that only the exact string `'false'` disables it, so a variable set to `FALSE`
+or `0` cannot quietly drop the disclaimer.
+
+**Review outcomes.** Three things the Wave 3 review changed:
+
+- The banner is now a **labelled landmark** (`<section aria-label="Draft notice">`), which is
+  what Section 5.1 and the wave checklist actually specified — I had ticked "labeled region"
+  while shipping a plain `Box`. It follows the USWDS Site Alert shape, a closer precedent for
+  a government tool than the GOV.UK phase banner I originally cited, and it satisfies axe's
+  `region` rule for top-level content outside any landmark.
+- The comment justifying the no-live-region decision was **wrong**, and is corrected in the
+  component. A live region does not "re-announce unchanging text"; announcements fire on
+  mutation, so a static live region would simply never fire. The conclusion held, the stated
+  reason did not, and the comment is the durable record.
+- The draft **copy moved to `src/constants/draftNotice.ts`**, a module with no `import.meta`
+  reference. `import.meta.env` is `undefined` under plain Node and touching it throws, so the
+  Wave 6 XLSX generator could not have imported the copy from `constants/index.ts` —
+  defeating Section 5.1's "one module exports both the flag and the text". The flag stays in
+  `constants/index.ts` because it is environment-dependent; Node derives it from
+  `process.env.VITE_DRAFT_MODE`.
+
+**A real bug the duplication test caught.** The title guard was first written as
+`endsWith(' (Draft)')`. The DOM **trims `document.title`**, so once the value round-trips the
+leading space is gone, the guard never matches, and the marker is appended again on every
+mount — observed as `"(Draft) (Draft)"`. It now keys on the parenthesised marker with no
+leading whitespace.
+
+**Two stale axe suppressions removed** from `Layout.test.tsx`. The `region` and
+`landmark-one-main` rules were disabled with comments claiming the skip link was missing and
+main needed a label; both have existed for some time. The full ruleset passes now, and the
+"allow up to 2 violations" tolerance in the navigation test is gone too.
+
+**Layout re-checked on the tightest page.** `/history/:historyId` is the same fixed-height
+master-detail shell as Results but keeps the footer _and_ adds a header plus an alert, so it
+has the least vertical room in the app. At 1280x720 with the banner present it still does not
+overflow.
 
 ### Wave 0 baseline — 2026-09-09, `feature/pilot-clearance` @ `33e7963`
 

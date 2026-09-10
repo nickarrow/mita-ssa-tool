@@ -23,6 +23,29 @@ const DEFAULT_GITHUB_REPO_URL = 'https://github.com/Enterprise-CMCS/mita-ssa-too
 export const GITHUB_REPO_URL = import.meta.env.VITE_GITHUB_REPO_URL || DEFAULT_GITHUB_REPO_URL;
 
 // =============================================================================
+// Draft Mode
+// =============================================================================
+
+/**
+ * Whether the tool presents itself as a draft still being piloted.
+ *
+ * Drives the site-wide banner. Wave 5 extends it to the exports, so the marker
+ * cannot be present in the app and missing from a PDF a state emails onward.
+ *
+ * Removing the disclaimer at go-live is one build variable, not a code change:
+ * set `VITE_DRAFT_MODE=false` in the deploy workflow. It defaults to draft-on so
+ * that forgetting to set it fails toward showing the notice rather than hiding it.
+ * Because the value resolves at build time, that also tree-shakes the banner and
+ * its copy out of the bundle rather than merely hiding them.
+ */
+export const IS_DRAFT = import.meta.env.VITE_DRAFT_MODE !== 'false';
+
+// The copy itself lives in ./draftNotice, which must stay free of `import.meta`
+// so Node-based build tooling can import the same strings. Re-exported here so
+// application code has a single import site.
+export { DRAFT_NOTICE_LABEL, DRAFT_NOTICE_BODY } from './draftNotice';
+
+// =============================================================================
 // Enterprise Domain Configuration
 // =============================================================================
 

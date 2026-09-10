@@ -4,8 +4,8 @@
  * Uses vitest-axe to automatically check for WCAG violations.
  */
 
-import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { axe } from 'vitest-axe';
 import Layout from './Layout';
@@ -27,15 +27,11 @@ describe('Layout accessibility', () => {
   it('should have no critical accessibility violations', async () => {
     const { container } = renderLayout();
 
-    const results = await axe(container, {
-      // Focus on critical issues first - we'll expand this as we fix issues
-      rules: {
-        // Temporarily disable rules we know are failing until fixed
-        // Remove these as issues are resolved
-        region: { enabled: false }, // A01: Skip link not yet implemented
-        'landmark-one-main': { enabled: false }, // A02: Main needs aria-label
-      },
-    });
+    // `region` and `landmark-one-main` used to be suppressed here with comments
+    // saying the skip link was missing and main needed a label. Both have since
+    // been implemented, and the draft banner is a labelled landmark, so the whole
+    // ruleset passes and the suppressions have been removed.
+    const results = await axe(container);
 
     expect(results).toHaveNoViolations();
   });
@@ -47,14 +43,10 @@ describe('Layout accessibility', () => {
       runOnly: ['navigation', 'landmark'],
     });
 
-    // Log violations for debugging during development
-    if (results.violations.length > 0) {
-      console.log('Navigation accessibility issues:', results.violations);
-    }
-
-    // This will fail initially - that's expected!
-    // We'll fix the issues and then this test will pass
-    expect(results.violations.length).toBeLessThanOrEqual(2);
+    // Previously allowed up to 2 violations with a comment saying it was expected
+    // to fail. It passes cleanly now, so the tolerance is gone — a regression here
+    // should fail rather than be absorbed by the budget.
+    expect(results).toHaveNoViolations();
   });
 });
 
@@ -88,5 +80,73 @@ describe('Layout structure', () => {
     const main = container.querySelector('#main-content');
     expect(main).toBeInTheDocument();
     expect(main?.tagName.toLowerCase()).toBe('main');
+  });
+});
+
+describe('Layout draft banner', () => {
+  const originalTitle = document.title;
+
+  afterEach(() => {
+    document.title = originalTitle;
+    vi.resetModules();
+    vi.doUnmock('../../constants');
+  });
+
+  it('shows the draft notice on every page while draft mode is on', () => {
+    renderLayout();
+
+    expect(screen.getByText('Draft')).toBeInTheDocument();
+    expect(screen.getByText(/still being piloted/)).toBeInTheDocument();
+  });
+
+  it('places the notice between the navigation and the main content', () => {
+    const { container } = renderLayout();
+
+    // Document order is the whole accessibility argument for a plain landmark
+    // instead of a live region, so it is worth pinning rather than assuming.
+    const banner = screen.getByRole('region', { name: 'Draft notice' });
+    const nav = container.querySelector('nav');
+    const main = container.querySelector('main');
+
+    expect(nav).not.toBeNull();
+    expect(main).not.toBeNull();
+    expect(nav!.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(banner.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('marks the document title so skip-link users still hear it', () => {
+    renderLayout();
+
+    expect(document.title).toContain('(Draft)');
+  });
+
+  it('does not duplicate the title marker across re-renders', () => {
+    const { unmount } = renderLayout();
+    unmount();
+    renderLayout();
+
+    expect(document.title.match(/\(Draft\)/g)).toHaveLength(1);
+  });
+
+  it('renders nothing when draft mode is switched off for go-live', async () => {
+    vi.resetModules();
+    vi.doMock('../../constants', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('../../constants')>()),
+      IS_DRAFT: false,
+    }));
+
+    const { default: FreshLayout } = await import('./Layout');
+    render(
+      <BrowserRouter>
+        <FreshLayout>
+          <div>Test content</div>
+        </FreshLayout>
+      </BrowserRouter>
+    );
+
+    expect(screen.queryByText('Draft')).not.toBeInTheDocument();
+    expect(screen.queryByText(/still being piloted/)).not.toBeInTheDocument();
+    // The title must not be marked either
+    expect(document.title).not.toContain('(Draft)');
   });
 });
