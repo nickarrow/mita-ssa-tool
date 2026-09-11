@@ -27,14 +27,14 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 ### Where things stand
 
-|                |                                                                                                                                                       |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                         |
-| Commits so far | Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, then Wave 5 |
-| Pushed         | Waves 1-4 are on `origin/feature/pilot-clearance` at `dbd54c7`. **Wave 5 is committed locally and not yet pushed**                                    |
-| Deployed       | Pages dispatched from this branch at `198c300`, so the live build includes all of Wave 4 but **not Wave 5**                                           |
-| Green at       | 675 tests / 35 files; typecheck, lint, knip, `format:check` all clean                                                                                 |
-| Next wave      | **Wave 6 — XLSX foundation.** See the pre-brief in Section 8f                                                                                         |
+|                |                                                                                                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                              |
+| Commits so far | Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f` |
+| Pushed         | Waves 1-4 are on `origin/feature/pilot-clearance` at `dbd54c7`. **Wave 5 (`1efdc9f`) is committed locally and NOT pushed**                                 |
+| Deployed       | Pages dispatched from this branch at `198c300`, so the live build includes all of Wave 4 but **not Wave 5**                                                |
+| Green at       | 675 tests / 35 files; typecheck, lint, knip, `format:check` all clean                                                                                      |
+| Next wave      | **Wave 6 — XLSX foundation.** See the pre-brief in Section 8g                                                                                              |
 
 > **Drop 1 is code-complete.** Waves 1-5 are done, which is the whole of the Friday
 > September 12 scope. Wave 5 changes numbers in the CSV states submit to CMS and in the PDF
@@ -52,16 +52,32 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 > `origin/main` sits 10 commits behind at the pre-v4 capability model (`aa3708c`).
 > Anything landing there — including a merged dependabot PR — auto-deploys and silently
 > reverts the live site that stakeholders are reviewing back to the old model. Keep work
-> on this branch.
+> on this branch, and deploy only by manually dispatching the Pages action from it
+> (Decision 11).
 
-> **Stakeholders are looking at the deployed build right now.** UI changes in Wave 4 will
-> change what they see mid-review. Prefer landing them as one deliberate deploy over a
-> trickle, and tell the user before anything visually disruptive goes out.
+> **Stakeholders are reviewing the deployed build as work continues.** Anything that changes
+> what they see — or what a number says — should land as one deliberate deploy rather than a
+> trickle, and the user decides when. Tell them before anything visually disruptive or
+> score-changing goes out.
 
 ### How to resume
 
-1. Read this file. Section 4 is the decision record, Section 6 is progress, Section 8 is
-   accumulated findings, and Section 8f is the pre-brief for the next wave.
+1. Read this file. Section 4 is the decision record, Section 5 is the specs, Section 6 is
+   progress, and **Section 8g is the pre-brief for the next wave** — read that one carefully,
+   it records traps that have already been paid for once.
+
+   Section 8 has grown organically and its subsections are not in wave order. Where to look:
+
+   | Looking for                                     | Section                                                     |
+   | ----------------------------------------------- | ----------------------------------------------------------- |
+   | Baseline to restore if a wave needs backing out | 8, "Wave 0 baseline"                                        |
+   | What Waves 2, 3 learned                         | 8, "Wave 2 notes" and "Wave 3 notes"                        |
+   | Review of the plan itself, before any code      | 8b                                                          |
+   | Accessibility: the record to point CMS at       | **8d** (method, results, and what it does _not_ establish)  |
+   | Accessibility: lessons and traps                | 8h, 8i                                                      |
+   | Export scoring and the draft notice             | **8e**                                                      |
+   | Pre-briefs                                      | 8c (Wave 4), 8f (Wave 5, historical), **8g (Wave 6, next)** |
+
 2. Find the first wave with unchecked boxes — that is the current position.
 3. Confirm the repo agrees with the checkboxes before trusting them:
    ```
@@ -69,7 +85,10 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    npm run typecheck && npm run lint && npm test && npm run audit:code
    ```
 4. Also read `docs/CODEBASE_OBSERVATIONS.md` — 35 `OBS-*` entries, referenced throughout
-   this plan. Entries resolved so far: OBS-1, 2, 3, 6, 7, 16, 17, 21, 24, 25, 29, 30, 31, 32, 34.
+   this plan. 35 entries; **14 resolved** — OBS-1, 2, 3, 6, 7, 17, 21, 24, 25, 29, 30, 31, 32,
+   34 — each carrying a `**Resolved` marker naming the wave, so the file can be scanned rather
+   than cross-referenced against this one. **OBS-16 is only _partially_ resolved** (one of its
+   four bullets); earlier revisions of this plan listed it as closed, which was wrong.
    Newest and unresolved: OBS-33 (collapsed panels stay mounted), OBS-35 (duplicate-rating
    path — decide before real state data exists).
 5. Append what you learn to Section 8 so the next session inherits it.
@@ -123,9 +142,11 @@ browser by reading `getComputedStyle` and computing the ratio.
 
 **Test flake (OBS-27).** Running two arbitrary test files together flakes, because many
 tests gate on a Dexie `liveQuery` emission they do not need. Run the **full suite** or a
-**single file**; avoid arbitrary pairs. `asyncUtilTimeout` is 3000ms, deliberately under
-vitest's 5000ms `testTimeout` so failures report as assertion differences rather than
-timeouts.
+**single file**; avoid arbitrary pairs. `asyncUtilTimeout` is 3000ms so failures report as
+assertion differences rather than timeouts. **`testTimeout` is 15000**, raised in Wave 4
+because a deliberate 4000ms `waitFor` was blowing vitest's 5000ms default under load — if
+tests start reporting "Test timed out" instead of a diff, check that first. (A comment in
+`src/test/setup.ts:8` still says 5000; the authoritative value is `vitest.config.ts:33`.)
 
 **knip fails the build on unused exports.** Do not add an export before its consumer
 exists — this bit twice, both times adding a constant one wave early.
@@ -134,7 +155,34 @@ exists — this bit twice, both times adding a constant one wave early.
 silently does nothing. And `$B:src/...` triggers zsh modifier expansion, mangling the path.
 Quote everything or write paths literally.
 
-**Sub-agent reviewers write to `semantic-review/`**, which is gitignored.
+**Sub-agent reviewers write to `semantic-review/`**, which is gitignored. The
+`semantic_reviewer` agent **stalled twice** in Wave 5 on this workspace ("Model stream
+stalled"); `general-task-execution` given an explicit adversarial-reviewer brief worked and
+produced the better review of the five. Try that first rather than retrying the specialist.
+
+**Capturing a real export.** Every export on the Import/Export page is gated behind a
+state-name dialog, so clicking the button alone produces nothing. And the Playwright MCP
+wrapper handles the `download` event itself, racing `page.waitForEvent('download')` — which
+then times out even though the file arrived. Register `page.on('download', ...)` and save from
+inside it.
+
+**Reading a generated PDF.** Two routes, both needed:
+
+- **Outside the suite:** extract text with `uv run --with "pypdf==5.4.0" python3 -` and a
+  heredoc. Nothing PDF-related is installed locally, and `uv` avoids installing anything.
+- **Inside the suite:** `generatePdfReport` returns a `Blob`, and jsdom implements neither
+  `Blob.text()` nor `Blob.arrayBuffer()`, so use `buildPdfDocument(...).output()` instead — it
+  returns the uncompressed document as a searchable string. **Unescape PDF string escapes
+  first** (`text.replace(/\\([()\\])/g, '$1')`): a literal parenthesis is written `\(`, so
+  every assertion on a bracketed score silently fails to match without it, while assertions on
+  plain words pass — which reads like an exporter bug rather than a test bug.
+
+**A substring assertion over a PDF is usually reachable another way.** Wave 5 shipped three
+that could not fail: a dimension name that the executive summary's intro sentence prints in
+every report, an `Areas` table header that another table already emitted, and `DRAFT` which
+the footer supplied while the assertion was meant to cover the cover band. Prefer asserting
+through an extracted pure function, anchoring the search past a unique heading, or counting
+occurrences against page count — **and prove each assertion by breaking the code it covers.**
 
 **Pre-commit hooks** run prettier and eslint via lint-staged and will reformat staged
 files, so run `npx prettier --write` on what you touched before committing to keep the
@@ -234,6 +282,15 @@ colour alone. Excel's own Accessibility Checker is the manual complement (Wave 7
   `[Placeholder — pending updated Capability Reference Model]`. Deliberate, pending
   NextGen's document. Should be called out to Shelley and Chris so they do not report it
   as a defect.
+- **OBS-35 (duplicate ratings from arrow-key level selection).** Native radio groups select
+  as focus moves, so arrowing from Level 1 to Level 5 fires four saves in as many
+  milliseconds over a read-then-write upsert, and the compound index in `db.ts` is not
+  unique so the database will not reject a duplicate. Not reproduced — six rapid presses did
+  not trigger it — but the failure mode is duplicate `orbitRatings` rows for one aspect,
+  which would double-count in a score a state submits to CMS. **Decide before real state data
+  exists.** The durable fix is a unique index, which means a Dexie version bump, and every
+  bump in this project has been a clean break that clears all tables — so it wants to ride
+  along with a migration that is happening anyway.
 - **`src/data/templates/maturity-profile-template.csv`** may be retirable — Shelley said
   the manual blank CSV profile could be "negated" if the workbook produces a profile
   (`[14:38]`–`[15:30]`). Confirm before deleting.
@@ -392,26 +449,36 @@ at different points in different rollups**, and getting that wrong is how the wo
 silently disagrees with the tool. Authoritative source is `src/services/scoring.ts` plus
 `useCapabilityAssessments.finalizeAssessment`.
 
-| Rollup                   | Rule                                                                                                                                | Rounding                                                 |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Aspect                   | The entered level                                                                                                                   | n/a                                                      |
-| Non-Technology dimension | Mean of assessed aspect levels                                                                                                      | round once                                               |
-| **Technology dimension** | Mean of the **two sub-dimension means** — not a flat mean of 11 aspects                                                             | sub-dimension means **unrounded**, round once at the end |
-| Standard area            | Mean of its dimension scores                                                                                                        | dimension scores **already rounded**, then round         |
-| **Organizational area**  | Mean of the three section means; sections with nothing assessed are excluded, so sections weigh equally despite 6/5/4 aspect counts | section means **unrounded**, round once at the end       |
-| Aggregate dimension      | Mean of the per-area dimension scores across non-enterprise areas                                                                   | per-area scores **already rounded**, then round          |
-| Domain                   | Mean of its areas' scores                                                                                                           | stored (rounded) area scores, then round                 |
+| Rollup                    | Rule                                                                                                                                                                                                     | Rounding                                                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Aspect                    | The entered level                                                                                                                                                                                        | n/a                                                      |
+| Non-Technology dimension  | Mean of assessed aspect levels                                                                                                                                                                           | round once                                               |
+| **Technology dimension**  | Mean of the **two sub-dimension means** — not a flat mean of 11 aspects                                                                                                                                  | sub-dimension means **unrounded**, round once at the end |
+| Standard area             | Mean of its dimension scores                                                                                                                                                                             | dimension scores **already rounded**, then round         |
+| **Organizational area**   | Mean of the three section means; sections with nothing assessed are excluded, so sections weigh equally despite 6/5/4 aspect counts                                                                      | section means **unrounded**, round once at the end       |
+| Aggregate dimension       | Mean of the per-area dimension scores across non-enterprise areas                                                                                                                                        | per-area scores **already rounded**, then round          |
+| Domain                    | Mean of its areas' scores                                                                                                                                                                                | stored (rounded) area scores, then round                 |
+| Enterprise-wide dimension | Mean of the per-area dimension scores, finalized areas only. Aggregate dimensions are **not** folded in — an aggregate derives from these same per-area scores, so counting it double-counts those areas | per-area scores **already rounded**, then round          |
+| **To-Be, every rollup**   | Identical to the As-Is rule at the same level, reading `targetLevel` instead of `currentLevel`. An absent `targetLevel` is excluded exactly like unassessed                                              | identical to the As-Is row above it                      |
 
 Exclusions, uniform everywhere: unassessed (`0`) and N/A (`-1`) are both left out of every
 average. A dimension with no assessed aspects is **dropped** from the area average rather
 than counted as zero — Excel's `AVERAGE` over blanks matches this, but the test suite must
 assert it rather than assume it.
 
-**Blocked on OBS-21.** The tool currently computes the Technology dimension two different
-ways — `calculateDimensionScore` (unrounded sub-dimension means) versus
-`getDimensionScoresForAssessment` (rounded sub-dimension means) — and they disagree by 0.1
-on real inputs. The workbook cannot mirror both. OBS-21 is therefore pulled into **Wave 1**,
-and `calculateDimensionScore` is the canonical rule the workbook implements.
+**Resolved — there is now exactly one rule to mirror.** This section previously recorded a
+blocker: the tool computed the Technology dimension two different ways and the workbook could
+not mirror both. That is discharged, and it took three waves rather than one.
+
+| Wave | What it fixed                                                                                                                                                      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1    | OBS-21 — the results table double-rounded sub-dimension means, disagreeing with `calculateDimensionScore` by 0.1                                                   |
+| 5    | OBS-25 — both export paths, the PDF executive summary, and the live To-Be column all flat-averaged 11 Technology aspects. Five sites in total, plus a latent sixth |
+| 5    | To-Be gained a canonical rule at all, via `calculateDimensionScore(..., 'targetLevel')`. Before this there was none, and each caller averaged `targetLevel` itself |
+
+`calculateDimensionScore` in `src/services/scoring.ts` is the single canonical
+implementation and the one the workbook formulas mirror. `summariseDimensionsAcrossAreas` in
+`src/services/export/pdfExport.ts` is the reference for the enterprise-wide row above.
 
 **Known accepted divergences.** The workbook has no concept of assessment _status_, but two
 tool rules depend on it: aggregate dimensions count only **finalized** assessments, and
@@ -686,6 +753,17 @@ Nick owes Shelley a scoping reply (`[18:36]`, `[26:06]`). It should state:
 - Delivery date for the reviewable build
 - **That CMS internal 508 review is a separate gate on their clock** — the date is
   "ready for review," not "cleared"
+- **That exported Technology scores changed in Drop 1, and why.** Anyone who exported a CSV or
+  PDF before Wave 5 has a Technology figure computed as a flat mean over all 11 aspects rather
+  than the mean of the two sub-dimension means; it can differ by a couple of tenths, and it
+  read higher whenever Technical Infrastructure Management scored above Application
+  Management. The tool's own Results screen was already correct, so the export was the outlier.
+  Worth saying plainly and unprompted — a reviewer who spots a score move and is not told why
+  will reasonably assume the new number is the broken one. The `[Unreleased]` CHANGELOG section
+  has the detail
+- That the PDF's "ORBIT Dimension Summary" changed meaning in the same drop: it is now the
+  mean of per-area dimension scores over finalized areas, where it previously averaged every
+  rating and quietly included in-progress work
 - The specific ask: reviewers must validate the workbook's **arithmetic**, not only its
   look and feel, because automated tests cannot evaluate Excel formulas (5.4)
 - That placeholder descriptions on 14 areas are intentional and pending NextGen's
@@ -1163,7 +1241,7 @@ State these alongside any claim about accessibility:
    existed only behind an expand or a selection, so a sweep that only visits URLs will report this
    app cleaner than it is.
 
-### Wave 5 notes — 2026-09-11
+## 8e. Wave 5 Notes — 2026-09-11
 
 Full record of what changed is the Wave 5 checklist above. What is here is the things
 that cost time to learn, and the numbers a later session should not have to re-derive.
@@ -1254,7 +1332,7 @@ It is most likely axe sampling MUI's colour transition mid-animation. Not reprod
 stable state, so it is **not** filed as an `OBS-*` entry — but note it sits inside Wave 4's
 stated limitation 8, that import/export interaction states were never enumerated.
 
-**The PDF print palette was verified rather than assumed** — Section 8e flagged `stat.color`
+**The PDF print palette was verified rather than assumed** — Section 8f flagged `stat.color`
 at `pdfExport.ts:192` as untraced. It comes from the local `COLORS` table
 (`accent`/`primary`/`darkGray`), measuring 4.89:1, 6.56:1 and 5.43:1 on `lightGray`. Every
 pair in the palette clears AA, so Wave 4's contrast work not reaching the PDF turned out not
@@ -1279,7 +1357,12 @@ comment quoted a second, different ratio for the reversed pairing; there is no s
 5. `parseMaturityProfileCsv` still has no consumer outside its own test, so the CSV
    round-trip guarantee remains real but hypothetical.
 
-## 8e. Wave 5 Pre-Brief (exports: draft notice + scoring correctness)
+## 8f. Wave 5 Pre-Brief — historical
+
+> **Wave 5 is complete.** This is kept as written, before the work, because comparing it
+> against what actually happened is useful: it called four defects and there were six, and it
+> did not know about the live UI's To-Be divergence at all. **Section 8e is the record of what
+> was actually done.**
 
 Written at the end of Wave 4 so the next session starts with what is already known. Wave 5 is
 the last wave of Drop 1 and, unlike Wave 4, its scope is **bounded and enumerable** — the work
@@ -1349,7 +1432,7 @@ OBS-25 first — it is the blocker, and getting the canonical score into export 
 work purely additive. Then OBS-3, then the notice on all four surfaces, then the OBS-2 test.
 Land it as one commit with a sub-agent review, as with Waves 1-4.
 
-## 8f. Wave 6 Pre-Brief (XLSX foundation)
+## 8g. Wave 6 Pre-Brief (XLSX foundation)
 
 Written at the end of Wave 5. Wave 6 opens Drop 2 and is the first wave that adds a new
 artifact rather than correcting an existing one.
@@ -1415,19 +1498,7 @@ table", "document properties populated" are all easy to write in a form that pas
 or half-built workbook. **Prove each assertion by breaking the thing it covers and watching it
 fail.** That step caught two of Wave 5's three.
 
-## 9. Out of Scope
-
-| Item                                                        | Disposition                                                                                                                                                                                                 |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| XLSX import (fill in the spreadsheet, continue in the tool) | Deferred (Decision 6). Sean raised it `[11:30]`; Shelley agreed it is not the priority `[12:52]`. The reference implementation has a working `xlsxImport.ts` to revisit. Hidden ID columns keep it feasible |
-| Live-data XLSX export                                       | Deferred (Decision 6). The reference implementation's `includeCurrentData` path covers it                                                                                                                   |
-| Capability model or maturity criteria changes               | None. Content is unchanged; workstream C only reads it                                                                                                                                                      |
-| Reviewing the v4 model against the source deck              | Shelley and Chris, this week `[13:52]`                                                                                                                                                                      |
-| PRA submission                                              | Shelley; going in under the approved APD template PRA `[15:45]`                                                                                                                                             |
-| Formal ACR/VPAT                                             | Pending P2                                                                                                                                                                                                  |
-| Remaining `OBS-*` items                                     | OBS-4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 19 stay in the backlog. OBS-5 and OBS-8 are flagged as pre-pilot decisions in Section 4                                                                             |
-
-### Wave 4 notes — 2026-09-10
+## 8h. Wave 4 Notes — 2026-09-10
 
 Full audit record is Section 8d. What is here is the things that cost time to learn.
 
@@ -1502,7 +1573,7 @@ stores afterwards and **read the counts back to prove they were zero** — the u
 profile persists. `.playwright-mcp/` (screenshots, console logs) is now gitignored; it was not
 before, and it would otherwise have landed in this commit.
 
-### Wave 4 follow-up notes — 2026-09-10
+## 8i. Wave 4 Follow-Up Notes — 2026-09-10
 
 The two Wave 4 deferrals were fixed rather than documented. Lessons worth inheriting.
 
@@ -1554,3 +1625,15 @@ panels stay mounted. The OBS-6 notes test started missing its 4s gate on about o
 in three. Shortening the typed string restored stability across four consecutive runs, but the
 underlying cost is real and is logged as OBS-33 — the one-prop fix removes the element
 `aria-controls` points at, so it needs its own accessibility pass rather than a rushed landing.
+
+## 9. Out of Scope
+
+| Item                                                        | Disposition                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| XLSX import (fill in the spreadsheet, continue in the tool) | Deferred (Decision 6). Sean raised it `[11:30]`; Shelley agreed it is not the priority `[12:52]`. The reference implementation has a working `xlsxImport.ts` to revisit. Hidden ID columns keep it feasible                                                                                    |
+| Live-data XLSX export                                       | Deferred (Decision 6). The reference implementation's `includeCurrentData` path covers it                                                                                                                                                                                                      |
+| Capability model or maturity criteria changes               | None. Content is unchanged; workstream C only reads it                                                                                                                                                                                                                                         |
+| Reviewing the v4 model against the source deck              | Shelley and Chris, this week `[13:52]`                                                                                                                                                                                                                                                         |
+| PRA submission                                              | Shelley; going in under the approved APD template PRA `[15:45]`                                                                                                                                                                                                                                |
+| Formal ACR/VPAT                                             | Pending P2                                                                                                                                                                                                                                                                                     |
+| Remaining `OBS-*` items                                     | 21 of 35 stay in the backlog: OBS-4, 5, 8, 9, 10, 11, 12, 13, 14, 15, **16 (partially)**, 18, 19, 20, 22, 23, 26, 27, 28, 33, 35. OBS-22 (PWA, via P4) and OBS-28 (favicon) are scheduled for Wave 8. OBS-5, OBS-18 and OBS-35 are carried in Section 4 as needing a decision rather than code |

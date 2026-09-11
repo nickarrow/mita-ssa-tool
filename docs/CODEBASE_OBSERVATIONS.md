@@ -81,6 +81,11 @@ call sites were not updated. Fix should use `getOrganizationalAssessmentTypes()`
 `ORGANIZATIONAL_SECTIONS` constant instead of a hand-written literal union, so a fourth
 section cannot reintroduce it.
 
+**Resolved in Wave 1.** Both call sites now go through `isOrganizationalDimensionId`,
+a type guard derived from `ORGANIZATIONAL_SECTIONS`, so the false branch narrows to
+`OrbitDimensionId` with no cast and a fourth section cannot reintroduce the bug. A
+regression test covers all three sections, `enterprise-architecture` included.
+
 ### OBS-2 — PDF export mislabels unassessed aspects as "N/A"
 
 **Confirmed** by reading both branches.
@@ -179,6 +184,12 @@ These three also skip the `capabilityAssessments.updatedAt` bump that every othe
 performs, so text-only edits do not move the assessment in the dashboard's
 recently-updated ordering.
 
+**Resolved in Wave 2**, both halves: the three functions create the rating when one is
+missing, and they bump `updatedAt`. Verified end to end in a real browser rather than only
+in tests, because it is a data-loss fix shipping into a pilot — notes typed with no level
+selected persist at `currentLevel: 0`, survive a reload, and are not clobbered when a level
+is later chosen. Sidebar progress correctly stays at 0% for a notes-only row.
+
 ### OBS-7 — The save indicator is not wired to actual saves
 
 **Confirmed** by reading `triggerSave` in `src/pages/Assessment.tsx`.
@@ -193,6 +204,10 @@ It reports success on a timer, never observing the promise. Failed writes still 
 trigger. In a tool whose entire value proposition is local persistence, a save indicator
 that cannot report failure is worth fixing — awaiting the handler's promise and
 surfacing rejection would use the existing UI.
+
+**Resolved in Wave 2.** `triggerSave` awaits the handler and routes rejection to the
+`'error'` state that already existed, so the indicator now reports the real outcome. It is
+also a polite live region rather than a silent one. A test covers the rejected-save path.
 
 ### OBS-8 — Import runs untransacted
 
@@ -321,6 +336,11 @@ real mechanism. Patching only the changed field would close it.
   content pane still shows one.
 - `ResultsMasterDetail` hardcodes `height: 600` with internal scroll. On a tall viewport
   the nav list clips mid-domain (observed in the browser) with lots of empty page below.
+  **Partially resolved — the fourth bullet only.** The three above it are still open: the
+  duplicated `SaveStatus` type, `isReviewSelected` never resetting when the finalize dialog is
+  dismissed, and `ResultsMasterDetail`'s hardcoded `height: 600`. Do not read this entry as
+  closed.
+
 - ~~`Dashboard.handleExportAssessment` is a `TODO: Implement export in Phase 7` stub~~ —
   **corrected during Wave 1.** It was worse and simpler than described: `ActionMenu` never
   rendered an Export item at all, so the handler was unreachable and `onExport` was dead
@@ -344,6 +364,13 @@ v3. Actual: 14 domains, 72 areas, category tier and those types removed in v4.
 `PROJECT_FOUNDATION_v2.md` is correct. Since the steering file is injected into every
 AI-assisted session, it actively feeds wrong domain facts into future work — highest
 value-per-effort item in this document.
+
+**Resolved in Wave 1.** The steering file now states 14 domains / 72 areas / 3 layers, the
+`isCategorizedDomain` and `CategorizedCapabilityDomain` references are gone, the "currently
+at version 1" schema claim is corrected to v4, and it notes that `UI.DEBOUNCE_MS` is not the
+delay `AspectCard` actually passes. Two things it still does **not** carry, both worth adding
+next time it is touched: OBS-32's guidance to pass `component` explicitly on every
+`Typography`, and the `scripts/` convention once the XLSX generator lands (a Wave 8 task).
 
 ### OBS-18 — Placeholder descriptions are user-visible
 
@@ -465,6 +492,21 @@ means for the dimension roll-up while still displaying rounded values per sub-di
 Consequential now for two reasons: reviewers are looking at the Results screen this week,
 and the XLSX workbook has to reproduce one of these two numbers — so which one is
 authoritative must be settled before the formulas are written.
+
+**Resolved in Wave 1.** `getDimensionScoresForAssessment` now delegates the dimension
+roll-up to `calculateDimensionScore` while still displaying rounded per-sub-dimension
+values — display rounds, scoring does not. A regression test pins the divergent case:
+Infrastructure `2,2,2,2,1,1` plus Application `1,1,1,1,1` yields the same score in both
+paths.
+
+**The organizational section path was deliberately left as-is.**
+`getOrganizationalScoresForAssessment` still rounds each section mean while
+`finalizeAssessment` averages unrounded ones. That follows the same
+display-rounds/scoring-does-not rule, and nothing recomputes an area score from the
+displayed section values, so there is no contradictory pair on screen.
+
+Worth knowing this entry undercounted: export had a **third** implementation, which is
+OBS-25, and there turned out to be six sites in total. Wave 5 closed the rest.
 
 ### OBS-22 — The app is documented and advertised as an offline-first PWA, but no service worker exists
 
@@ -966,8 +1008,9 @@ clipping noted under OBS-16.
 
 ### OBS-32 — `variant="subtitle1|subtitle2"` silently emits `<h6>`, and it broke heading order on seven pages
 
-**Confirmed** on seven of twelve routes by axe (Wave 4); fixed in that wave, recorded here
-because the trap is still live for new code.
+**Confirmed** on seven of twelve routes by axe (Wave 4). **Resolved in Wave 4** — 24
+`Typography` sites were given an explicit `component`. Recorded here anyway, because the trap
+is still live for any new code that does not.
 
 MUI's default `variantMapping` maps `subtitle1` **and** `subtitle2` to `h6`, and `h1`–`h6`
 variants to their matching tags. So `<Typography variant="subtitle2">` renders a real
@@ -1011,7 +1054,7 @@ Both produced duplicate DOM ids and `landmark-unique` violations, and in the
 `QuestionChecklist` case every region's `aria-labelledby` resolved to the _first_ matching
 header, so four of the five panels were mislabelled for assistive technology.
 
-Both are fixed — `AspectCard` by deleting the manual attributes, since MUI's `Accordion`
+**Resolved in Wave 4.** Both are fixed — `AspectCard` by deleting the manual attributes, since MUI's `Accordion`
 already renders a correctly-wired `div.MuiAccordion-region`, and `QuestionChecklist` by
 deriving ids from `useId()`. With all five aspects and their evidence panels expanded there are
 now zero duplicate ids, verified by enumerating every `id` in the document.
