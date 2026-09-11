@@ -27,20 +27,20 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 ### Where things stand
 
-|                |                                                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                    |
-| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3, `ef141e8` + `7710921` handoff docs, then three accessibility commits                       |
-| Pushed         | Up to `7710921`. **All three accessibility commits are local only — not pushed**                                                                 |
-| Deployed       | The user manually dispatches the Pages workflow from this branch. The deployed build is **pre-Wave 4** — that is what Shelley and Chris reviewed |
-| Green at       | 628 tests / 34 files; typecheck, lint, knip all clean                                                                                            |
-| Next wave      | **Wave 5 — draft notice in exports, plus PDF correctness.** Wave 4 is done, including both of its original deferrals; record in Section 8d       |
+|                |                                                                                                                                        |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                          |
+| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3, `ef141e8` + `7710921` docs, then `5580191` + `bdf1871` + `198c300` accessibility |
+| Pushed         | Yes — `origin/feature/pilot-clearance` is at `198c300`, level with local, working tree clean                                           |
+| Deployed       | Yes. Pages dispatched from this branch at `198c300`, so the live build **includes all of Wave 4**                                      |
+| Green at       | 631 tests / 34 files; typecheck, lint, knip, `format:check` all clean                                                                  |
+| Next wave      | **Wave 5 — draft notice in exports, plus PDF/CSV scoring correctness.** See the pre-brief in Section 8e                                |
 
-> **The unpushed commits change what stakeholders see.** Wave 4's semantic fixes are invisible to
-> a mouse user, but the contrast batch changes the score-chip palette, the selected nav item and
-> several chips, and the rewritten level selector now uses standard radio buttons. Nothing has
-> been pushed or deployed — brief Shelley and Chris before dispatching, since they reviewed the
-> previous appearance.
+> **Stakeholders are now looking at the post-Wave-4 build,** and it differs visibly from what they
+> reviewed before: darker score chips, a selected nav item that darkens rather than lightens,
+> several recoloured chips, and a maturity level selector built from standard radio buttons. That
+> was a deliberate, briefed deploy. Expect questions about appearance, and do not attribute those
+> changes to Wave 5.
 
 > **Do not push to `main`.** `deploy.yml` auto-triggers on pushes to `main`, and
 > `origin/main` sits 10 commits behind at the pre-v4 capability model (`aa3708c`).
@@ -62,8 +62,10 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    git branch --show-current && git status --short && git log --oneline -4
    npm run typecheck && npm run lint && npm test && npm run audit:code
    ```
-4. Also read `docs/CODEBASE_OBSERVATIONS.md` — 32 `OBS-*` entries, referenced throughout
-   this plan. Entries resolved so far: OBS-1, 2, 6, 7, 16, 17, 21, 24, 32.
+4. Also read `docs/CODEBASE_OBSERVATIONS.md` — 35 `OBS-*` entries, referenced throughout
+   this plan. Entries resolved so far: OBS-1, 2, 6, 7, 16, 17, 21, 24, 29, 30, 31, 32, 34.
+   Newest and unresolved: OBS-33 (collapsed panels stay mounted), OBS-35 (duplicate-rating
+   path — decide before real state data exists).
 5. Append what you learn to Section 8 so the next session inherits it.
 
 ### Working agreements established with the user
@@ -545,7 +547,11 @@ the next wave with a red repo.
 ### Wave 5 — Draft notice in exports, plus PDF correctness
 
 - [ ] PDF: draft band on the cover and a footer line, from the shared module
-- [ ] CSV: notice line above the profile header; teach `parseMaturityProfileCsv` to skip it
+- [ ] CSV: notice line **directly after** the `MITA 4.0 Maturity Profile: <state>` header — not
+      above it, which would break state-name parsing (see 5.1) — and teach
+      `parseMaturityProfileCsv` to skip it
+- [ ] JSON / ZIP: `draftNotice` field in the export envelope, and a line in the ZIP
+      `manifest.json`. This is the primary export path, so do not skip it (Decision 4)
 - [x] **OBS-2** — done early, in Wave 2. `pdfExport.ts` labelled `currentLevel === 0` as
       "N/A" in `generateDimensionDetails` while `generateOrganizationalDetails` correctly
       used `-1`. Pulled forward because the OBS-6 fix makes notes-only rows (level 0) a
@@ -1138,6 +1144,76 @@ State these alongside any claim about accessibility:
 4. When auditing again, drive interaction states rather than routes. Four of this audit's findings
    existed only behind an expand or a selection, so a sweep that only visits URLs will report this
    app cleaner than it is.
+
+## 8e. Wave 5 Pre-Brief (exports: draft notice + scoring correctness)
+
+Written at the end of Wave 4 so the next session starts with what is already known. Wave 5 is
+the last wave of Drop 1 and, unlike Wave 4, its scope is **bounded and enumerable** — the work
+is four known defects plus the draft notice on four surfaces.
+
+### Why this wave matters beyond Drop 1
+
+**OBS-25 is a Wave 7 blocker.** The workbook formulas have to reproduce one Technology dimension
+score, and there are currently still two answers in the codebase: the canonical
+`calculateDimensionScore` (mean of the two sub-dimension means) and the export path's flat mean
+over all 11 aspects. Wave 1 fixed the results table; export was out of its scope. Until this is
+settled, Wave 7 has no single number to target — so this wave unblocks the whole of Drop 2.
+
+It also matters on its own terms: **the CSV maturity profile is the artifact states submit to
+CMS**, and the PDF is the stakeholder report. Both currently print a Technology score the tool's
+own UI disagrees with. Example from OBS-25: Infrastructure all at 5 and Application all at 1
+gives 3.0 canonically and 3.2 in export — a weighting difference, so it does not shrink with
+more data.
+
+### The four defects, in dependency order
+
+1. **OBS-25 — Technology weighting in `exportService.generateStandardAreaProfile` and
+   `pdfExport.generateDimensionDetails`.** Delegate to `calculateDimensionScore`. The wrinkle:
+   that scorer only reads `currentLevel`, so the **To-Be column needs a path too** — either
+   parameterise the level selector or generalise the scorer. Decide which, and say why.
+2. **OBS-25 follow-on — `generateExecutiveSummary`'s "ORBIT Dimension Summary".** This is a
+   different question, not a delegation: it flat-averages every rating for a dimension across all
+   areas, so it is weighted by both aspect count _and_ how many areas were assessed. The
+   defensible enterprise figure is the mean of per-area dimension scores. **That is a semantic
+   change to a stakeholder-facing table — get the user's call before changing it.**
+3. **OBS-3 — aggregate dimensions are missing from the PDF entirely.** `generateCapabilityAreaSection`
+   groups actual ratings, and aggregate dimensions have none by design, so a Data Management
+   area's PDF silently omits Information. CSV and the results UI both handle this; copy their
+   shape (`(Aggregate from N assessments)`).
+4. **OBS-2 export-side test.** The fix landed in Wave 2 — `pdfExport` had labelled
+   `currentLevel === 0` as "N/A" where the convention is `-1` — but it still has no test at the
+   export boundary. Cheap, and it guards a stakeholder-facing misreport.
+
+Plus the draft notice on four surfaces (Decision 4), and replacing the inline three-literal
+organizational-section checks in `exportService.ts` and `pdfExport.ts` with
+`isOrganizationalDimensionId`.
+
+### Traps already known
+
+- **CSV notice placement is constrained.** `parseMaturityProfileCsv` reads the state name from
+  `lines[0]` specifically (`csvExport.ts:141-143`), so a notice _above_ that line makes every
+  parsed state name `Unknown`. Put it on the line **after** the
+  `MITA 4.0 Maturity Profile: <state>` header, padded with the existing `,,,,,` convention, and
+  teach the parser to skip it. Worth knowing: that parser is not exported from
+  `services/export/index.ts` and has no consumer outside its own test, so the round-trip
+  constraint is currently hypothetical — but leaving it broken traps whoever wires CSV import.
+- **The draft copy lives in `src/constants/draftNotice.ts`**, deliberately free of any
+  `import.meta` reference so Node build tooling can import it. `IS_DRAFT` stays in
+  `constants/index.ts` because it is environment-dependent. Do not merge them.
+- **The PDF has its own colour set** — `COLORS` in `pdfStyles.ts`, unrelated to `SCORE_COLORS`.
+  The Wave 4 contrast work therefore did **not** reach the PDF. Spot-checked and the print
+  palette looks conservative (`#005b96`, `#646464`, `#007a5c` all clear 4.5:1 on white), but
+  `stat.color` at `pdfExport.ts:192` is passed in from elsewhere and was not traced. Verify, do
+  not assume — and note the PDF is a fifth place score colours are decided.
+- **`npm test` needs `testTimeout`.** Wave 4 raised it to 15000 in `vitest.config.ts` because a
+  deliberate 4000ms `waitFor` inside vitest's 5000ms default was timing out under load. If tests
+  start reporting "Test timed out" rather than assertion differences, check that first.
+
+### Suggested sequence
+
+OBS-25 first — it is the blocker, and getting the canonical score into export makes the notice
+work purely additive. Then OBS-3, then the notice on all four surfaces, then the OBS-2 test.
+Land it as one commit with a sub-agent review, as with Waves 1-4.
 
 ## 9. Out of Scope
 
