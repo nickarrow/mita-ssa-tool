@@ -27,26 +27,43 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 ### Where things stand
 
-|                |                                                                                                                                                            |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                              |
-| Commits so far | Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f` |
-| Pushed         | Waves 1-4 are on `origin/feature/pilot-clearance` at `dbd54c7`. **Wave 5 (`1efdc9f`) is committed locally and NOT pushed**                                 |
-| Deployed       | Pages dispatched from this branch at `198c300`, so the live build includes all of Wave 4 but **not Wave 5**                                                |
-| Green at       | 675 tests / 35 files; typecheck, lint, knip, `format:check` all clean                                                                                      |
-| Next wave      | **Wave 6 — XLSX foundation.** See the pre-brief in Section 8g                                                                                              |
+|                |                                                                                                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                                                                     |
+| Commits so far | Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c` |
+| Pushed         | Yes — `origin/feature/pilot-clearance` is at `84ec16c`, level with local, working tree clean                                                                                                      |
+| Deployed       | Yes. Pages dispatched from this branch at `84ec16c` on September 11, so the live build includes **all of Drop 1 plus the CMS top/bottom notices**                                                 |
+| Green at       | 684 tests / 35 files; typecheck, lint, knip, `format:check` all clean                                                                                                                             |
+| Next wave      | **Wave 6 — XLSX foundation.** See the pre-brief in Section 8g                                                                                                                                     |
 
-> **Drop 1 is code-complete.** Waves 1-5 are done, which is the whole of the Friday
-> September 12 scope. Wave 5 changes numbers in the CSV states submit to CMS and in the PDF
-> stakeholder report — see the table at the top of the Wave 5 notes for exactly which — so
-> pushing and dispatching a deploy is a deliberate act, not a formality. Wave 5 is not on the
-> live site until that happens.
+> **Drop 1 is delivered.** Waves 1-5 are done and deployed, which is the whole of the Friday
+> September 12 scope, plus the CMS-requested top and bottom notices (Decision 15).
 
-> **Stakeholders are now looking at the post-Wave-4 build,** and it differs visibly from what they
-> reviewed before: darker score chips, a selected nav item that darkens rather than lightens,
-> several recoloured chips, and a maturity level selector built from standard radio buttons. That
-> was a deliberate, briefed deploy. Expect questions about appearance, and do not attribute those
-> changes to Wave 5.
+> **The deploy target is the fork, not the CMS org repo — and `gh` gets this wrong by
+> default.** `origin` is `naretakis/mita-ssa-tool` (redirecting to `nickarrow/mita-ssa-tool`)
+> and the pilot site is <https://nickarrow.github.io/mita-ssa-tool/>. `upstream` is
+> `Enterprise-CMCS/mita-ssa-tool`, which has its own Pages site at
+> `enterprise-cmcs.github.io/mita-ssa-tool` and has only ever deployed `main` via merged PRs.
+> `gh repo view` in this working copy resolves to **Enterprise-CMCS**, so a bare
+> `gh workflow run` aims at the wrong repository — where `feature/pilot-clearance` does not
+> even exist. Always pass the repo explicitly:
+>
+> ```
+> gh workflow run "Deploy to GitHub Pages" \
+>   --repo nickarrow/mita-ssa-tool --ref feature/pilot-clearance
+> ```
+>
+> Confirm afterwards by reading the live bundle rather than trusting a green run:
+> `curl -s <site>/ | grep -o '/mita-ssa-tool/assets/index-[^"]*\.js'` then grep that file for
+> the copy you expect.
+
+> **Stakeholders are looking at a build that has changed twice in quick succession.** Wave 4
+> altered appearance — darker score chips, a selected nav item that darkens rather than
+> lightens, several recoloured chips, a maturity level selector built from standard radio
+> buttons. Drop 1 then changed the **Technology score** in exports (see the Wave 5 notes for
+> the before-and-after figures) and replaced the disclaimer with CMS's two-notice wording.
+> All deliberate and all briefed. Expect questions, and check that table before attributing a
+> changed number to a defect.
 
 > **Do not push to `main`.** `deploy.yml` auto-triggers on pushes to `main`, and
 > `origin/main` sits 10 commits behind at the pre-v4 capability model (`aa3708c`).
@@ -85,10 +102,11 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    npm run typecheck && npm run lint && npm test && npm run audit:code
    ```
 4. Also read `docs/CODEBASE_OBSERVATIONS.md` — 35 `OBS-*` entries, referenced throughout
-   this plan. 35 entries; **14 resolved** — OBS-1, 2, 3, 6, 7, 17, 21, 24, 25, 29, 30, 31, 32,
+   this plan. 36 entries; **14 resolved** — OBS-1, 2, 3, 6, 7, 17, 21, 24, 25, 29, 30, 31, 32,
    34 — each carrying a `**Resolved` marker naming the wave, so the file can be scanned rather
    than cross-referenced against this one. **OBS-16 is only _partially_ resolved** (one of its
-   four bullets); earlier revisions of this plan listed it as closed, which was wrong.
+   four bullets); earlier revisions of this plan listed it as closed, which was wrong. Newest is
+   OBS-36 (`/results` has no headings at all in its empty-data state).
    Newest and unresolved: OBS-33 (collapsed panels stay mounted), OBS-35 (duplicate-rating
    path — decide before real state data exists).
 5. Append what you learn to Section 8 so the next session inherits it.
@@ -1653,12 +1671,12 @@ underlying cost is real and is logged as OBS-33 — the one-prop fix removes the
 
 ## 9. Out of Scope
 
-| Item                                                        | Disposition                                                                                                                                                                                                                                                                                    |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| XLSX import (fill in the spreadsheet, continue in the tool) | Deferred (Decision 6). Sean raised it `[11:30]`; Shelley agreed it is not the priority `[12:52]`. The reference implementation has a working `xlsxImport.ts` to revisit. Hidden ID columns keep it feasible                                                                                    |
-| Live-data XLSX export                                       | Deferred (Decision 6). The reference implementation's `includeCurrentData` path covers it                                                                                                                                                                                                      |
-| Capability model or maturity criteria changes               | None. Content is unchanged; workstream C only reads it                                                                                                                                                                                                                                         |
-| Reviewing the v4 model against the source deck              | Shelley and Chris, this week `[13:52]`                                                                                                                                                                                                                                                         |
-| PRA submission                                              | Shelley; going in under the approved APD template PRA `[15:45]`                                                                                                                                                                                                                                |
-| Formal ACR/VPAT                                             | Pending P2                                                                                                                                                                                                                                                                                     |
-| Remaining `OBS-*` items                                     | 21 of 35 stay in the backlog: OBS-4, 5, 8, 9, 10, 11, 12, 13, 14, 15, **16 (partially)**, 18, 19, 20, 22, 23, 26, 27, 28, 33, 35. OBS-22 (PWA, via P4) and OBS-28 (favicon) are scheduled for Wave 8. OBS-5, OBS-18 and OBS-35 are carried in Section 4 as needing a decision rather than code |
+| Item                                                        | Disposition                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| XLSX import (fill in the spreadsheet, continue in the tool) | Deferred (Decision 6). Sean raised it `[11:30]`; Shelley agreed it is not the priority `[12:52]`. The reference implementation has a working `xlsxImport.ts` to revisit. Hidden ID columns keep it feasible                                                                                                                                                   |
+| Live-data XLSX export                                       | Deferred (Decision 6). The reference implementation's `includeCurrentData` path covers it                                                                                                                                                                                                                                                                     |
+| Capability model or maturity criteria changes               | None. Content is unchanged; workstream C only reads it                                                                                                                                                                                                                                                                                                        |
+| Reviewing the v4 model against the source deck              | Shelley and Chris, this week `[13:52]`                                                                                                                                                                                                                                                                                                                        |
+| PRA submission                                              | Shelley; going in under the approved APD template PRA `[15:45]`                                                                                                                                                                                                                                                                                               |
+| Formal ACR/VPAT                                             | Pending P2                                                                                                                                                                                                                                                                                                                                                    |
+| Remaining `OBS-*` items                                     | 22 of 36 stay in the backlog: OBS-4, 5, 8, 9, 10, 11, 12, 13, 14, 15, **16 (partially)**, 18, 19, 20, 22, 23, 26, 27, 28, 33, 35, 36. OBS-22 (PWA, via P4) and OBS-28 (favicon) are scheduled for Wave 8. OBS-5, OBS-18 and OBS-35 are carried in Section 4 as needing a decision rather than code. OBS-36 wants pairing with a re-audit of data-empty states |
