@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Pilot clearance work on `feature/pilot-clearance`. See
+`docs/decisions/PILOT_CLEARANCE_PLAN.md` for the scope record and decision log. The
+version bump lands with the final wave.
+
+### Fixed
+
+- **Technology dimension score in PDF and CSV exports** (OBS-25). Both computed it as a
+  flat mean over all 11 Technology aspects, which weights the 6-aspect Technical
+  Infrastructure Management sub-dimension above the 5-aspect Application Management
+  one. The rule is the mean of the two sub-dimension means. **A state's exported
+  Technology figure can therefore change** — for example an area with Infrastructure
+  all at 5 and Application all at 1 exported 3.2 and now correctly exports 3.0. This is
+  a weighting correction, not rounding, so it does not diminish with more data. The CSV
+  maturity profile is the artifact submitted to CMS, and it previously disagreed with
+  the score the tool's own Results screen displayed for the same inputs
+- **To-Be (target) Technology score**, same weighting error, in the CSV profile and on
+  the Results screen. All scoring now delegates to the single canonical
+  `calculateDimensionScore`
+- **Aggregate dimensions were missing from PDF reports entirely** (OBS-3). A Data
+  Management area's report showed Business Architecture and Technology but omitted
+  Information, because the generator iterates actual ratings and aggregate dimensions
+  have none by design. They now appear with their score and an
+  `(Aggregate from N assessments)` note, matching the CSV and the Results screen
+- **PDF labelled unassessed aspects as "N/A"** (OBS-2, fixed earlier in this branch,
+  now covered by tests at the export boundary). Unassessed (`0`) reports as "Not Rated";
+  only a genuine N/A determination (`-1`) reports as "N/A"
+- `(Aggregate from 1 assessments)` now reads `(Aggregate from 1 assessment)`
+
+### Changed
+
+- **The PDF executive summary's "ORBIT Dimension Summary" is now the mean of per-area
+  dimension scores, counting finalized assessments only.** It previously averaged every
+  rating across all areas, so it was weighted by aspect count _and_ by how many areas
+  had been assessed, and it silently included in-progress assessments while the domain
+  table immediately above it counted finalized ones. A new "Areas" column shows the
+  denominator
+
+### Added
+
+- Draft notice in every export format (PDF cover band and page footers, CSV, JSON, ZIP
+  manifest), matching the in-app banner. Setting `VITE_DRAFT_MODE=false` removes it
+  from the app and all exports in one build variable
+
 ## [4.0.0] - 2026-07-30
 
 This major release aligns the tool with the revised MITA 4.0 Capability Reference Model presented by the BA working group (July 2026, slides 4–6 of the capability overview deck). The ORBIT maturity criteria are unchanged — all 41 aspects and level definitions remain the May 3, 2026 PRA submission verbatim. It is a clean break from prior data: IndexedDB clears existing assessment data on first load because capability area ids changed. See `docs/decisions/CAPABILITY_MODEL_UPDATE_PLAN.md` for the full scope record and decision log.

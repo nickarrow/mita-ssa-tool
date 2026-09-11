@@ -27,14 +27,20 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 ### Where things stand
 
-|                |                                                                                                                                        |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                          |
-| Commits so far | `a0b53c2` Wave 1, `e25d665` Wave 2, `81f076f` Wave 3, `ef141e8` + `7710921` docs, then `5580191` + `bdf1871` + `198c300` accessibility |
-| Pushed         | Yes — `origin/feature/pilot-clearance` is at `198c300`, level with local, working tree clean                                           |
-| Deployed       | Yes. Pages dispatched from this branch at `198c300`, so the live build **includes all of Wave 4**                                      |
-| Green at       | 631 tests / 34 files; typecheck, lint, knip, `format:check` all clean                                                                  |
-| Next wave      | **Wave 5 — draft notice in exports, plus PDF/CSV scoring correctness.** See the pre-brief in Section 8e                                |
+|                |                                                                                                                                                       |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                         |
+| Commits so far | Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, then Wave 5 |
+| Pushed         | Waves 1-4 are on `origin/feature/pilot-clearance` at `dbd54c7`. **Wave 5 is committed locally and not yet pushed**                                    |
+| Deployed       | Pages dispatched from this branch at `198c300`, so the live build includes all of Wave 4 but **not Wave 5**                                           |
+| Green at       | 675 tests / 35 files; typecheck, lint, knip, `format:check` all clean                                                                                 |
+| Next wave      | **Wave 6 — XLSX foundation.** See the pre-brief in Section 8f                                                                                         |
+
+> **Drop 1 is code-complete.** Waves 1-5 are done, which is the whole of the Friday
+> September 12 scope. Wave 5 changes numbers in the CSV states submit to CMS and in the PDF
+> stakeholder report — see the table at the top of the Wave 5 notes for exactly which — so
+> pushing and dispatching a deploy is a deliberate act, not a formality. Wave 5 is not on the
+> live site until that happens.
 
 > **Stakeholders are now looking at the post-Wave-4 build,** and it differs visibly from what they
 > reviewed before: darker score chips, a selected nav item that darkens rather than lightens,
@@ -55,7 +61,7 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 ### How to resume
 
 1. Read this file. Section 4 is the decision record, Section 6 is progress, Section 8 is
-   accumulated findings, Section 8c is the Wave 4 brief.
+   accumulated findings, and Section 8f is the pre-brief for the next wave.
 2. Find the first wave with unchecked boxes — that is the current position.
 3. Confirm the repo agrees with the checkboxes before trusting them:
    ```
@@ -63,7 +69,7 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    npm run typecheck && npm run lint && npm test && npm run audit:code
    ```
 4. Also read `docs/CODEBASE_OBSERVATIONS.md` — 35 `OBS-*` entries, referenced throughout
-   this plan. Entries resolved so far: OBS-1, 2, 6, 7, 16, 17, 21, 24, 29, 30, 31, 32, 34.
+   this plan. Entries resolved so far: OBS-1, 2, 3, 6, 7, 16, 17, 21, 24, 25, 29, 30, 31, 32, 34.
    Newest and unresolved: OBS-33 (collapsed panels stay mounted), OBS-35 (duplicate-rating
    path — decide before real state data exists).
 5. Append what you learn to Section 8 so the next session inherits it.
@@ -546,38 +552,47 @@ the next wave with a red repo.
 
 ### Wave 5 — Draft notice in exports, plus PDF correctness
 
-- [ ] PDF: draft band on the cover and a footer line, from the shared module
-- [ ] CSV: notice line **directly after** the `MITA 4.0 Maturity Profile: <state>` header — not
+- [x] PDF: draft band on the cover and a footer line, from the shared module
+- [x] CSV: notice line **directly after** the `MITA 4.0 Maturity Profile: <state>` header — not
       above it, which would break state-name parsing (see 5.1) — and teach
       `parseMaturityProfileCsv` to skip it
-- [ ] JSON / ZIP: `draftNotice` field in the export envelope, and a line in the ZIP
+- [x] JSON / ZIP: `draftNotice` field in the export envelope, and a line in the ZIP
       `manifest.json`. This is the primary export path, so do not skip it (Decision 4)
 - [x] **OBS-2** — done early, in Wave 2. `pdfExport.ts` labelled `currentLevel === 0` as
       "N/A" in `generateDimensionDetails` while `generateOrganizationalDetails` correctly
       used `-1`. Pulled forward because the OBS-6 fix makes notes-only rows (level 0) a
       common case, so shipping Wave 2 without it would have amplified a stakeholder-facing
       misreport. Still needs the export-side test in this wave
-- [ ] **OBS-3** — aggregate dimensions are omitted from the PDF entirely because the
+- [x] **OBS-3** — aggregate dimensions are omitted from the PDF entirely because the
       generator iterates actual ratings and aggregates have none. Emit the aggregated
       dimension with its score and an "(Aggregate from N assessments)" note, matching
       what CSV and the results UI already do
-- [ ] **OBS-25** — PDF and CSV compute the Technology dimension as a flat mean over all 11
+- [x] **OBS-25** — PDF and CSV compute the Technology dimension as a flat mean over all 11
       aspects, weighting by aspect count instead of by sub-dimension: 3.2 where the tool says
       3.0. The CSV profile is the CMS submission artifact. Delegate
       `generateStandardAreaProfile` and `generateDimensionDetails` to `calculateDimensionScore`.
       Needs a To-Be path too — the canonical scorer only reads `currentLevel`, so either
-      parameterize the level selector or generalize it
-- [ ] **OBS-25 follow-on** — decide what `generateExecutiveSummary`'s "ORBIT Dimension Summary"
-      should mean. It currently flat-averages every rating across all areas, so it is weighted
-      by both aspect count and area count. The defensible figure is the mean of per-area
-      dimension scores; that is a semantic change, so confirm before altering a
-      stakeholder-facing table
-- [ ] While in these files, replace the inline three-literal organizational-section checks in
+      parameterize the level selector or generalize it. **Resolved by generalizing:**
+      `calculateDimensionScore` gained an optional `levelField` parameter defaulting to
+      `'currentLevel'`, so the To-Be rule lives beside the As-Is rule instead of being
+      re-derived per call site
+- [x] **OBS-25 follow-on** — decide what `generateExecutiveSummary`'s "ORBIT Dimension Summary"
+      should mean. **User's call, September 11: mean of per-area dimension scores, finalized
+      assessments only.** Extracted as `summariseDimensionsAcrossAreas`, with a new "Areas"
+      column so the denominator is visible. The old figure was weighted by aspect count _and_
+      area count, and separately read every rating regardless of status while the domain table
+      directly above it counted finalized only
+- [x] **New in this wave, and a third divergence the pre-brief did not know about:**
+      `ResultsMasterDetail.calculateTargetDimensionScores` flat-averaged `targetLevel` in the
+      **live UI**, so fixing export To-Be alone would have created a fresh UI-versus-export
+      disagreement. **User's call: one rule everywhere.** It now delegates to the canonical
+      scorer. Logged under OBS-25
+- [x] While in these files, replace the inline three-literal organizational-section checks in
       `exportService.ts` and `pdfExport.ts` with `isOrganizationalDimensionId`
-- [ ] Tests: draft notice present in each format when enabled and absent when disabled;
+- [x] Tests: draft notice present in each format when enabled and absent when disabled;
       N/A versus unassigned labeling; aggregate row present for enterprise domains;
       Technology export score matches `calculateDimensionScore`
-- [ ] Verify green
+- [x] Verify green — 675 tests / 35 files; typecheck, lint, knip, `format:check` all clean
 
 ### Wave 6 — XLSX foundation
 
@@ -651,11 +666,14 @@ the next wave with a red repo.
 - [ ] Full check: `npm run typecheck && npm run lint && npm test && npm run build`
 - [ ] Manual smoke on a `workflow_dispatch` deploy: banner on every page, workbook
       downloads and opens cleanly, exports carry the notice
-- [ ] `CHANGELOG.md` entry
+- [ ] `CHANGELOG.md`: fold the `[Unreleased]` section into a version entry. Wave 5 already
+      populated it, because that wave changes the Technology figure a state submits to CMS and
+      shipping Drop 1 with no record of that would have been wrong
 - [ ] `PROJECT_FOUNDATION_v2.md`: workbook artifact, draft-mode flag, export formats table
 - [ ] `.kiro/steering/development-standards.md`: workbook generator and the `scripts/` convention
 - [ ] Resolve the `maturity-profile-template.csv` question (Section 4, Noted)
-- [ ] Update `docs/CODEBASE_OBSERVATIONS.md`: mark OBS-1, 2, 3, 6, 7, 16, 17 resolved
+- [ ] Update `docs/CODEBASE_OBSERVATIONS.md` — most entries are already marked resolved as
+      their wave landed; check nothing from Waves 6-8 is left unrecorded
 - [ ] Version bump and `npm install --package-lock-only`
 - [ ] Draft the follow-up email to Shelley (Section 7)
 
@@ -1145,6 +1163,122 @@ State these alongside any claim about accessibility:
    existed only behind an expand or a selection, so a sweep that only visits URLs will report this
    app cleaner than it is.
 
+### Wave 5 notes — 2026-09-11
+
+Full record of what changed is the Wave 5 checklist above. What is here is the things
+that cost time to learn, and the numbers a later session should not have to re-derive.
+
+**Every figure below was read out of a generated artifact**, not asserted from a
+function's return value. Exports were driven through the real Import/Export page in
+Chromium with IndexedDB seeded to 3 finalized areas plus 1 in-progress area; the PDF was
+then text-extracted with `pypdf`.
+
+| Surface                     | Before          | After                                        |
+| --------------------------- | --------------- | -------------------------------------------- |
+| CSV Technology As-Is        | 3.2             | **3.0**                                      |
+| CSV Technology To-Be        | 3.2             | **3.0**                                      |
+| PDF per-area Technology     | `(Avg: 3.2)`    | **`(Avg: 3.0)`**                             |
+| PDF exec summary Technology | 3.2             | **3.0**, over 2 areas                        |
+| Results UI Technology To-Be | 3.2             | **3.0**                                      |
+| PDF aggregate dimension     | absent entirely | `Information (Avg: 3.0)` + contribution note |
+
+The fixture is Infrastructure ×6 at 5 and Application ×5 at 1: canonical `mean(5, 1) = 3.0`
+against a flat `(30 + 5) / 11 = 3.18 → 3.2`.
+
+**Generalising the scorer beat adapting at the call sites.** `calculateDimensionScore` took
+an optional third parameter, `levelField`, defaulting to `'currentLevel'`. The alternative —
+each caller remapping `{currentLevel: r.targetLevel ?? 0}` — leaves the To-Be rule
+re-derived per site, which is the exact failure OBS-21 and OBS-25 document. It also puts the
+`undefined`-means-unassessed sentinel in one place rather than three, where one `?? -1` would
+be a silent wrong answer. The default keeps every pre-existing As-Is caller byte-identical.
+
+**The first parameter was also widened, `OrbitDimensionId` → `RatingDimensionId`.** This is
+honest rather than convenient: `technology` is the only branch, so organizational sections
+already take the plain-mean path, and `DimensionScore.dimensionId` is already
+`RatingDimensionId`. Widening let the UI caller pass its id straight through instead of
+asserting it is narrower than it is — and a cast of exactly that shape is what produced
+OBS-1.
+
+**The PDF was untestable, and that is why OBS-2 and OBS-3 survived 631 tests.** Two things
+to know:
+
+- `generatePdfReport` returns a `Blob`. Its bytes are intact (`blob.size` matches
+  `doc.output().length`), but **jsdom implements neither `Blob.text()` nor
+  `Blob.arrayBuffer()`**, so reading it needs a `FileReader` and an async hop. Splitting out
+  `buildPdfDocument`, which returns the document before serialisation, is the shorter path.
+  Beware a wrong turn taken here: an early note recorded "the Blob yields 13 bytes" — that
+  was `String(blob).length`, i.e. `"[object Blob]"`. The reviewer caught it.
+- **PDF literal strings escape parentheses**, so `(Avg: 3.0)` is written `\(Avg: 3.0\)`.
+  Without unescaping, every assertion on a bracketed score silently fails to match while
+  assertions on plain words pass — which reads like a bug in the exporter rather than in the
+  test. `pdfExport.test.ts` has a `pdfText` helper that undoes it.
+
+**Grepping a content stream produces vacuous assertions unless you fight for it.** The
+review found three that could not fail, all of which looked reasonable:
+
+| Assertion                               | Why it was inert                                                             |
+| --------------------------------------- | ---------------------------------------------------------------------------- |
+| `toContain('Information')` for OBS-3    | the exec summary's intro sentence names all three dimensions in every report |
+| `toContain('Areas')` for the new column | the Domain table above already emits that exact header                       |
+| `toContain('DRAFT')` for the cover band | `DRAFT_NOTICE_LINE` starts with `DRAFT:`, so the footers alone satisfy it    |
+
+The general lesson: in a document full of numbers and dimension names, a bare substring is
+almost always reachable another way. What works is asserting through an extracted pure
+function, anchoring a search past a unique heading, or counting occurrences against page
+count. **Each fix was proved by neutering the code it covers and watching the test fail** —
+worth doing, because two of the three had passed against deliberately broken code.
+
+**The scoring rule had a fourth implementation, not three.** `useOrbitRatings.getAverageLevelForDimension`
+still flat-averaged, and its signature accepts `'technology'`. No caller reaches it with
+Technology today — `buildStandardNavItems` emits Technology either per-sub-dimension or as a
+rollup handled earlier — so no wrong number shipped from it. It now delegates anyway. Second
+time the count of these has been wrong; assume there is another and grep before claiming
+otherwise.
+
+**`DRAFT:` is a wire format, not presentation.** `parseMaturityProfileCsv` skips the notice
+row by matching that prefix, and derives the prefix from `DRAFT_NOTICE_LABEL`. So renaming
+the label would keep the entire suite green while making every CSV already exported during
+the pilot unparseable. There is now a test asserting the **literal**, with a comment saying
+not to "fix" it to use the constant.
+
+**Playwright download capture.** The MCP wrapper handles the `download` event itself and
+races `page.waitForEvent('download')`, which then times out even though the file arrived.
+Register `page.on('download', ...)` and save from there. Also: every export is gated behind a
+state-name dialog, so the click alone produces nothing.
+
+**One thing checked and cleared, recorded so it is not re-investigated.** Dev-mode axe
+reported a `color-contrast` failure of 1.32:1 (white on `#e0e0e0`, 15px) on Import/Export.
+At rest, axe's full ruleset over that page reports **zero** violations, and when the export
+buttons are genuinely disabled their text resolves to `rgba(0,0,0,0.26)`, which axe exempts.
+It is most likely axe sampling MUI's colour transition mid-animation. Not reproducible as a
+stable state, so it is **not** filed as an `OBS-*` entry — but note it sits inside Wave 4's
+stated limitation 8, that import/export interaction states were never enumerated.
+
+**The PDF print palette was verified rather than assumed** — Section 8e flagged `stat.color`
+at `pdfExport.ts:192` as untraced. It comes from the local `COLORS` table
+(`accent`/`primary`/`darkGray`), measuring 4.89:1, 6.56:1 and 5.43:1 on `lightGray`. Every
+pair in the palette clears AA, so Wave 4's contrast work not reaching the PDF turned out not
+to matter. New `COLORS.draft` `#b0142f` is 7.03:1 on white — and contrast is symmetric, so
+that one figure covers both the white-on-red band and the red-on-white footer. An earlier
+comment quoted a second, different ratio for the reversed pairing; there is no such thing.
+
+**Limitations of this wave's verification, stated plainly.**
+
+1. PDF content is asserted by substring search over a content stream. That proves a string
+   was written. It does **not** prove it is legible, correctly positioned, or on the page a
+   reader expects.
+2. **The PDF was never rendered to an image and looked at.** Text extraction confirms
+   presence and order; it says nothing about overlap or visual balance. The cover band's
+   geometry was reasoned about (roughly y 60-74 against a state name fixed at y 90, so about
+   three spare lines) rather than seen. The cover does not reflow — `drawCoverDraftBand`
+   returns a y coordinate the caller ignores, deliberately, and this is noted in its
+   docstring.
+3. The footer notice is drawn at **7pt**. It clears AA on contrast and now wraps rather than
+   overflowing, but 7pt is small and legibility at that size was not assessed.
+4. Excel/`ROUND` parity is untouched here; that is Wave 7's problem.
+5. `parseMaturityProfileCsv` still has no consumer outside its own test, so the CSV
+   round-trip guarantee remains real but hypothetical.
+
 ## 8e. Wave 5 Pre-Brief (exports: draft notice + scoring correctness)
 
 Written at the end of Wave 4 so the next session starts with what is already known. Wave 5 is
@@ -1214,6 +1348,72 @@ organizational-section checks in `exportService.ts` and `pdfExport.ts` with
 OBS-25 first — it is the blocker, and getting the canonical score into export makes the notice
 work purely additive. Then OBS-3, then the notice on all four surfaces, then the OBS-2 test.
 Land it as one commit with a sub-agent review, as with Waves 1-4.
+
+## 8f. Wave 6 Pre-Brief (XLSX foundation)
+
+Written at the end of Wave 5. Wave 6 opens Drop 2 and is the first wave that adds a new
+artifact rather than correcting an existing one.
+
+### Read before writing any code
+
+- **Section 5.2** (sheet structure and row counts), **5.3** (the 508 requirements, which are
+  the reason the previous spreadsheet was rejected) and **5.5** (delivery).
+- **Branch `feat-xlsx-workbook-generation` @ `b0fc55d`.** Roughly 2,300 lines of working
+  ExcelJS generator already exist there. Reference only — never rebase it (Decision 8). Take
+  the declarative `constants.ts` column/header/width model, the data-validation dropdowns, the
+  `AVERAGEIFS`/`TEXTJOIN` techniques and `selectLockedCells: true`. Do **not** take the
+  `categoryName`/`categoryId` columns (that tier was deleted in v4), the three-separate-org-types
+  model, or `buildProfilePlan`'s merged label-row shape.
+- It **does not handle aggregate dimensions at all**, which is the largest genuinely new piece
+  of work and the origin of decision P1.
+
+### What Wave 5 has already settled for you
+
+The scoring parity problem in Section 5.4 is now tractable, which it was not before:
+
+- **There is one Technology rule, in one place.** `calculateDimensionScore` in
+  `src/services/scoring.ts` is the only implementation the workbook has to mirror. Wave 1
+  fixed the results table, Wave 5 fixed both export paths, the executive summary and the live
+  To-Be column, and closed a latent fourth copy in `useOrbitRatings`. Section 5.4's
+  "Blocked on OBS-21" note is discharged.
+- **To-Be has a canonical rule too**, via `calculateDimensionScore(..., 'targetLevel')`. Every
+  input and profile row carries As-Is and To-Be, so the workbook needs both, and there is now
+  a single answer to target for each.
+- **The enterprise-wide dimension figure has agreed semantics**: mean of per-area dimension
+  scores, finalized only, aggregate dimensions not folded in. If the workbook grows a
+  summary sheet, that is the rule — `summariseDimensionsAcrossAreas` in `pdfExport.ts` is the
+  reference implementation, and Section 5.4's rounding table still governs.
+- **The draft notice has a Node-safe home.** `src/constants/draftNotice.ts` exports
+  `DRAFT_NOTICE_LABEL`, `DRAFT_NOTICE_BODY` and `DRAFT_NOTICE_LINE` and is deliberately free
+  of `import.meta`, so the build-time generator can import it directly. Derive the flag from
+  `process.env.VITE_DRAFT_MODE`, never from `constants/index.ts`, which does read
+  `import.meta.env` and throws under plain Node.
+
+### Traps specific to this wave
+
+- **knip fails the build on unused exports.** This has bitten twice, both times adding a
+  constant one wave early. Add an export only once its consumer exists.
+- **`ExcelJS` is a `devDependency`, pinned** (Decision 12). It must never enter the browser
+  bundle. The vendor chunk is already 450 kB gzipped and over its own warning threshold
+  (OBS-20).
+- **The generated workbook is a gitignored build output**, so `npm run dev` has no file and
+  the three in-app download links 404. That is Wave 8's problem, but do not be surprised by it.
+- **ExcelJS does not evaluate formulas**, so no unit test can assert a cell computes 3.4.
+  Section 5.4's four-step mitigation is the plan; step 1 (a JS reference implementation of each
+  formula's intent, tested against `calculateDimensionScore`) is the one that carries the
+  weight, and it now has a single scorer to test against.
+- **Excel `ROUND` and JS `Math.round(x * 10) / 10` disagree on decimal halfway values**, and
+  step 1 cannot catch it because it shares the JS primitive. The halfway-value fixture set is
+  Wave 7, not here, but design the formulas knowing it is coming.
+
+### A lesson from Wave 5 that transfers directly
+
+Wave 5's tests searched a generated PDF for substrings, and three assertions turned out unable
+to fail — each satisfied by unrelated text elsewhere in the document. The workbook's 508
+assertions in Wave 6 have exactly the same shape: "no merged cells", "one header row per
+table", "document properties populated" are all easy to write in a form that passes on an empty
+or half-built workbook. **Prove each assertion by breaking the thing it covers and watching it
+fail.** That step caught two of Wave 5's three.
 
 ## 9. Out of Scope
 

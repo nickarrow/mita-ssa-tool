@@ -329,9 +329,11 @@ export function useScores(): UseScoresReturn {
    * are excluded from both the listing and the score. `finalizeAssessment` feeds
    * raw ratings instead, so the two can still differ if orphaned ratings exist.
    *
-   * Note that PDF and CSV export do NOT yet use the canonical scorer — they
-   * compute Technology as a flat mean over all 11 aspects, which weights by
-   * aspect count rather than by sub-dimension. See OBS-25; scheduled for Wave 5.
+   * PDF and CSV export now delegate to the same canonical scorer — not to this
+   * function — so the Technology weighting agrees everywhere it is reported
+   * (OBS-25, fixed in Wave 5). The model-versus-ratings caveat in the paragraph
+   * above still applies: orphaned ratings can still make this function and the
+   * export paths differ, because they are fed different inputs.
    */
   const getDimensionScoresForAssessment = (assessmentId: string): DimensionScore[] | undefined => {
     if (!data) return undefined;

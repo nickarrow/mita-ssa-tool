@@ -43,7 +43,7 @@ export const IS_DRAFT = import.meta.env.VITE_DRAFT_MODE !== 'false';
 // The copy itself lives in ./draftNotice, which must stay free of `import.meta`
 // so Node-based build tooling can import the same strings. Re-exported here so
 // application code has a single import site.
-export { DRAFT_NOTICE_LABEL, DRAFT_NOTICE_BODY } from './draftNotice';
+export { DRAFT_NOTICE_LABEL, DRAFT_NOTICE_BODY, DRAFT_NOTICE_LINE } from './draftNotice';
 
 // =============================================================================
 // Enterprise Domain Configuration

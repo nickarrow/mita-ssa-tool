@@ -22,3 +22,20 @@ export const DRAFT_NOTICE_LABEL = 'Draft';
 export const DRAFT_NOTICE_BODY =
   'This is a draft version of the MITA 4.0 State Self-Assessment Tool. ' +
   'It is still being piloted and is subject to change.';
+
+/**
+ * The notice as a single line, for surfaces with no rich text: the CSV maturity
+ * profile, the ZIP manifest, the JSON envelope, and the PDF.
+ *
+ * The label is uppercased because those surfaces cannot render it bold, so the
+ * marker has to carry itself.
+ *
+ * **`DRAFT:` is a wire-format constant, not just presentation.** It is the prefix
+ * `parseMaturityProfileCsv` matches on to skip the notice row, so renaming
+ * `DRAFT_NOTICE_LABEL` would silently stop every CSV already exported during the
+ * pilot from being parseable. Because the parser derives its prefix from this same
+ * constant, a rename would keep the whole suite green while breaking files in the
+ * field — so there is a test asserting the literal `'DRAFT:'` rather than the derived
+ * value. Do not "fix" that test to use the constant.
+ */
+export const DRAFT_NOTICE_LINE = `${DRAFT_NOTICE_LABEL.toUpperCase()}: ${DRAFT_NOTICE_BODY}`;

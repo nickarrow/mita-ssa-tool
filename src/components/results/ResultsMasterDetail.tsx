@@ -33,10 +33,12 @@ import type {
   DimensionScore,
   CapabilityArea,
   CapabilityLayer,
+  RatingDimensionId,
 } from '../../types';
 
 import { getAreaWithDomain } from '../../services/capabilities';
 import { isEnterpriseDomain, getAggregatedDimensionForDomain } from '../../services/orbit';
+import { calculateDimensionScore, type RatingForScoring } from '../../services/scoring';
 import { isOrganizationalAssessmentArea as isOrgArea } from '../../constants';
 import { DimensionScoresTableWithTarget } from './DimensionScoresTableWithTarget';
 import {
@@ -85,20 +87,28 @@ const SHORT_DIMENSION_LABELS: Record<string, string> = {
 };
 
 /**
- * Calculate target (To-Be) dimension scores from ratings
+ * Calculate target (To-Be) dimension scores from ratings.
+ *
+ * Delegates to `calculateDimensionScore`, the canonical scorer, so the To-Be column
+ * follows the same rules as As-Is. It previously flat-averaged `targetLevel` across
+ * every rating in the dimension, which gave Technology a mean over all 11 aspects
+ * rather than the mean of its two sub-dimension means — the same weighting error
+ * OBS-25 describes for export, in the live UI and for To-Be instead of As-Is.
+ *
+ * Only Technology changes. Every other dimension, and each organizational section,
+ * takes the canonical scorer's plain-mean path, which is what this function already
+ * computed for them.
  */
 function calculateTargetDimensionScores(
   dimensionScores: DimensionScore[],
-  ratings: { dimensionId: string; targetLevel?: number }[]
-): { dimensionId: string; targetLevel: number | null }[] {
+  ratings: (RatingForScoring & { dimensionId: RatingDimensionId })[]
+): { dimensionId: RatingDimensionId; targetLevel: number | null }[] {
   return dimensionScores.map((dim) => {
-    const dimRatings = ratings.filter(
-      (r) => r.dimensionId === dim.dimensionId && r.targetLevel && r.targetLevel > 0
-    );
-    if (dimRatings.length === 0) return { dimensionId: dim.dimensionId, targetLevel: null };
-
-    const avg = dimRatings.reduce((sum, r) => sum + (r.targetLevel ?? 0), 0) / dimRatings.length;
-    return { dimensionId: dim.dimensionId, targetLevel: Math.round(avg * 10) / 10 };
+    const dimRatings = ratings.filter((r) => r.dimensionId === dim.dimensionId);
+    return {
+      dimensionId: dim.dimensionId,
+      targetLevel: calculateDimensionScore(dim.dimensionId, dimRatings, 'targetLevel'),
+    };
   });
 }
 

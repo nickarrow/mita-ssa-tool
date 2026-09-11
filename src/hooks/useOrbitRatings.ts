@@ -8,7 +8,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../services/db';
-import { calculateAverageScore } from '../services/scoring';
+import { calculateAverageScore, calculateDimensionScore } from '../services/scoring';
 import type {
   OrbitRating,
   RatingDimensionId,
@@ -428,12 +428,21 @@ export function useOrbitRatings(capabilityAssessmentId: string | undefined): Use
   };
 
   /**
-   * Calculate average level for a dimension (excluding N/A and not assessed)
+   * Calculate average level for a dimension (excluding N/A and not assessed).
+   *
+   * Delegates to the canonical scorer rather than flat-averaging the dimension's
+   * ratings. For every dimension but Technology the two are the same; for Technology
+   * a flat mean over all 11 aspects weights the 6-aspect Infrastructure
+   * sub-dimension above the 5-aspect Application one, which is the OBS-25 defect.
+   *
+   * No caller reaches this with `'technology'` today — `buildStandardNavItems` emits
+   * Technology either per-sub-dimension or as a rollup handled earlier — so this is
+   * closing a latent path, not fixing a visible number. It is worth closing because
+   * the rule is meant to live in exactly one place, and this was a fourth copy of it
+   * one nav-item shape away from going live.
    */
   const getAverageLevelForDimension = (dimensionId: RatingDimensionId): number | null => {
-    const dimRatings = getRatingsForDimension(dimensionId).filter((r) => r.currentLevel > 0);
-    if (dimRatings.length === 0) return null;
-    return calculateAverageScore(dimRatings.map((r) => r.currentLevel));
+    return calculateDimensionScore(dimensionId, getRatingsForDimension(dimensionId));
   };
 
   /**

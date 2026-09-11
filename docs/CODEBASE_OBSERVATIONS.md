@@ -96,6 +96,12 @@ N/A aspect (`-1`) falls through to "Not Rated". The organizational path is corre
 
 Since PDFs are the stakeholder- and CMS-facing artifact, this one misreports.
 
+**Resolved.** The branch condition was corrected in Wave 2, pulled forward because the
+OBS-6 fix makes notes-only rows (level 0) a common case rather than a corner one. The
+export-boundary tests landed in Wave 5 and are confirmed in a generated PDF: an
+unassessed aspect prints "Not Rated", and only a genuine `-1` prints "N/A / Not
+applicable to this capability area".
+
 ### OBS-3 — Aggregate dimensions are absent from the PDF
 
 **Inferred** from the code path; not reproduced.
@@ -107,6 +113,23 @@ Business Architecture and Technology but no Information row at all.
 
 CSV handles this (`(Aggregate from N assessments)` note in `exportService.ts`) and the
 results UI handles it (`Aggregate (N areas)` chip). PDF is the gap.
+
+**Resolved in Wave 5**, and confirmed by reading a generated PDF rather than by test
+alone: a Data Management area's report now carries `Information (Avg: 3.0)` followed by
+`(Aggregate from 1 assessment). This dimension is computed from finalized assessments in
+other domains rather than assessed directly in this area.`
+
+Two details worth keeping:
+
+- The new block reads `ExportData.enterpriseAggregates`, which `collectExportData`
+  already populated — nothing new had to be computed, the data was being carried and
+  discarded.
+- It fires only when the aggregated dimension has **no** ratings of its own. Without that
+  guard an enterprise area holding stray Information ratings would print the dimension
+  twice with two different scores. A test covers it.
+
+The "Inferred" status above is now moot — the omission was reproduced in a real export
+before being fixed.
 
 ### OBS-4 — ZIP import skips the export-version check
 
@@ -576,6 +599,50 @@ Two further wrinkles in the same code:
 Scheduled for **Wave 5** (export correctness) in the pilot clearance plan, which lands before
 the workbook formulas in Wave 7 — so the workbook has one canonical rule to implement rather
 than three candidates.
+
+**Resolved in Wave 5. There were five sites, not three** — the count in the table above was
+low twice over, which is the main thing to carry forward from this entry.
+
+| Site                                                               | Was                                            | Now                                    |
+| ------------------------------------------------------------------ | ---------------------------------------------- | -------------------------------------- |
+| `exportService.generateStandardAreaProfile` (CSV, As-Is)           | flat mean over 11 aspects                      | delegates to `calculateDimensionScore` |
+| `exportService.generateStandardAreaProfile` (CSV, **To-Be**)       | flat mean                                      | delegates, with `levelField`           |
+| `pdfExport.generateDimensionDetails`                               | flat mean                                      | delegates                              |
+| `pdfExport.generateExecutiveSummary`                               | flat mean over **all areas**                   | see the follow-on below                |
+| `ResultsMasterDetail.calculateTargetDimensionScores` (**live UI**) | flat mean of `targetLevel`                     | delegates, with `levelField`           |
+| `useOrbitRatings.getAverageLevelForDimension`                      | flat mean; latent, no caller passes Technology | delegates                              |
+
+Verified in generated artifacts, not just in tests: the CSV and PDF now print 3.0 where they
+printed 3.2, for a fixture of Infrastructure ×6 at 5 and Application ×5 at 1.
+
+**The To-Be wrinkle, resolved by generalizing the scorer.** `calculateDimensionScore` gained
+an optional third parameter, `levelField: 'currentLevel' | 'targetLevel'`, defaulting to
+`'currentLevel'`. Chosen over having each caller remap ratings into `currentLevel`, because
+remapping leaves the To-Be rule re-derived at every site — the precise failure this entry and
+OBS-21 describe — and scatters the `undefined`-means-unassessed sentinel across three places
+where one `?? -1` would be a silent wrong answer. The default keeps every pre-existing As-Is
+caller byte-identical.
+
+**The live UI's To-Be was a genuinely new finding**, absent from the Wave 5 pre-brief. It
+matters for sequencing: fixing export To-Be alone would have _created_ a UI-versus-export
+disagreement where the two previously agreed by both being wrong. Both were changed together
+on the user's instruction — one rule everywhere.
+
+**Follow-on, also resolved.** `generateExecutiveSummary`'s "ORBIT Dimension Summary" is now
+the mean of per-area dimension scores, counting finalized assessments only, extracted as
+`summariseDimensionsAcrossAreas`. Two defects, not one: the old figure was weighted by aspect
+count _and_ by area count, and it read every rating regardless of status while the Domain
+Maturity Scores table directly above it counted finalized only — one page, two tables,
+different populations. Aggregate dimensions are deliberately not folded in, since an
+aggregate derives from the same per-area scores and would count those areas twice. A new
+"Areas" column shows the denominator. This was a semantic change to a stakeholder-facing
+table and was made on the user's explicit call, September 11.
+
+Related, and **still open**: `useOrbitRatings.getOverallAverageLevel` flat-averages every
+rating across all dimensions and is displayed as the live overall score during assessment,
+whereas the `overallScore` persisted at finalize is the mean of the three dimension scores.
+Those disagree by aspect-count weighting for the same data. Not export-facing, so it was left
+alone rather than folded into Wave 5. Same class of defect as this entry.
 
 ### OBS-26 — `useDebouncedSave` can clobber keystrokes with the echo of its own save
 
