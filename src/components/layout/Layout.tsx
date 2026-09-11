@@ -7,7 +7,7 @@ import ImportExportIcon from '@mui/icons-material/ImportExport';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { ScrollToTop } from './ScrollToTop';
 import { DraftBanner } from './DraftBanner';
-import { DRAFT_NOTICE_LABEL, IS_DRAFT } from '../../constants';
+import { DRAFT_TITLE_MARKER, IS_DRAFT } from '../../constants';
 
 interface LayoutProps {
   children: ReactNode;
@@ -27,20 +27,23 @@ export default function Layout({ children }: LayoutProps): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // The skip link jumps to #main-content, which sits below the banner, so anyone
+  // The skip link jumps to #main-content, which sits below the top banner, so anyone
   // using it never encounters the notice. Marking the title covers that, since it
   // is announced on load regardless.
   //
+  // Uses the short `DRAFT_TITLE_MARKER`, not the banner label: the label is now
+  // "Predecisional Pilot Materials", which would swamp the title.
+  //
   // The guard keys on the parenthesised marker rather than the bare word, so a
-  // title that merely contains "Draft" in prose still gets marked. It also omits
+  // title that merely contains the word in prose still gets marked. It also omits
   // any leading whitespace on purpose: the DOM trims `document.title`, so a guard
-  // written as `' (Draft)'` never matches once the value has round-tripped, and
-  // the marker gets appended again on every mount.
+  // written as `' (Predecisional)'` never matches once the value has round-tripped,
+  // and the marker gets appended again on every mount.
   //
   // Layout wraps <Routes> and so never unmounts, making this a genuine once-only
   // effect; the guard also absorbs StrictMode's double invocation.
   useEffect(() => {
-    const marker = `(${DRAFT_NOTICE_LABEL})`;
+    const marker = `(${DRAFT_TITLE_MARKER})`;
     if (IS_DRAFT && !document.title.endsWith(marker)) {
       document.title = document.title ? `${document.title} ${marker}` : marker;
     }
@@ -135,7 +138,7 @@ export default function Layout({ children }: LayoutProps): JSX.Element {
         </Toolbar>
       </AppBar>
 
-      {IS_DRAFT && <DraftBanner />}
+      {IS_DRAFT && <DraftBanner variant="top" />}
 
       <Box
         component="main"
@@ -155,6 +158,21 @@ export default function Layout({ children }: LayoutProps): JSX.Element {
       >
         {children}
       </Box>
+
+      {/*
+       * Bottom notice, above the footer and outside <main> on purpose.
+       *
+       * Outside <main> because on non-assessment pages <main> scrolls, so a notice
+       * inside it would scroll out of view on any long page — and the assessment page
+       * sets overflow:hidden and manages its own scrolling, where a notice inside
+       * <main> would be unreachable entirely. As a flexShrink:0 sibling it is visible
+       * on every page, which is the point of CMS asking for it.
+       *
+       * Above the footer so the reading order is notice-then-site-chrome, and so it is
+       * still the bottommost content on the assessment page, where the footer is
+       * suppressed.
+       */}
+      {IS_DRAFT && <DraftBanner variant="bottom" />}
 
       {!isAssessmentPage && (
         <Box

@@ -1100,3 +1100,40 @@ along with a migration that is happening anyway. Debouncing level changes, or se
 per aspect, would narrow the window without a schema change.
 
 Worth deciding before real state data exists rather than after.
+
+### OBS-36 — `/results` has no headings at all in its empty-data state
+
+**Confirmed** in Chromium with axe-core, while verifying the CMS banner change
+(September 11, 2026). Reported as `page-has-heading-one`, moderate impact, one node.
+
+With no finalized assessments, `/results` renders its empty state and the document
+contains **zero** heading elements — not merely no `<h1>`. Every other route in the app is
+clean under the full ruleset including `best-practice`.
+
+This is a consequence of the OBS-32 fix rather than a new mistake. That work gave 24
+`Typography` sites an explicit `component` to stop `variant` emitting stray headings, and
+among them were the two empty states ("No Data Available", "No Assessment Results") that
+had been rendering as headings under an `<h2>`. Converting them to non-headings was right
+for heading order, and on a populated page the real headings remain. On an empty page they
+were the only ones.
+
+Why the Wave 4 audit missed it: that sweep seeded 5 assessments and 109 ratings precisely
+so the data-dependent pages would render their content, so `/results` never appeared in its
+empty state. It is the exact shape of Wave 4's stated limitation 8 — that interaction and
+data states were representative rather than exhaustive.
+
+Not a WCAG failure: `page-has-heading-one` is a `best-practice` rule, not tagged
+`wcag2a`/`wcag2aa`. But an empty page with no heading is genuinely worse for a screen
+reader user than one with a heading, and this is the state a pilot state sees on their
+first visit — before they have finalized anything — which makes it more visible than its
+severity suggests.
+
+Fix shape: give the empty state a real `<h1>` (the page has no other heading to conflict
+with, so heading order cannot regress), or render the page-level `<h1>` unconditionally
+above the data-dependent content. The second is preferable — it makes the heading
+independent of data, which is what caused this.
+
+Logged rather than fixed because it surfaced during an unrelated copy change and belongs
+with a deliberate pass over data-empty states. Worth pairing with a re-audit that drives
+the empty variants of `/dashboard`, `/results` and `/history`, since the same reasoning
+applies to all three and only `/results` happened to be checked.

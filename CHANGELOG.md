@@ -49,6 +49,21 @@ version bump lands with the final wave.
 - Draft notice in every export format (PDF cover band and page footers, CSV, JSON, ZIP
   manifest), matching the in-app banner. Setting `VITE_DRAFT_MODE=false` removes it
   from the app and all exports in one build variable
+- **Second disclaimer notice at the foot of every page**, carrying the Paperwork Reduction
+  Act statement. CMS requires a notice at both the top and the bottom, with different
+  wording in each
+
+### Changed
+
+- **Disclaimer wording replaced with CMS-supplied text.** Both notices now open
+  "Predecisional Pilot Materials:". The top notice states the materials are preliminary
+  and being made available for limited review and testing in support of MITA 4.0 pilot
+  activities; the bottom notice adds that they do not represent final agency policy or
+  requirements and may not be used for an information collection subject to the PRA until
+  applicable PRA requirements, including OMB approval where required, have been satisfied.
+  Exports carry the full statement, since an artifact circulating without the PRA language
+  is the specific risk the disclaimer covers. The wording is reproduced verbatim and the
+  two bodies differ, so neither is derived from the other
 
 ## [4.0.0] - 2026-07-30
 

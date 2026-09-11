@@ -234,22 +234,23 @@ below follows first occurrence. Notably "I would do it in red" is Shelley's, not
 
 ### Resolved
 
-| #   | Decision                                                                                                                                            | Source                                    |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| 1   | Draft banner is red, at the top, on every page. Precedent: the draft guidance site used red                                                         | Shelley `[07:14]`                         |
-| 2   | Copy conveys "draft version of the tool, still being piloted." Exact prior wording not required                                                     | Shelley `[07:08]`                         |
-| 3   | Banner is visible but not alarming — no flashing, no bright-red alarm styling                                                                       | Nick `[06:20]`                            |
-| 4   | **The draft notice also appears in exports** (PDF, CSV, XLSX) for consistency                                                                       | Nick, follow-up                           |
-| 5   | **The notice must be easily removable** so CMS can drop it at go-live                                                                               | Nick, follow-up                           |
-| 6   | **Blank workbook only.** Live-data XLSX export and XLSX import are deferred — they over-complicate this delivery                                    | Nick, follow-up; aligns with `[12:34]`    |
-| 7   | **Focus is parity** with existing content, functionality, and accessibility                                                                         | Nick, follow-up                           |
-| 8   | **No rebase of `feat-xlsx-workbook-generation`.** It was an experiment; harvest what is useful                                                      | Nick, follow-up                           |
-| 9   | **Accessibility audit is in scope**, bundled with the banner work                                                                                   | Nick, follow-up; committed at `[22:15]`   |
-| 10  | Workbook download is linked from the homepage as well as Import/Export                                                                              | Nick, follow-up                           |
-| 11  | Deployment stays a manual `workflow_dispatch` of the Pages action from the feature branch                                                           | Nick, follow-up                           |
-| 12  | Workbook is generated at build time as a Node script, not client-side. Keeps ExcelJS out of the browser bundle as a devDependency                   | Plan recommendation, accepted `[25:33]`   |
-| 13  | Banner removal is controlled by `VITE_DRAFT_MODE`, defaulting to draft-on. Follows the existing `VITE_BASE_PATH` / `VITE_GITHUB_REPO_URL` precedent | Plan default under Decision 5             |
-| 14  | Workbook filename is stable and unversioned so the guidance-site URL never breaks; the version is printed inside the workbook                       | Plan default; addresses Shelley `[10:08]` |
+| #   | Decision                                                                                                                                                                                                                                                   | Source                                    |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| 1   | Draft banner is red, at the top, on every page. Precedent: the draft guidance site used red                                                                                                                                                                | Shelley `[07:14]`                         |
+| 2   | Copy conveys "draft version of the tool, still being piloted." Exact prior wording not required                                                                                                                                                            | Shelley `[07:08]`                         |
+| 3   | Banner is visible but not alarming — no flashing, no bright-red alarm styling                                                                                                                                                                              | Nick `[06:20]`                            |
+| 4   | **The draft notice also appears in exports** (PDF, CSV, XLSX) for consistency                                                                                                                                                                              | Nick, follow-up                           |
+| 5   | **The notice must be easily removable** so CMS can drop it at go-live                                                                                                                                                                                      | Nick, follow-up                           |
+| 6   | **Blank workbook only.** Live-data XLSX export and XLSX import are deferred — they over-complicate this delivery                                                                                                                                           | Nick, follow-up; aligns with `[12:34]`    |
+| 7   | **Focus is parity** with existing content, functionality, and accessibility                                                                                                                                                                                | Nick, follow-up                           |
+| 8   | **No rebase of `feat-xlsx-workbook-generation`.** It was an experiment; harvest what is useful                                                                                                                                                             | Nick, follow-up                           |
+| 9   | **Accessibility audit is in scope**, bundled with the banner work                                                                                                                                                                                          | Nick, follow-up; committed at `[22:15]`   |
+| 10  | Workbook download is linked from the homepage as well as Import/Export                                                                                                                                                                                     | Nick, follow-up                           |
+| 11  | Deployment stays a manual `workflow_dispatch` of the Pages action from the feature branch                                                                                                                                                                  | Nick, follow-up                           |
+| 12  | Workbook is generated at build time as a Node script, not client-side. Keeps ExcelJS out of the browser bundle as a devDependency                                                                                                                          | Plan recommendation, accepted `[25:33]`   |
+| 13  | Banner removal is controlled by `VITE_DRAFT_MODE`, defaulting to draft-on. Follows the existing `VITE_BASE_PATH` / `VITE_GITHUB_REPO_URL` precedent                                                                                                        | Plan default under Decision 5             |
+| 14  | Workbook filename is stable and unversioned so the guidance-site URL never breaks; the version is printed inside the workbook                                                                                                                              | Plan default; addresses Shelley `[10:08]` |
+| 15  | **Two notices, top and bottom, with CMS-supplied wording reproduced verbatim.** Supersedes Decisions 1-3's "draft version, still being piloted" copy. Bottom notice carries the PRA statement; exports carry the full statement. See the Copy block in 5.1 | CMS, September 11                         |
 
 ### Resolved — formerly pending
 
@@ -317,21 +318,45 @@ Verify measured values during Wave 4 rather than trusting arithmetic.
 screen reader users on every navigation. Use a labeled region read in document order.
 This matters more than usual because Wave 4 claims an accessibility audit.
 
-**Copy.**
+**Copy — superseded September 11 by CMS-supplied wording (Decision 15).** What Wave 3
+shipped was:
 
 > **Draft** — This is a draft version of the MITA 4.0 State Self-Assessment Tool. It is
 > still being piloted and is subject to change.
+
+CMS then asked for a notice at the top **and** the bottom of every page, with specific
+text for each. Both are reproduced verbatim in `src/constants/draftNotice.ts` and **must
+not be edited for length or consistency.** The two bodies genuinely differ — the top says
+"in support of MITA 4.0 pilot activities", the bottom says "in support of pilot
+activities" and adds the PRA statement — so neither can be derived from the other:
+
+> **Top.** Predecisional Pilot Materials: These materials are preliminary and are being
+> made available for limited review and testing in support of MITA 4.0 pilot activities.
+
+> **Bottom.** Predecisional Pilot Materials: These materials are preliminary and are being
+> made available for limited review and testing in support of pilot activities. They do not
+> represent final agency policy or requirements and may not be used to conduct an
+> information collection subject to the Paperwork Reduction Act (PRA) unless and until
+> applicable PRA requirements, including OMB approval where required, have been satisfied.
 
 **Removal mechanism (Decision 13).** One module exports both the flag and the text so
 every surface — app, PDF, CSV, XLSX — reads from the same place:
 
 ```ts
 export const IS_DRAFT = import.meta.env.VITE_DRAFT_MODE !== 'false';
-export const DRAFT_NOTICE_LABEL = 'Draft'; // lives in constants/draftNotice.ts
-export const DRAFT_NOTICE_BODY =
-  'This is a draft version of the MITA 4.0 State Self-Assessment Tool. ' +
-  'It is still being piloted and is subject to change.';
+// The rest live in constants/draftNotice.ts, which stays free of `import.meta`:
+//   DRAFT_NOTICE_LABEL      'Predecisional Pilot Materials'
+//   DRAFT_NOTICE_BODY       top body
+//   DRAFT_NOTICE_FULL_BODY  bottom body, with the PRA statement
+//   DRAFT_NOTICE_LINE       label + full body, single line, for exports
+//   DRAFT_NOTICE_SHORT_LINE label + top body, for space-constrained surfaces
+//   DRAFT_TITLE_MARKER      'Predecisional', for document.title
 ```
+
+The label is no longer usable as a title suffix at 29 characters, hence
+`DRAFT_TITLE_MARKER`. The internal names keep saying "draft" on purpose:
+`VITE_DRAFT_MODE` is a deploy-workflow variable and renaming it would break that contract,
+so internal naming and user-facing copy are deliberately decoupled.
 
 Default-on means forgetting to set the variable fails toward showing the disclaimer.
 Go-live is then one workflow variable, no code change. The Node workbook script reads

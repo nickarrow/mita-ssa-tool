@@ -24,8 +24,8 @@ import {
   getOrganizationalSections,
   isOrganizationalDimensionId,
   IS_DRAFT,
-  DRAFT_NOTICE_LABEL,
-  DRAFT_NOTICE_BODY,
+  DRAFT_NOTICE_LINE,
+  DRAFT_NOTICE_SHORT_LINE,
 } from '../../constants';
 import {
   PAGE,
@@ -348,35 +348,39 @@ export function summariseDimensionsAcrossAreas(data: ExportData): DimensionSumma
 function drawCoverDraftBand(doc: JsPDFWithAutoTable, yTop: number): number {
   if (!IS_DRAFT) return yTop;
 
-  doc.setFontSize(9);
+  // The cover carries the FULL notice, PRA statement included: a PDF is the artifact
+  // most likely to be forwarded outside the pilot, so it is the one place the complete
+  // statement has to appear. Set a step smaller than before because the text is now
+  // roughly three times longer.
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
-  const lines = wrapDraftNotice(doc, CONTENT_WIDTH - 8);
-  const bandHeight = lines.length * 4.5 + 5;
+  const lines = wrapNotice(doc, DRAFT_NOTICE_LINE, CONTENT_WIDTH - 8);
+  const bandHeight = lines.length * 3.6 + 5;
 
   doc.setFillColor(...COLORS.draft);
   doc.rect(0, yTop, PAGE_WIDTH, bandHeight, 'F');
 
   doc.setTextColor(...COLORS.white);
-  doc.text(lines, PAGE_WIDTH / 2, yTop + 6, { align: 'center' });
+  doc.text(lines, PAGE_WIDTH / 2, yTop + 4.5, { align: 'center' });
 
   return yTop + bandHeight;
 }
 
 /**
- * Wraps the draft notice to a width, at whatever font size is currently set.
+ * Wraps a notice to a width, at whatever font size is currently set.
  *
  * Shared by the cover band and the page footer so neither can overflow the page. The
- * footer previously passed the whole ~130-character line to a single `text` call
- * without measuring it, which happened to fit at 7pt and would have silently run
- * into the margins if the wording grew.
+ * footer previously passed its whole line to a single `text` call without measuring it,
+ * which happened to fit and would have silently run into the margins if the wording
+ * grew — which it then did.
  *
  * @param doc - The PDF document, with the intended font size already set
+ * @param notice - The notice text
  * @param maxWidth - Wrap width in mm
  * @returns The notice as one or more lines
  */
-function wrapDraftNotice(doc: JsPDFWithAutoTable, maxWidth: number): string[] {
-  const label = DRAFT_NOTICE_LABEL.toUpperCase();
-  return doc.splitTextToSize(`${label}: ${DRAFT_NOTICE_BODY}`, maxWidth) as string[];
+function wrapNotice(doc: JsPDFWithAutoTable, notice: string, maxWidth: number): string[] {
+  return doc.splitTextToSize(notice, maxWidth) as string[];
 }
 
 /**
@@ -1112,14 +1116,20 @@ function addPageNumbersAndFooter(doc: JsPDFWithAutoTable, stateName: string): vo
     // between the two no page of a circulated report is unmarked — a single page
     // printed or screenshotted out of context still says it came from a draft.
     if (IS_DRAFT) {
-      doc.setFontSize(7);
+      // 6.5pt, not 7pt, and the half point is load-bearing: measured, the short notice
+      // is 172.0mm wide at 6.5pt against a 180mm content width, and 185.3mm at 7pt.
+      // At 7pt it wraps to a second line whose ascenders crowd the page number 3mm
+      // above it. One legible line beats two cramped ones, and the cover carries the
+      // full statement at a larger size.
+      doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...COLORS.draft);
-      // Wrapped rather than passed as one string: at the current wording this is a
-      // single line, but an unmeasured 130-character line would run into the margins
-      // if the copy grew. Drawn upward from the page edge so extra lines do not
-      // collide with the page number.
-      const noticeLines = wrapDraftNotice(doc, CONTENT_WIDTH);
+      // The footer carries the SHORT notice. The full PRA statement wraps to four
+      // lines at this size and would collide with the page number; the cover carries
+      // it in full, so every report still contains the complete statement. Wrapped
+      // rather than passed as one string, and drawn upward from the page edge so an
+      // extra line does not overlap the footer text above it.
+      const noticeLines = wrapNotice(doc, DRAFT_NOTICE_SHORT_LINE, CONTENT_WIDTH);
       const firstLineY = PAGE_HEIGHT - 6 - (noticeLines.length - 1) * 3;
       doc.text(noticeLines, PAGE_WIDTH / 2, firstLineY, { align: 'center' });
       doc.setFont('helvetica', 'normal');

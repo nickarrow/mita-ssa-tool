@@ -684,12 +684,48 @@ Aspect 2,2.5,3.5,,,Plans here`;
       expect(csv).toContain(DRAFT_NOTICE_LINE);
     });
 
-    it('pins the literal DRAFT: prefix, which is a wire format', () => {
+    it('pins the literal notice prefix, which is a wire format', () => {
       // Deliberately the literal, not the constant. `parseMaturityProfileCsv` derives
       // its skip prefix from DRAFT_NOTICE_LABEL, so renaming the label would keep this
       // whole suite green while making every CSV already exported during the pilot
       // unparseable. Asserting the constant here would defeat the point.
-      expect(DRAFT_NOTICE_LINE.startsWith('DRAFT:')).toBe(true);
+      expect(DRAFT_NOTICE_LINE.startsWith('Predecisional Pilot Materials:')).toBe(true);
+    });
+
+    it('still skips the earlier DRAFT: prefix, so older exports keep parsing', () => {
+      // The notice wording changed once already, at CMS's request. Files exported under
+      // the old copy must not become unreadable, so the parser recognises both prefixes
+      // and this pins the legacy one specifically.
+      const csv = [
+        'MITA 4.0 Maturity Profile: Legacy State,,,,,',
+        'DRAFT: This is a draft version of the MITA 4.0 State Self-Assessment Tool.,,,,,',
+        ',,,,,',
+        'Capability Domain: Provider Management,,,,,',
+        'Capability Area: Provider Enrollment,,,,,',
+        'ORBIT,As Is,To Be,Notes,Barriers & Challenges,Advancement Plans',
+        'Business Architecture,3.0,4.0,,,',
+        ',,,,,',
+      ].join('\n');
+
+      const parsed = parseMaturityProfileCsv(csv);
+
+      expect(parsed?.stateName).toBe('Legacy State');
+      expect(parsed?.areas[0]?.rows.map((r) => r.dimension)).toEqual(['Business Architecture']);
+    });
+
+    it('quotes the notice, because the approved wording contains commas', () => {
+      // `escapeCSVField` wraps any field containing a comma. The PRA sentence has two,
+      // so the emitted row is quoted — and the parser's skip has to cope with a leading
+      // quote. Pinned because it is the interaction between two things that were
+      // written independently.
+      const noticeLine = generateMaturityProfileCsv(profile())
+        .split('\n')
+        .find((l) => l.includes('Predecisional Pilot Materials'));
+
+      expect(noticeLine?.startsWith('"')).toBe(true);
+      expect(parseMaturityProfileCsv(generateMaturityProfileCsv(profile()))?.stateName).toBe(
+        'Test State'
+      );
     });
 
     it('emits the notice in the combined profile', () => {

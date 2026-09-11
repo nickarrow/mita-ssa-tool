@@ -13,8 +13,16 @@ import type { MaturityProfile, CapabilityAreaProfile } from './types';
 /** CSV column headers for standard assessments */
 const CSV_HEADERS_STANDARD = 'ORBIT,As Is,To Be,Notes,Barriers & Challenges,Advancement Plans';
 
-/** Prefix that identifies the draft-notice line in a generated profile. */
-const DRAFT_NOTICE_CSV_PREFIX = `${DRAFT_NOTICE_LABEL.toUpperCase()}:`;
+/**
+ * Prefixes that identify a notice line in a generated profile, so the parser can skip
+ * it rather than read it as a data row.
+ *
+ * More than one on purpose. `DRAFT:` was the prefix before CMS supplied the
+ * predecisional wording, and a profile exported under the old copy must keep parsing —
+ * dropping it would make previously exported files silently unreadable, which is the
+ * cost of treating a wire format as presentation. Add to this list, never replace it.
+ */
+const NOTICE_CSV_PREFIXES = [`${DRAFT_NOTICE_LABEL}:`, 'DRAFT:'] as const;
 
 /**
  * Emits the draft notice line, or nothing when the tool is built for go-live.
@@ -178,14 +186,15 @@ export function parseMaturityProfileCsv(csv: string): MaturityProfile | null {
       continue;
     }
 
-    // Skip the draft notice that sits directly below the state header.
+    // Skip the disclaimer notice that sits directly below the state header.
     //
     // Matched by content rather than by the current `IS_DRAFT` value on purpose: a
     // profile exported during the pilot may be imported after go-live, when the
     // flag is off, and it would still carry the line. The leading-quote case covers
-    // the notice being CSV-escaped if its wording ever gains a comma.
+    // the notice being CSV-escaped, which the current wording requires — it contains
+    // commas, so `escapeCSVField` wraps it in quotes.
     const unquoted = line.startsWith('"') ? line.slice(1) : line;
-    if (unquoted.startsWith(DRAFT_NOTICE_CSV_PREFIX)) {
+    if (NOTICE_CSV_PREFIXES.some((prefix) => unquoted.startsWith(prefix))) {
       continue;
     }
 

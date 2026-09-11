@@ -9,6 +9,8 @@ import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { axe } from 'vitest-axe';
 import Layout from './Layout';
+import { DRAFT_BANNER_LANDMARK_LABEL, DRAFT_BANNER_FULL_LANDMARK_LABEL } from './DraftBanner';
+import { DRAFT_NOTICE_LABEL, DRAFT_TITLE_MARKER } from '../../constants';
 
 /**
  * Helper to render Layout with required providers
@@ -92,19 +94,24 @@ describe('Layout draft banner', () => {
     vi.doUnmock('../../constants');
   });
 
-  it('shows the draft notice on every page while draft mode is on', () => {
+  it('shows both notices on every page while draft mode is on', () => {
     renderLayout();
 
-    expect(screen.getByText('Draft')).toBeInTheDocument();
-    expect(screen.getByText(/still being piloted/)).toBeInTheDocument();
+    // CMS requires a top and a bottom notice, so both landmarks must be present on
+    // every page — not one or the other.
+    expect(screen.getByRole('region', { name: DRAFT_BANNER_LANDMARK_LABEL })).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: DRAFT_BANNER_FULL_LANDMARK_LABEL })
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(DRAFT_NOTICE_LABEL)).toHaveLength(2);
   });
 
-  it('places the notice between the navigation and the main content', () => {
+  it('puts the top notice between the navigation and the main content', () => {
     const { container } = renderLayout();
 
     // Document order is the whole accessibility argument for a plain landmark
     // instead of a live region, so it is worth pinning rather than assuming.
-    const banner = screen.getByRole('region', { name: 'Draft notice' });
+    const banner = screen.getByRole('region', { name: DRAFT_BANNER_LANDMARK_LABEL });
     const nav = container.querySelector('nav');
     const main = container.querySelector('main');
 
@@ -114,10 +121,31 @@ describe('Layout draft banner', () => {
     expect(banner.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('puts the bottom notice after the main content, above the footer', () => {
+    const { container } = renderLayout();
+
+    // It sits outside <main> on purpose: <main> scrolls on most pages and is
+    // overflow:hidden on the assessment page, so a notice inside it would either
+    // scroll away or be unreachable.
+    const banner = screen.getByRole('region', { name: DRAFT_BANNER_FULL_LANDMARK_LABEL });
+    const main = container.querySelector('main');
+    const footer = container.querySelector('footer');
+
+    expect(main).not.toBeNull();
+    expect(main!.contains(banner)).toBe(false);
+    expect(main!.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    if (footer) {
+      expect(
+        banner.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    }
+  });
+
   it('marks the document title so skip-link users still hear it', () => {
     renderLayout();
 
-    expect(document.title).toContain('(Draft)');
+    // The short marker, not the 29-character banner label.
+    expect(document.title).toContain(`(${DRAFT_TITLE_MARKER})`);
   });
 
   it('does not duplicate the title marker across re-renders', () => {
@@ -125,7 +153,7 @@ describe('Layout draft banner', () => {
     unmount();
     renderLayout();
 
-    expect(document.title.match(/\(Draft\)/g)).toHaveLength(1);
+    expect(document.title.match(new RegExp(`\\(${DRAFT_TITLE_MARKER}\\)`, 'g'))).toHaveLength(1);
   });
 
   it('renders nothing when draft mode is switched off for go-live', async () => {
@@ -144,9 +172,12 @@ describe('Layout draft banner', () => {
       </BrowserRouter>
     );
 
-    expect(screen.queryByText('Draft')).not.toBeInTheDocument();
-    expect(screen.queryByText(/still being piloted/)).not.toBeInTheDocument();
+    // Both notices must go, not just the top one.
+    expect(screen.queryByText(DRAFT_NOTICE_LABEL)).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: DRAFT_BANNER_LANDMARK_LABEL })).toBeNull();
+    expect(screen.queryByRole('region', { name: DRAFT_BANNER_FULL_LANDMARK_LABEL })).toBeNull();
+    expect(screen.queryByText(/Paperwork Reduction Act/)).not.toBeInTheDocument();
     // The title must not be marked either
-    expect(document.title).not.toContain('(Draft)');
+    expect(document.title).not.toContain(`(${DRAFT_TITLE_MARKER})`);
   });
 });

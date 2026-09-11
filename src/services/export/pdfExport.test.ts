@@ -27,7 +27,7 @@ import {
   type DimensionSummaryRow,
 } from './pdfExport';
 import { calculateDimensionScore } from '../scoring';
-import { DRAFT_NOTICE_LINE } from '../../constants';
+import { DRAFT_NOTICE_SHORT_LINE } from '../../constants';
 import type { ExportData, ExportOptions } from './types';
 import type { CapabilityAssessment, OrbitDimensionId, OrbitRating } from '../../types';
 
@@ -618,16 +618,40 @@ describe('pdfExport', () => {
 
       const pdf = render(makeExportData([makeAssessment()], ratings));
 
-      // The footer writes the notice as one line at the current wording, so it
-      // appears verbatim.
-      expect(pdf).toContain(DRAFT_NOTICE_LINE);
+      // The footer carries the SHORT notice and writes it as one line at the current
+      // wording, so it appears verbatim. The full PRA statement would wrap to four
+      // lines at 7pt and collide with the page number.
+      expect(pdf).toContain(DRAFT_NOTICE_SHORT_LINE);
+    });
+
+    it('carries the full PRA statement on the cover', () => {
+      // The substantive clauses have to reach the artifact most likely to be forwarded
+      // outside the pilot. Asserted clause by clause rather than as one string, because
+      // the cover text is wrapped by splitTextToSize and so is split across operators.
+      const ratings = [
+        makeRating({
+          dimensionId: 'businessArchitecture',
+          aspectId: 'business-process-performance',
+          currentLevel: 3,
+        }),
+      ];
+
+      const pdf = render(makeExportData([makeAssessment()], ratings));
+
+      expect(pdf).toContain('Predecisional Pilot Materials');
+      expect(pdf).toContain('final agency');
+      expect(pdf).toContain('Paperwork Reduction Act');
+      expect(pdf).toContain('OMB approval');
+      // And the short footer line must NOT be the only thing present — the PRA words
+      // above appear nowhere in it.
+      expect(DRAFT_NOTICE_SHORT_LINE).not.toContain('Paperwork Reduction Act');
     });
 
     it('prints the notice on the cover as well as in the footers', () => {
-      // A bare `toContain('DRAFT')` cannot cover the cover band: DRAFT_NOTICE_LINE
-      // already starts with "DRAFT:", so the footers alone satisfy it and the band
-      // could be deleted with the test still green. Counting occurrences against the
-      // page count is what actually distinguishes the two surfaces.
+      // A bare label match cannot distinguish the two surfaces, since the footer line
+      // starts with the same label — the band could be deleted with such a test still
+      // green. Counting label occurrences against the page count is what actually
+      // separates them.
       const ratings = [
         makeRating({
           dimensionId: 'businessArchitecture',
@@ -638,8 +662,7 @@ describe('pdfExport', () => {
 
       const doc = buildPdfDocument(makeExportData([makeAssessment()], ratings), OPTIONS);
       const pageCount = doc.getNumberOfPages();
-      const text = pdfText(doc);
-      const markerCount = text.split('DRAFT:').length - 1;
+      const markerCount = pdfText(doc).split('Predecisional Pilot Materials:').length - 1;
 
       // One per content page (pageCount - 1, the cover having no footer) plus one for
       // the cover band itself.
@@ -668,10 +691,10 @@ describe('pdfExport', () => {
 
       const doc = buildPdfDocument(makeExportData(assessments, ratings), OPTIONS);
       const pageCount = doc.getNumberOfPages();
-      const occurrences = pdfText(doc).split(DRAFT_NOTICE_LINE).length - 1;
+      const occurrences = pdfText(doc).split(DRAFT_NOTICE_SHORT_LINE).length - 1;
 
       expect(pageCount).toBeGreaterThan(2);
-      // Every page but the cover, which carries the band instead.
+      // Every page but the cover, which carries the full-text band instead.
       expect(occurrences).toBe(pageCount - 1);
     });
 
@@ -692,8 +715,9 @@ describe('pdfExport', () => {
           .output()
           .replace(/\\([()\\])/g, '$1');
 
-        expect(pdf).not.toContain('DRAFT');
-        expect(pdf).not.toContain('still being piloted');
+        expect(pdf).not.toContain('Predecisional');
+        expect(pdf).not.toContain('Paperwork Reduction Act');
+        expect(pdf).not.toContain('preliminary');
         // Still a real report, not an empty document.
         expect(pdf).toContain('Executive Summary');
         expect(pdf).toContain('Provider Enrollment');
