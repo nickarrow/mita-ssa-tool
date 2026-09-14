@@ -52,6 +52,14 @@ version bump lands with the final wave.
 - **Second disclaimer notice at the foot of every page**, carrying the Paperwork Reduction
   Act statement. CMS requires a notice at both the top and the bottom, with different
   wording in each
+- **Offline Excel workbook, generated from the same data model as the tool.** A blank
+  self-assessment workbook covering all 14 capability domains, 72 capability areas and 41
+  maturity aspects, built for Section 508 conformance: no merged cells, one header row per
+  table, no blank rows, no images, editable columns labelled "(enter value)" in text rather
+  than signalled by fill colour alone, and reference cells locked but still selectable so
+  assistive technology can read them. This first draft carries the reference and input
+  sheets; the score sheets follow. It is generated at build time by a Node script, so it
+  adds nothing to the browser bundle. No download link in the app yet
 
 ### Changed
 
@@ -64,6 +72,12 @@ version bump lands with the final wave.
   Exports carry the full statement, since an artifact circulating without the PRA language
   is the specific risk the disclaimer covers. The wording is reproduced verbatim and the
   two bodies differ, so neither is derived from the other
+- **Node 22.18 or newer is now required for development.** The workbook generator is a
+  TypeScript file executed directly by Node, which needs Node's native type stripping. On an
+  older Node the generator fails with an unknown-file-extension error, while `npm test` still
+  passes because vitest transforms through Vite — so too-old Node fails in a confusing place.
+  Declared in `engines` and `.nvmrc`; CI and deploy were moved from Node 20 to 22.18. Nothing
+  about the shipped application changed
 
 ## [4.0.0] - 2026-07-30
 

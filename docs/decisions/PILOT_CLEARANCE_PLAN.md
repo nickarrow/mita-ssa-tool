@@ -31,13 +31,19 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                                                                     |
 | Commits so far | Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c` |
-| Pushed         | Yes — `origin/feature/pilot-clearance` is at `84ec16c`, level with local, working tree clean                                                                                                      |
-| Deployed       | Yes. Pages dispatched from this branch at `84ec16c` on September 11, so the live build includes **all of Drop 1 plus the CMS top/bottom notices**                                                 |
-| Green at       | 684 tests / 35 files; typecheck, lint, knip, `format:check` all clean                                                                                                                             |
-| Next wave      | **Wave 6 — XLSX foundation.** See the pre-brief in Section 8g                                                                                                                                     |
+| Pushed         | Drop 1 is pushed and live. **Wave 6 is committed locally, not yet pushed or deployed** — it changes nothing a stakeholder can see, since the download links are Wave 8                            |
+| Deployed       | Drop 1 only. Pages dispatched from this branch at `84ec16c` on September 11, so the live build is **all of Drop 1 plus the CMS top/bottom notices**. Wave 6 is not in it                          |
+| Green at       | 885 tests / 40 files; typecheck, lint, knip, `format:check` and `build` all clean                                                                                                                 |
+| Node floor     | **22.18.** The workbook generator is a `.ts` file run directly by Node and needs native type stripping. Declared in `engines`, `.nvmrc`, and both workflows — which were on Node 20               |
+| Next wave      | **Wave 7 — XLSX maturity profile and formulas.** See the pre-brief in Section 8k                                                                                                                  |
 
 > **Drop 1 is delivered.** Waves 1-5 are done and deployed, which is the whole of the Friday
 > September 12 scope, plus the CMS-requested top and bottom notices (Decision 15).
+
+> **Wave 6 opened Drop 2 and is complete.** The generator produces sheets `00`-`05` with the
+> 508 structure from 5.3. Nothing about it is visible in the deployed app yet, so it needed
+> no stakeholder-facing deploy. Section 8j is the record; read it before Wave 7, it contains
+> two defects that only surfaced by inspecting the real artifact.
 
 > **The deploy target is the fork, not the CMS org repo — and `gh` gets this wrong by
 > default.** `origin` is `naretakis/mita-ssa-tool` (redirecting to `nickarrow/mita-ssa-tool`)
@@ -85,15 +91,16 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
    Section 8 has grown organically and its subsections are not in wave order. Where to look:
 
-   | Looking for                                     | Section                                                     |
-   | ----------------------------------------------- | ----------------------------------------------------------- |
-   | Baseline to restore if a wave needs backing out | 8, "Wave 0 baseline"                                        |
-   | What Waves 2, 3 learned                         | 8, "Wave 2 notes" and "Wave 3 notes"                        |
-   | Review of the plan itself, before any code      | 8b                                                          |
-   | Accessibility: the record to point CMS at       | **8d** (method, results, and what it does _not_ establish)  |
-   | Accessibility: lessons and traps                | 8h, 8i                                                      |
-   | Export scoring and the draft notice             | **8e**                                                      |
-   | Pre-briefs                                      | 8c (Wave 4), 8f (Wave 5, historical), **8g (Wave 6, next)** |
+   | Looking for                                     | Section                                                      |
+   | ----------------------------------------------- | ------------------------------------------------------------ |
+   | Baseline to restore if a wave needs backing out | 8, "Wave 0 baseline"                                         |
+   | What Waves 2, 3 learned                         | 8, "Wave 2 notes" and "Wave 3 notes"                         |
+   | Review of the plan itself, before any code      | 8b                                                           |
+   | Accessibility: the record to point CMS at       | **8d** (method, results, and what it does _not_ establish)   |
+   | Accessibility: lessons and traps                | 8h, 8i                                                       |
+   | Export scoring and the draft notice             | **8e**                                                       |
+   | The workbook: what Wave 6 built and learned     | **8j** (read before Wave 7)                                  |
+   | Pre-briefs                                      | 8c (Wave 4), 8f (Wave 5), 8g (Wave 6), **8k (Wave 7, next)** |
 
 2. Find the first wave with unchecked boxes — that is the current position.
 3. Confirm the repo agrees with the checkboxes before trusting them:
@@ -252,23 +259,25 @@ below follows first occurrence. Notably "I would do it in red" is Shelley's, not
 
 ### Resolved
 
-| #   | Decision                                                                                                                                                                                                                                                   | Source                                    |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| 1   | Draft banner is red, at the top, on every page. Precedent: the draft guidance site used red                                                                                                                                                                | Shelley `[07:14]`                         |
-| 2   | Copy conveys "draft version of the tool, still being piloted." Exact prior wording not required                                                                                                                                                            | Shelley `[07:08]`                         |
-| 3   | Banner is visible but not alarming — no flashing, no bright-red alarm styling                                                                                                                                                                              | Nick `[06:20]`                            |
-| 4   | **The draft notice also appears in exports** (PDF, CSV, XLSX) for consistency                                                                                                                                                                              | Nick, follow-up                           |
-| 5   | **The notice must be easily removable** so CMS can drop it at go-live                                                                                                                                                                                      | Nick, follow-up                           |
-| 6   | **Blank workbook only.** Live-data XLSX export and XLSX import are deferred — they over-complicate this delivery                                                                                                                                           | Nick, follow-up; aligns with `[12:34]`    |
-| 7   | **Focus is parity** with existing content, functionality, and accessibility                                                                                                                                                                                | Nick, follow-up                           |
-| 8   | **No rebase of `feat-xlsx-workbook-generation`.** It was an experiment; harvest what is useful                                                                                                                                                             | Nick, follow-up                           |
-| 9   | **Accessibility audit is in scope**, bundled with the banner work                                                                                                                                                                                          | Nick, follow-up; committed at `[22:15]`   |
-| 10  | Workbook download is linked from the homepage as well as Import/Export                                                                                                                                                                                     | Nick, follow-up                           |
-| 11  | Deployment stays a manual `workflow_dispatch` of the Pages action from the feature branch                                                                                                                                                                  | Nick, follow-up                           |
-| 12  | Workbook is generated at build time as a Node script, not client-side. Keeps ExcelJS out of the browser bundle as a devDependency                                                                                                                          | Plan recommendation, accepted `[25:33]`   |
-| 13  | Banner removal is controlled by `VITE_DRAFT_MODE`, defaulting to draft-on. Follows the existing `VITE_BASE_PATH` / `VITE_GITHUB_REPO_URL` precedent                                                                                                        | Plan default under Decision 5             |
-| 14  | Workbook filename is stable and unversioned so the guidance-site URL never breaks; the version is printed inside the workbook                                                                                                                              | Plan default; addresses Shelley `[10:08]` |
-| 15  | **Two notices, top and bottom, with CMS-supplied wording reproduced verbatim.** Supersedes Decisions 1-3's "draft version, still being piloted" copy. Bottom notice carries the PRA statement; exports carry the full statement. See the Copy block in 5.1 | CMS, September 11                         |
+| #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Source                                                   |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| 1   | Draft banner is red, at the top, on every page. Precedent: the draft guidance site used red                                                                                                                                                                                                                                                                                                                                                                                                     | Shelley `[07:14]`                                        |
+| 2   | Copy conveys "draft version of the tool, still being piloted." Exact prior wording not required                                                                                                                                                                                                                                                                                                                                                                                                 | Shelley `[07:08]`                                        |
+| 3   | Banner is visible but not alarming — no flashing, no bright-red alarm styling                                                                                                                                                                                                                                                                                                                                                                                                                   | Nick `[06:20]`                                           |
+| 4   | **The draft notice also appears in exports** (PDF, CSV, XLSX) for consistency                                                                                                                                                                                                                                                                                                                                                                                                                   | Nick, follow-up                                          |
+| 5   | **The notice must be easily removable** so CMS can drop it at go-live                                                                                                                                                                                                                                                                                                                                                                                                                           | Nick, follow-up                                          |
+| 6   | **Blank workbook only.** Live-data XLSX export and XLSX import are deferred — they over-complicate this delivery                                                                                                                                                                                                                                                                                                                                                                                | Nick, follow-up; aligns with `[12:34]`                   |
+| 7   | **Focus is parity** with existing content, functionality, and accessibility                                                                                                                                                                                                                                                                                                                                                                                                                     | Nick, follow-up                                          |
+| 8   | **No rebase of `feat-xlsx-workbook-generation`.** It was an experiment; harvest what is useful                                                                                                                                                                                                                                                                                                                                                                                                  | Nick, follow-up                                          |
+| 9   | **Accessibility audit is in scope**, bundled with the banner work                                                                                                                                                                                                                                                                                                                                                                                                                               | Nick, follow-up; committed at `[22:15]`                  |
+| 10  | Workbook download is linked from the homepage as well as Import/Export                                                                                                                                                                                                                                                                                                                                                                                                                          | Nick, follow-up                                          |
+| 11  | Deployment stays a manual `workflow_dispatch` of the Pages action from the feature branch                                                                                                                                                                                                                                                                                                                                                                                                       | Nick, follow-up                                          |
+| 12  | Workbook is generated at build time as a Node script, not client-side. Keeps ExcelJS out of the browser bundle as a devDependency                                                                                                                                                                                                                                                                                                                                                               | Plan recommendation, accepted `[25:33]`                  |
+| 13  | Banner removal is controlled by `VITE_DRAFT_MODE`, defaulting to draft-on. Follows the existing `VITE_BASE_PATH` / `VITE_GITHUB_REPO_URL` precedent                                                                                                                                                                                                                                                                                                                                             | Plan default under Decision 5                            |
+| 14  | Workbook filename is stable and unversioned so the guidance-site URL never breaks; the version is printed inside the workbook                                                                                                                                                                                                                                                                                                                                                                   | Plan default; addresses Shelley `[10:08]`                |
+| 15  | **Two notices, top and bottom, with CMS-supplied wording reproduced verbatim.** Supersedes Decisions 1-3's "draft version, still being piloted" copy. Bottom notice carries the PRA statement; exports carry the full statement. See the Copy block in 5.1                                                                                                                                                                                                                                      | CMS, September 11                                        |
+| 16  | **Workbook notice treatment is "option D": short line in `A1` of every sheet, short line in the print footer of every sheet, full PRA text on `00_README` as sheet content and in the `description` document property.** The footer was specified as the full line and **cannot** be — Excel's limit is 255 characters and the assembled full line is 441 (OBS-40). Since Decision 15 forbids shortening the CMS wording, the full statement cannot be an Excel footer under any implementation | Nick, September 14; footer constraint measured in Wave 6 |
+| 17  | **The workbook surfaces the enterprise-wide ORBIT dimension figure, on a new `09_Dimension_Scores` sheet.** Three rows (B/I/T) with As-Is, To-Be and a visible Areas denominator, mirroring the PDF executive summary's table so the two artifacts agree in shape. Registered in Wave 6; built in Wave 7                                                                                                                                                                                        | Nick, September 14                                       |
 
 ### Resolved — formerly pending
 
@@ -421,6 +430,7 @@ the reference implementation, with the 508 corrections in 5.3 and the v4 model a
 | `06_Maturity_Profile`         | 228   | 213 standard rows (71 areas x 3 dimensions) + 15 organizational aspect rows                     |
 | `07_Area_Scores`              | 72    | One row per capability area: score, completion, domain                                          |
 | `08_Domain_Scores`            | 15    | 14 domain rows + 1 overall row                                                                  |
+| `09_Dimension_Scores`         | 3     | Enterprise-wide B/I/T figure, As-Is and To-Be, with the Areas denominator (Decision 17)         |
 
 Row counts computed from `src/data/*.json`; regenerate if the model changes.
 
@@ -554,8 +564,17 @@ comparison, and records which primitive is authoritative.
 
 ### 5.5 Delivery and CI
 
-- `scripts/generate-xlsx-workbook.mjs` reads `src/data/capabilities.json` and
-  `src/data/orbit-model.json`, writes `public/mita-4.0-self-assessment-workbook.xlsx`
+- `scripts/generate-xlsx-workbook.ts` reads `src/data/capabilities.json` and
+  `src/data/orbit-model.json`, writes `public/mita-4.0-self-assessment-workbook.xlsx`.
+  **`.ts`, not the `.mjs` this section originally specified** — Node 22.18 strips types
+  natively, so it runs directly with no loader while still being covered by `typecheck`,
+  `lint` and `knip`. The cost is a Node floor of 22.18, which both workflows now pin;
+  they were on Node 20, where the generator cannot run at all
+- Run it with `npm run generate:workbook`. Set `SOURCE_DATE_EPOCH` for a reproducible
+  artifact: with it fixed, two runs produce byte-identical _unzipped content_, though the
+  `.xlsx` bytes still differ because ExcelJS stamps ZIP entry times it does not expose. So
+  a CI drift check must unzip and diff the parts, or just regenerate and run the suite —
+  diffing the `.xlsx` itself reports a change on every run
 - `npm run build` runs the generator first, so local and CI builds are identical and
   `deploy.yml` needs no XLSX-specific step
 - Generated artifact is gitignored — it is a build output, not source
@@ -706,28 +725,50 @@ the next wave with a red repo.
 
 ### Wave 6 — XLSX foundation
 
-- [ ] Add `exceljs` as a **devDependency**, pinned
-- [ ] `scripts/generate-xlsx-workbook.mjs` skeleton: read both JSON files, write to
-      `public/`, log a row-count summary
-- [ ] Port `constants.ts` from the reference implementation, updated for v4: drop
-      `categoryName` / `categoryId`, restructure organizational columns for the single
-      combined area with a section column
-- [ ] Sheets `00_README` (with draft notice), `01_Maturity_Levels`,
-      `02_Capability_Reference`, `03_ORBIT_Criteria_Reference`
-- [ ] Sheets `04_Assessment_Input` and `05_Organizational_Input`: flat tables, single
-      header row, no merged cells, hidden ID columns, level dropdowns, protection with
+- [x] Add `exceljs` as a **devDependency**, pinned — `4.4.0`, exact. Confirmed absent from
+      the production tree (`npm ls exceljs --omit=dev` empty), absent from every
+      `dist/assets/*.js`, and the vendor chunk is byte-identical to the Wave 0 baseline
+- [x] Generator skeleton: read both JSON files, write to `public/`, log a row-count
+      summary. **Written as `scripts/generate-xlsx-workbook.ts`, not `.mjs`** — Node 22.18
+      strips TypeScript types natively, so it still runs directly and is covered by
+      `typecheck`, `lint` and `knip` instead of being an unchecked island generating a CMS
+      deliverable. Consequence: Node 22.18 is now a floor, recorded in `engines`, `.nvmrc`,
+      and both workflows
+- [x] Port the declarative column model from the reference implementation, updated for v4:
+      dropped `categoryName` / `categoryId`, organizational columns restructured for the
+      single combined area with a section column
+- [x] Sheets `00_README`, `01_Maturity_Levels`, `02_Capability_Reference`,
+      `03_ORBIT_Criteria_Reference`
+- [x] Sheets `04_Assessment_Input` and `05_Organizational_Input`: flat tables, single
+      header row, no merged cells, level dropdowns, protection with
       `selectLockedCells: true`
-- [ ] Apply aggregate-dimension omission per **P1**; assert the row count is 1,625 + 15
-- [ ] To-Be columns on both input sheets, with the same dropdown and validation as As-Is
-- [ ] `Information Management` flag column on `02` and `04`; guidance text on `00_README`
-- [ ] Set workbook document properties per 5.3
-- [ ] Content-fidelity tests: all 14 domains, 72 areas, 41 aspects, 205 criteria rows
+- [x] **ID columns are visible at the far right and outside the named range, not hidden.**
+      This checklist previously said "hidden ID columns", contradicting 5.3 and the 8b
+      review record, which both settled the opposite — hidden columns inside a table range
+      conceal content from assistive technology and get flagged. 5.3 is the spec and was
+      followed; the line is corrected here
+- [x] Apply aggregate-dimension omission per **P1**; row counts 1,625 + 15 asserted, and
+      per-area counts asserted against the app's own `getAssessableAspectCountForArea` for
+      all 72 areas rather than against literals
+- [x] To-Be columns on both input sheets, with the same dropdown and validation as As-Is
+- [x] `Information Management` flag column on `02` and `04`; guidance text on `00_README`,
+      with a parity test that renders `InformationManagementNotice` and compares the
+      load-bearing claims
+- [x] Set workbook document properties per 5.3
+- [x] Content-fidelity tests: all 14 domains, 72 areas, 41 aspects, 205 criteria rows
       present with correct IDs
-- [ ] **508 structural test suite** (per P2): no merged cells anywhere; exactly one header
+- [x] **508 structural test suite** (per P2): no merged cells anywhere; exactly one header
       row per table; no blank rows or columns inside tables; document properties populated;
       no floating objects; every editable column's header carries text signalling, not fill
       colour alone; `selectLockedCells` remains enabled on every protected sheet
-- [ ] Verify green
+- [x] **Every 508 assertion proved failable.** `scripts/xlsx/prove-assertions.ts` breaks
+      the thing each assertion covers and confirms the test goes red: 41 for 41. It found
+      two genuinely vacuous assertions, both self-referential. Kept rather than deleted —
+      Wave 7 adds more assertions of the same shape. See 8j
+- [x] **Raw-OOXML test suite** — not in the original scope, added because the reload-based
+      suite is blind to a whole class of defect and one of them had already shipped. See 8j
+- [x] Verify green — 885 tests / 40 files; typecheck, lint, knip, `format:check` and
+      `build` all clean. `knip` now actually covers `scripts/`, which it previously ignored
 
 ### Wave 7 — XLSX maturity profile and formulas
 
@@ -741,7 +782,23 @@ the next wave with a red repo.
       non-enterprise areas, mirroring `getAggregateDimensionScore`
 - [ ] `TEXTJOIN` rollups for notes, barriers, and plans
 - [ ] To-Be rollups mirroring every As-Is rollup
-- [ ] `07_Area_Scores` and `08_Domain_Scores` sheets per 5.2
+- [ ] `07_Area_Scores`, `08_Domain_Scores` and `09_Dimension_Scores` sheets per 5.2.
+      `09` is the enterprise-wide dimension figure agreed in Decision 17 — mean of per-area
+      dimension scores with a visible Areas denominator, mirroring the PDF executive
+      summary. All three sheet names are already in `SHEET_NAMES` and listed on the README
+      as "not included in this draft", and a test pins that exact four-name list, so each
+      one turns a test red as it is built
+- [ ] **Decide the `Finalized?` question before writing the `08` and `09` formulas.** The
+      tool counts only finalized areas toward domain scores, aggregates and the
+      enterprise-wide figure; the workbook has no status concept, so as designed it counts
+      everything entered and its numbers legitimately differ from the tool's mid-assessment.
+      A `Finalized? (enter Yes/No)` input column on `07` would let `08` and `09` reproduce
+      the tool's population exactly via `AVERAGEIFS`, at the cost of introducing an input
+      the tool has no analogue for — in the tool, finalizing is an action behind a dialog;
+      here it would be a cell a state can forget. Raised with the user in Wave 6 and
+      deferred to this wave deliberately, so the choice is made with the formulas in view.
+      Whichever way it goes, `00_README` already documents the divergence and that text
+      needs updating to match
 - [ ] Halfway-value fixture set (e.g. `4.05 / 3`) comparing Excel `ROUND` against JS
       `Math.round(x * 10) / 10`; record which primitive is authoritative
 - [ ] JS reference implementation of the formula spec, tested against
@@ -1475,7 +1532,18 @@ OBS-25 first — it is the blocker, and getting the canonical score into export 
 work purely additive. Then OBS-3, then the notice on all four surfaces, then the OBS-2 test.
 Land it as one commit with a sub-agent review, as with Waves 1-4.
 
-## 8g. Wave 6 Pre-Brief (XLSX foundation)
+## 8g. Wave 6 Pre-Brief — historical
+
+> **Wave 6 is complete.** Kept as written, before the work, because comparing it against
+> what happened is useful. It got the scoring groundwork and the traps right. What it did
+> not anticipate: that the full PRA statement physically cannot fit in an Excel footer, that
+> ExcelJS emits duplicate validation ranges, that empty-string cells are not blank cells, or
+> that `knip` was ignoring the entire directory the wave was about to fill. Three of those
+> four were found by looking at the real artifact rather than at a test result.
+>
+> It also did not anticipate that the go-live variant (`VITE_DRAFT_MODE=false`) needed testing
+> at all — and the first attempt at that test passed against a workbook still carrying the
+> notice. **Section 8j is the record of what actually happened.**
 
 Written at the end of Wave 5. Wave 6 opens Drop 2 and is the first wave that adds a new
 artifact rather than correcting an existing one.
@@ -1680,3 +1748,254 @@ underlying cost is real and is logged as OBS-33 — the one-prop fix removes the
 | PRA submission                                              | Shelley; going in under the approved APD template PRA `[15:45]`                                                                                                                                                                                                                                                                                               |
 | Formal ACR/VPAT                                             | Pending P2                                                                                                                                                                                                                                                                                                                                                    |
 | Remaining `OBS-*` items                                     | 22 of 36 stay in the backlog: OBS-4, 5, 8, 9, 10, 11, 12, 13, 14, 15, **16 (partially)**, 18, 19, 20, 22, 23, 26, 27, 28, 33, 35, 36. OBS-22 (PWA, via P4) and OBS-28 (favicon) are scheduled for Wave 8. OBS-5, OBS-18 and OBS-35 are carried in Section 4 as needing a decision rather than code. OBS-36 wants pairing with a re-audit of data-empty states |
+
+## 8j. Wave 6 Notes — 2026-09-14
+
+The checklist above says what was built. This is what cost time to learn, and the numbers a
+later session should not have to re-derive.
+
+**Every figure below was read out of the generated `.xlsx`**, and the structural ones were
+read out of its unzipped OOXML rather than through ExcelJS's reader. That distinction turned
+out to matter more than expected — see the two defects below.
+
+### Shape of the artifact
+
+| Sheet                         | Rows  |
+| ----------------------------- | ----- |
+| `00_README`                   | 50    |
+| `01_Maturity_Levels`          | 6     |
+| `02_Capability_Reference`     | 72    |
+| `03_ORBIT_Criteria_Reference` | 205   |
+| `04_Assessment_Input`         | 1,625 |
+| `05_Organizational_Input`     | 15    |
+
+149 KB. Every count in 5.2 verified against the JSON. Row geometry is the same on every
+sheet: notice in `A1`, the single header row on row 2, data from row 3, **no blank rows
+anywhere in the workbook**. `HEADER_ROW` and `FIRST_DATA_ROW` in `scripts/xlsx/constants.ts`
+are the only definition of that, and Wave 7 must derive its formula ranges from them.
+
+**Decision 12 confirmed by measurement, not assertion.** The vendor chunk is 1,418.43 kB /
+449.92 kB gzipped — byte-identical to the Wave 0 baseline. No `exceljs` string in any
+`dist/assets/*.js`, no `src/` import, and `npm ls exceljs --omit=dev` is empty. The workbook
+feature costs the shipped app nothing.
+
+### Two defects that only the real artifact revealed
+
+Both passed the full reload-based test suite. Both were found by unzipping the `.xlsx`.
+
+1. **Two overlapping `<dataValidation>` elements** where there should be one. ExcelJS's
+   range coalescer sorts cell addresses as strings, so `H10` precedes `H3` and it emitted
+   `H10:I1627` nested inside `H3:I1627`. Reproduced in isolation, so it is a library bug and
+   not our data. Fixed by using `dataValidations.add(range, ...)` instead of per-cell
+   assignment. **The round-trip test could not see it** — ExcelJS's reader expands both
+   elements to the same cells, so counting validated cells returned 1,625 either way.
+   Recorded as OBS-39.
+2. **Every editable cell was a text cell holding an empty string**, not a blank cell:
+   `<c r="H3" s="8" t="s"><v>4</v></c>` where shared string 4 is `""`. 8,200 on the two input
+   sheets, plus 9 on the README from a second code path that was missed on the first fix.
+   `ISBLANK` returns FALSE and `COUNTBLANK` returns 0 for those cells, while
+   `AVERAGEIF(">0")` correctly skips them — so a Wave 7 completion column counting non-blank
+   level cells would have reported **a blank workbook as 100% complete** on the same sheet as
+   a correctly-empty score. Fixed by writing `null`; ExcelJS still emits the style, so the
+   fill and the unlocked protection survive, and both are now asserted. The workbook now
+   contains **no empty shared string at all**, which is the strongest form of the check and
+   what `writes no empty-string text cells on any sheet` asserts.
+
+The lesson generalises: **ExcelJS's reader normalises, so a round-trip test is blind to
+anything the reader smooths over.** `scripts/xlsx/workbook.raw.test.ts` exists for that
+reason — it unzips the artifact with `jszip` (already a production dependency) and asserts on
+the XML. Use it for anything where the file format is the ground truth.
+
+### The full PRA statement cannot go in an Excel footer
+
+Option D specified the full notice line in the print footer of every sheet. It does not fit:
+Excel's header/footer limit is 255 characters, `DRAFT_NOTICE_LINE` is 420, and the assembled
+footer was 441. Decision 15 forbids shortening the CMS wording, and the PRA sentence alone
+exceeds 255 — so this is not an implementation problem, it is impossible.
+
+Resolution, and Decision 16 now records it: the footer carries `DRAFT_NOTICE_SHORT_LINE`
+(184 characters assembled), and the full statement lives on `00_README` as sheet content plus
+the `description` document property. Same split the PDF already uses.
+
+`assertFooterFits` throws at generation time as well. Note the precise claim, because a
+looser version of it was wrong on first writing: the suites **do** assert the emitted footer
+is within the limit, and that assertion is mutation-proved. What no test can do is confirm
+Excel _accepts_ what we wrote — the bytes are exactly what we intended and only Excel
+objects. The guard's own boundary is unit-tested in `footer.test.ts`, both sides of it.
+Recorded as OBS-40.
+
+### Proving the 508 assertions
+
+`scripts/xlsx/prove-assertions.ts` breaks the thing each assertion covers and confirms the
+test goes red. **46 for 46**, exit code 0. Kept rather than deleted: Wave 7 adds more
+assertions of the same shape, and it is also the evidence behind the accessibility claim.
+
+It found **two genuinely vacuous assertions**, and both had the same shape — the test
+compared the workbook against the same constant the workbook was generated from, so mutating
+the constant moved both sides and the test stayed green:
+
+| Assertion          | Why it could not fail                                       | Fix                        |
+| ------------------ | ----------------------------------------------------------- | -------------------------- |
+| notice colour      | compared cell font to `COLORS.noticeFont`                   | pin the literal `FFB0142F` |
+| header is on row 2 | read the header _at_ `HEADER_ROW` and compared to the model | pin the literals 1 / 2 / 3 |
+
+That is a different failure mode from Wave 5's three, which were substrings satisfiable by
+unrelated content. **Both classes are invisible to review and to a passing suite.** The rule
+that catches this one: if both sides of an assertion derive from the same constant, it asserts
+nothing — pin a literal, and say in a comment why it must not be "fixed" to use the constant.
+
+**The harness does not catch every shape of vacuity, and two more got through it.** Both were
+found by an adversarial sub-agent review:
+
+- A **conditionally** vacuous assertion. "Every input-filled cell has a header that says so in
+  words" scanned for the fill and only asserted if it found one, so deleting the input fill
+  entirely left 120 tests green. Fixed by asserting the fill is present, which is now its own
+  mutation.
+- A **mismatched** mutation and test. The go-live block's "carries no predecisional notice"
+  checked four named locations — `A1`, the footer, the title, the `description` property — and
+  passed against a workbook carrying the full PRA statement verbatim on README row 4, because
+  the README's notice section was the one surface not gated on `isDraft()`. That is the worst
+  finding of the wave: a test certifying the opposite of the truth about the artifact states
+  will actually receive. The assertion now enumerates every cell of every sheet.
+
+The generalisation: **a mutation only proves the assertion it is pointed at.** Check that the
+pair actually correspond, and that the assertion has no early exit which the mutation happens
+to take.
+
+**Five mutations went stale mid-wave**, at three separate points, each time because a
+refactor renamed the code they patch. The harness reports that as `MUTATION-NOT-APPLIED` and
+exits non-zero, which is right — a stale mutation is an unproved assertion, so `41 of 41`
+quietly became `31 of 32` twice without the claim changing.
+
+Two consequences, both now in place. **Re-run the harness after any refactor**, not once at
+the end. And because it takes minutes and is therefore not in `npm test`, `footer.test.ts`
+now asserts that every mutation's target text still exists in the file it patches — the fast
+half of the guarantee, running in milliseconds. It earned itself immediately: it caught two
+freshly-stale mutations within a minute of being written.
+
+The harness also had a **classification bug worth knowing about if you extend it**. Its
+failure detection accepted `Test Files 1 failed`, which vitest prints on a _collection_
+error — so a mutation that broke the module at import time, running zero assertions, was
+reported as proof that the assertion works. It now requires the `Tests N failed` summary line
+and treats "no tests ran" as its own outcome counting against the total.
+
+### Traps and gotchas
+
+**`new URL(<literal>, import.meta.url)` is not safe in a module Vite transforms.** Vite
+statically rewrites that exact pattern to an asset URL, so `fileURLToPath` throws under
+vitest while the same code works fine under plain Node. Not uniform either — the
+`capabilities.json` path survived and the `package.json` path did not. Derive the directory
+from bare `import.meta.url` and compose with `node:path`; `scripts/xlsx/paths.ts` is the one
+place that happens. OBS-38.
+
+**`selectLockedCells: true` disappears from the file, and that is correct.** ExcelJS's `true`
+means "allow selection", which OOXML encodes as the _absence_ of the attribute because
+allowing is the format default. So asserting `=== true` always fails and asserting `!== false`
+passes even on an unprotected sheet. Two assertions are needed: `sheet === true` to prove
+protection is on, and `selectLockedCells !== false` to prove selection is not blocked. The
+raw XML shows `<sheetProtection sheet="1" sort="0" autoFilter="0"/>`, where `sort="0"` means
+sorting is _permitted_ — the OOXML flags are inverted relative to the ExcelJS API, which
+makes a naive reading of the file look alarming.
+
+**`knip` was ignoring the whole `scripts` directory**, so "knip clean" said nothing at all
+about this wave. Now fixed — `knip.json` has `scripts/**/*.{ts,tsx}` in `project` and
+`prove-assertions.ts` as an entry, since nothing imports it. It
+immediately found five dead exports I had added for Wave 7's benefit, which is the exact trap
+Section 1 warns about twice. They were deleted; add them back when a consumer exists.
+
+**`format:check` only globbed `src/**`.** Widened to `{src,scripts}`. The lint-staged glob is
+`*.{ts,tsx}` with no directory prefix, so the pre-commit hook *was\* reformatting the new files
+— meaning the gate and the hook disagreed about which files had a style.
+
+**Both workflows pinned Node 20, where the generator cannot run at all.** Type stripping is
+unflagged from 22.18. Bumped both to `22.18` and added `engines` plus `.nvmrc`. `npm test`
+passes on Node 20 regardless, because vitest transforms through Vite — so this was invisible
+today and would have detonated in Wave 8, which puts the generator in `npm run build`.
+`deploy.yml` was bumped in this wave rather than Wave 8 deliberately, so CI and deploy never
+validate against different runtimes.
+
+### Limitations — what this wave's verification does not establish
+
+Stated plainly, because the artifact goes to CMS.
+
+1. **The workbook has never been opened in Excel.** Everything here is asserted against the
+   OOXML we wrote and against ExcelJS's reader. The 255-character footer limit is precisely
+   the kind of thing that only Excel enforces, and our footer is now 208 — verified as
+   _within the limit_, not verified as _rendering correctly_. The user has Excel and has been
+   asked to check: the footer text, the level dropdowns, the sheet protection, and whether
+   the `A1` notice reads acceptably against the header row directly beneath it.
+2. **Excel's built-in Accessibility Checker has not been run.** That is Wave 7's checklist
+   item and is the manual complement to these automated assertions under P2. Nothing here
+   substitutes for it, and it is what CMS's own review will approximate.
+3. **No formula is verified, because none exists.** Sheets `06`-`09` are Wave 7. The README
+   describes the scoring rules it _will_ apply and says so explicitly.
+4. **Screen reader behaviour is untested.** The structural properties a screen reader depends
+   on are asserted — single header row, no merged cells, no hidden columns, locked cells
+   selectable, print titles — but no assistive technology has read this file.
+5. **The `A1` notice overflows into adjacent cells rather than wrapping**, which is how it
+   reads across the sheet without a merged cell. That is deliberate, and how it _looks_ at
+   various zoom levels and column widths has not been seen.
+6. The go-live variant (`VITE_DRAFT_MODE=false`) is now asserted structurally — no notice in
+   any cell, footer, or document property; row 1 still populated; no blank rows; page numbers
+   intact; the same row counts as the draft build — but it has not been opened in Excel
+   either. Worth generating and checking once before go-live actually happens, since that is
+   the artifact CMS publishes and it will have had far less human attention than the draft.
+
+## 8k. Wave 7 Pre-Brief (maturity profile and formulas)
+
+Written at the end of Wave 6. Wave 7 is the wave where the workbook starts _computing_, which
+makes it the highest-risk part of workstream C — 5.4 calls it "the real risk" and that is
+still true.
+
+### Read before writing any formula
+
+- **Section 5.4 in full**, especially the rounding-point table. Rounding happens at
+  _different points_ in different rollups, and getting that wrong is how the workbook
+  silently disagrees with the tool.
+- **Section 8j above**, particularly the two defects that only the raw artifact revealed. The
+  blank-cell one directly affects the completion column on `07`.
+- `calculateDimensionScore` in `src/services/scoring.ts` is the single canonical scorer.
+  `summariseDimensionsAcrossAreas` in `pdfExport.ts` is the reference for `09`.
+
+### What Wave 6 has already settled for you
+
+- **Row geometry is fixed and mode-independent.** `NOTICE_ROW` 1, `HEADER_ROW` 2,
+  `FIRST_DATA_ROW` 3, on every sheet, in both draft and go-live mode. Derive every range from
+  those constants — a hardcoded row number is how a range silently shifts by one.
+- **Every input row is uniquely keyed** by area + dimension + sub-dimension + aspect, and
+  those ID columns are visible at the far right of each sheet, outside the named range. A
+  test asserts the key is unique across all 1,625 rows.
+- **Technology sub-dimension attribution is preserved and contiguous**, and asserted against
+  the app's own ordering. The app's `getAspectsForDimension` flattens and loses it, which is
+  why `model.ts` has its own traversal.
+- **Sheets `06`-`09` are already named** in `SHEET_NAMES` and listed on the README as "not
+  included in this draft". A test pins that exact four-name list, so each sheet turns a test
+  red as you build it — including `09_Dimension_Scores`, agreed in Decision 17.
+- **The mutation harness exists.** Add a case per new assertion and re-run it. 41 for 41
+  today; anything less means an assertion that cannot fail.
+
+### Traps specific to this wave
+
+- **`AVERAGEIFS` returns `#DIV/0!` where `calculateDimensionScore` returns `null`.** The
+  canonical scorer _drops_ a sub-dimension with nothing assessed; Excel errors. The Technology
+  formula is the mean of two sub-dimension means, so it breaks the moment a state has filled
+  in only one sub-dimension — a very common partial state. Wrap in `IFERROR`/`AGGREGATE`, and
+  make the 5.4 step-1 reference implementation model the _drop_, not the error.
+- **Sorting is deliberately left enabled on the input sheets**, so a state can reorder them.
+  Every formula must therefore be criteria-based over the ID columns, never offset-based. The
+  README warns about adding and removing rows; it says nothing about sorting, and should.
+- **Excel `ROUND` and JS `Math.round(x * 10) / 10` disagree on decimal halfway values.**
+  `4.05 / 3` is 1.3 in JS and 1.4 from Excel. 5.4 step 1 cannot catch this because it shares
+  the JS primitive — hence the halfway-value fixture set on this wave's checklist. Record
+  which primitive is authoritative.
+- **`subDimensionId` holds the human string `Not applicable` on 1,570 of 1,625 rows** in a
+  column headed "Sub-Dimension ID". `AVERAGEIFS` copes, but it is not an ID, and it matters
+  for the XLSX import the design keeps citing as motivation. Worth reconsidering before more
+  formulas depend on the literal.
+- **Nothing asserts cell _types_ yet.** The row tests stringify, so `1` and `'1'` are
+  indistinguishable except where explicitly pinned. `01_Maturity_Levels` column A is
+  deliberately mixed — numbers 1-5 then the text `N/A`. If any formula does `MATCH` or
+  `VLOOKUP` against it, pin the types first.
+- **The `Finalized?` question on the checklist is a real fork, not a formality.** Decide it
+  before writing `08` and `09`, and update the README's "Known differences" text to match
+  whichever way it goes.

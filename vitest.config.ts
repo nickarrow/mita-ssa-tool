@@ -16,7 +16,13 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    /**
+     * `scripts/` is included so the XLSX workbook generator's tests run in the
+     * normal `npm test` gate. The generator produces a CMS deliverable whose 508
+     * structure is asserted only by those tests — leaving them out of the default
+     * run would mean the assertions existed but nothing enforced them.
+     */
+    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,tsx}'],
     /**
      * Vitest's default is 5000ms, which is not enough headroom here. The
      * container tests in `pages/Assessment.test.tsx` drive React + a debounced

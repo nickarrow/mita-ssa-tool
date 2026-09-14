@@ -1137,3 +1137,120 @@ Logged rather than fixed because it surfaced during an unrelated copy change and
 with a deliberate pass over data-empty states. Worth pairing with a re-audit that drives
 the empty variants of `/dashboard`, `/results` and `/history`, since the same reasoning
 applies to all three and only `/results` happened to be checked.
+
+### OBS-37 — Production dependencies carry a critical and a high advisory
+
+**Confirmed** by `npm audit --omit=dev` during Wave 6 (September 14, 2026). Unrelated to
+that wave's work — noticed while confirming the new `exceljs` dependency stays out of the
+production tree, which it does (`npm ls exceljs --omit=dev` returns empty).
+
+Seven advisories affect the **production** tree, of which two matter:
+
+| Package        | Severity     | Advisories                                                                                                                  |
+| -------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `jspdf`        | **critical** | `GHSA-7x6v-j9x4-qf24` (PDF object injection via FreeText color), `GHSA-wfv2-pwc8-crg5` (HTML injection in new-window paths) |
+| `react-router` | high         | `GHSA-49rj-9fvp-4h2h` (vendored turbo-stream deserialization → RCE), plus four XSS/DoS/CSRF advisories                      |
+
+Both are reported as having fixes available via `npm audit fix`.
+
+How much of this reaches this app is genuinely unclear and worth establishing rather than
+assuming, in both directions:
+
+- The `jspdf` advisories concern FreeText annotations and `html()`/new-window rendering.
+  `pdfExport.ts` uses neither — it draws text and tables into a document it constructs
+  itself, from data the user typed into their own browser. There is no server, and no
+  untrusted PDF is ever parsed. So the exploitable path looks absent.
+- The `react-router` turbo-stream advisory concerns single-fetch and RSC server paths.
+  This app is a static SPA with no router server runtime, so again the path looks absent.
+
+That reasoning is **inferred, not verified**, and "we read the advisory and think it does
+not apply" is a weaker position than "we upgraded" when the reviewer is CMS and the
+artifact is a government pilot tool. A `npm audit` output with a critical line in it is
+also the kind of thing that derails a security review on presentation alone.
+
+Not fixed in Wave 6 because upgrading `jspdf` across a major version would change the
+export path in the same drop that already changed exported Technology scores, and
+stakeholders are mid-review. Wants its own change with an export regression pass.
+
+### OBS-38 — Vite rewrites `new URL(<literal>, import.meta.url)`, so the idiom breaks only under vitest
+
+**Confirmed** in Wave 6 by reproducing it. **Resolved in Wave 6** for the workbook
+generator, via `scripts/xlsx/paths.ts`; recorded because the failure mode is confusing and
+will recur in any future Node-side script that the test suite imports.
+
+Vite statically recognises the exact syntactic pattern `new URL(<string literal>,
+import.meta.url)` and rewrites it into its own asset-URL handling, which produces an
+`http://` URL. `fileURLToPath` then throws `TypeError: The URL must be of scheme file`.
+
+The confusing part is where it does and does not happen. The generator ran correctly under
+plain Node — where nothing rewrites anything — and only one of its test files failed. And
+the rewrite was not uniform even within the same wave: `new URL('../../src/data/capabilities.json',
+import.meta.url)` survived while `new URL('../../package.json', import.meta.url)` did not,
+so a rule of thumb learned from the first would have been wrong.
+
+Bare `import.meta.url` is left alone. So the durable form is to derive the module directory
+from bare `import.meta.url` and compose paths with `node:path`, which Vite cannot statically
+analyse:
+
+```ts
+export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+```
+
+`process.cwd()` also works for the current callers, since npm scripts and vitest both run
+from the package root, but it silently resolves elsewhere the first time someone runs a
+script from a subdirectory.
+
+### OBS-39 — ExcelJS sorts cell addresses as strings, emitting duplicate `dataValidation` ranges
+
+**Confirmed** in Wave 6 by reproducing it in isolation, outside this codebase's data.
+**Resolved in Wave 6** by using the range API instead of per-cell assignment.
+
+Assigning `cell.dataValidation` on each cell of a column and letting ExcelJS coalesce the
+range produces **two overlapping `<dataValidation>` elements** rather than one:
+`sqref="H10:I1627"` nested inside `sqref="H3:I1627"`. The cause is visible in the range
+itself — `H10` sorts before `H3` lexicographically, so the coalescer walks addresses in
+string order and starts a range at the lexicographically first address. Any validated range
+that begins below row 10 and extends past it hits this, which is every input sheet in the
+workbook.
+
+Excel tolerates the duplicate, so nothing visibly breaks. What makes it worth recording is
+that **it is invisible to a round-trip test**: ExcelJS's reader expands both elements back
+to the same set of cells, so counting validated cells returns the same number for the
+correct and the broken form. It was found by unzipping the artifact and reading the OOXML,
+which is why `scripts/xlsx/workbook.raw.test.ts` exists at all.
+
+Fix: `sheet.dataValidations.add(range, validation)`. Note this method exists at runtime but
+is **absent from ExcelJS's published TypeScript definitions**, so it needs a narrow local
+type assertion (`asRangeValidatable` in `workbook.ts`). Upstream has been dormant since
+v4.4.0 (October 2023), so expect the types to stay wrong.
+
+### OBS-40 — The full PRA statement cannot go in an Excel header or footer
+
+**Confirmed** in Wave 6 by measuring, and against Microsoft's documented limit.
+**Resolved in Wave 6** by design, and recorded because it is a permanent constraint on the
+deliverable rather than a bug anyone can fix.
+
+Excel rejects or truncates header and footer text longer than **255 characters**
+([Microsoft Learn on the "text string is too long" footer error](https://learn.microsoft.com/en-us/answers/questions/5303928/why-am-i-getting-the-text-string-you-entered-is-to);
+[TechRepublic on the same limit](https://www.techrepublic.com/article/10-steps-to-beating-excels-character-limit-for-headers-and-footers/) —
+content rephrased for compliance with licensing restrictions). Some reports put the
+practical ceiling lower still, around 227-250.
+
+`DRAFT_NOTICE_LINE` is 420 characters; with the `&L&8` and page-number formatting codes the
+assembled footer is 441. Shortening the wording is not available either — Decision 15
+requires the CMS-supplied text verbatim, and the PRA sentence by itself exceeds 255. So the
+full statement cannot be a per-page Excel footer for anyone, under any implementation.
+
+Consequences already applied: the footer carries `DRAFT_NOTICE_SHORT_LINE` (184 characters
+assembled), and the full statement lives on `00_README` as sheet content and in the
+workbook's `description` document property. This matches what the PDF already does — full
+statement on the cover, short line in the per-page footer.
+
+**No test can confirm that Excel _accepts_ a footer** — the bytes we write are exactly what
+we intended, so a round-trip or raw-XML assertion passes and only Excel objects. That is
+narrower than "no test can catch a regression here", which an earlier draft of this entry
+claimed and which was false: the suites do assert the emitted footer is within 255, that
+assertion is mutation-proved, and `assertFooterFits`'s own boundary is unit-tested on both
+sides in `scripts/xlsx/footer.test.ts`. What the build-time throw in `workbook.ts` adds is
+failing at generation rather than at a reviewer's desk. If Wave 7 or a later change wants
+more in the footer, that guard is the thing to read first.

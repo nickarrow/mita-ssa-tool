@@ -879,7 +879,49 @@ npm run audit:code   # Detect unused code (knip)
 npm test             # Run tests once
 npm run test:watch   # Watch mode
 npm run test:coverage # Coverage report
+
+# Build-time artifacts
+npm run generate:workbook  # Regenerate the offline XLSX workbook into public/
 ```
+
+**Node 22.18 or newer is required** (declared in `engines` and `.nvmrc`). The workbook
+generator is a TypeScript file executed directly by Node, which needs Node's native type
+stripping. On Node 20 it fails with an unknown-file-extension error, while `npm test` still
+passes because vitest transforms through Vite — so a too-old Node fails in a confusing place.
+
+---
+
+## 16. The `scripts/` Directory
+
+Build-time tooling lives in `scripts/`, written in TypeScript and run directly by Node. It is
+covered by `typecheck`, `lint`, `knip` and `format:check` exactly like `src/`, and its tests
+run under `npm test`.
+
+| Path                                | Purpose                                                                     |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| `scripts/generate-xlsx-workbook.ts` | Generates the offline Excel workbook into `public/`                         |
+| `scripts/xlsx/model.ts`             | Node-safe view of the capability and ORBIT models, read from the JSON files |
+| `scripts/xlsx/constants.ts`         | Declarative sheet, column and layout configuration                          |
+| `scripts/xlsx/rows.ts`              | Pure row builders, testable without ExcelJS                                 |
+| `scripts/xlsx/workbook.ts`          | ExcelJS assembly and the Section 508 structure                              |
+| `scripts/xlsx/paths.ts`             | Repository-root path resolution                                             |
+| `scripts/xlsx/prove-assertions.ts`  | Mutation harness proving each 508 assertion can fail                        |
+
+Three rules specific to this directory, each learned the hard way:
+
+**Never import `src/constants/index.ts` or anything that reaches it.** It reads
+`import.meta.env` at module scope, which is `undefined` under plain Node, so touching it
+throws. `src/constants/draftNotice.ts` was deliberately split out to be Node-safe and _can_
+be imported. Derive environment flags from `process.env`, never `import.meta.env`.
+
+**Never use `new URL(<string literal>, import.meta.url)`.** Vite statically rewrites that
+exact pattern into an asset URL, so it works under plain Node and throws under vitest — and
+not uniformly, which makes it worse. Compose paths from a bare `import.meta.url` via
+`node:path`; `scripts/xlsx/paths.ts` is the single place that happens.
+
+**Heavy dependencies here stay `devDependencies`.** ExcelJS is pinned and build-time only, so
+it never enters the browser bundle of an offline-first PWA. Verify with
+`npm ls <pkg> --omit=dev` rather than assuming.
 
 ---
 
