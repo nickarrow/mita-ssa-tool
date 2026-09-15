@@ -33,7 +33,7 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 | Commits so far | Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c` |
 | Pushed         | Drop 1 is pushed and live. **Wave 6 is committed locally, not yet pushed or deployed** — it changes nothing a stakeholder can see, since the download links are Wave 8                            |
 | Deployed       | Drop 1 only. Pages dispatched from this branch at `84ec16c` on September 11, so the live build is **all of Drop 1 plus the CMS top/bottom notices**. Wave 6 is not in it                          |
-| Green at       | 885 tests / 40 files; typecheck, lint, knip, `format:check` and `build` all clean                                                                                                                 |
+| Green at       | 903 tests / 41 files; typecheck, lint, knip, `format:check` and `build` all clean. Workbook opened in Excel; its Accessibility Checker passes clean in every category — see 8j                    |
 | Node floor     | **22.18.** The workbook generator is a `.ts` file run directly by Node and needs native type stripping. Declared in `engines`, `.nvmrc`, and both workflows — which were on Node 20               |
 | Next wave      | **Wave 7 — XLSX maturity profile and formulas.** See the pre-brief in Section 8k                                                                                                                  |
 
@@ -767,7 +767,11 @@ the next wave with a red repo.
       Wave 7 adds more assertions of the same shape. See 8j
 - [x] **Raw-OOXML test suite** — not in the original scope, added because the reload-based
       suite is blind to a whole class of defect and one of them had already shipped. See 8j
-- [x] Verify green — 885 tests / 40 files; typecheck, lint, knip, `format:check` and
+- [x] **Opened in Excel and checked by the user**, including Excel's own Accessibility
+      Checker, which passes with no issues in any category. Found four defects no assertion
+      could see — incoherent page numbers, illegible print scaling, inconsistent vertical
+      alignment, and clipped headers including the README's own title. All fixed. See 8j
+- [x] Verify green — 903 tests / 41 files; typecheck, lint, knip, `format:check` and
       `build` all clean. `knip` now actually covers `scripts/`, which it previously ignored
 
 ### Wave 7 — XLSX maturity profile and formulas
@@ -805,9 +809,13 @@ the next wave with a red repo.
       `calculateDimensionScore` on shared fixtures (5.4 step 1)
 - [ ] Snapshot tests on generated formula strings (5.4 step 2)
 - [ ] Open the generated file in Excel and hand-verify a standard area, an enterprise
-      domain area, and the organizational area
-- [ ] Run Excel's built-in Accessibility Checker and record the result (manual complement
-      to the automated 508 assertions, per P2)
+      domain area, and the organizational area. **Budget for this rather than treating it as
+      a formality** — Wave 6's Excel pass found four defects that 903 green tests could not
+      see, none of them a 508 property. Also glance at Print Preview on `04`, since the
+      natural-pagination setup that replaced `fitToWidth` has not been seen in Excel
+- [ ] Re-run Excel's Accessibility Checker after the new sheets land. Wave 6's run was clean
+      in every category, including "Avoid red formatting" and "Use of merged cells", so any
+      new finding is attributable to `06`-`09` rather than to the existing structure
 - [ ] Verify green
 
 ### Wave 8 — Delivery, docs, handoff
@@ -1824,6 +1832,58 @@ Excel _accepts_ what we wrote — the bytes are exactly what we intended and onl
 objects. The guard's own boundary is unit-tested in `footer.test.ts`, both sides of it.
 Recorded as OBS-40.
 
+### Verified in Excel — 2026-09-15
+
+The user opened the generated workbook. **This is the check nothing automated could
+substitute for**, and it found four defects the whole suite was blind to.
+
+| Check                           | Result                                                               |
+| ------------------------------- | -------------------------------------------------------------------- |
+| Opens without a repair prompt   | Clean, lands on `00_README`                                          |
+| Print footer                    | Renders, **not** truncated — the 255-character concern is discharged |
+| Level dropdowns                 | Work on first and last row; typing `7` is rejected as designed       |
+| Sheet protection                | Editable columns writable, locked cells still selectable             |
+| **Excel Accessibility Checker** | **"Looks good! No issues found."** — every category green            |
+| `A1` notice legibility          | Small but acceptable                                                 |
+| Overall appearance              | Plain, judged acceptable for the volume of content                   |
+
+The Accessibility Checker result is worth recording precisely: green on **"Avoid red
+formatting"** despite the notice being red, and green on **"Use of merged cells"**, **"Missing
+table header"** and **"Default sheet name"**. That is the manual complement to P2's automated
+assertions and the closest available approximation of CMS's own 508 review. It does **not**
+mean cleared — CMS runs its own review on its own clock — but it removes the most likely
+category of surprise.
+
+**Four defects found by looking, none of them a 508 property**, which is exactly why no
+assertion covered them:
+
+1. **Page numbers were incoherent.** `&P of &N` printed "1 of 24" on the first page and
+   "114 of 24" after scrolling right, because the sheet spans a _grid_ of pages while `&N`
+   counts one dimension of it. Removed on the user's call — and the cause was worse than the
+   symptom, see the next item.
+2. **`fitToWidth: 1` was a bad instruction on a 498-character-wide sheet.** Excel obeys it at
+   roughly 23% scale: one page wide and illegible. Now used only on `00_README`, which is two
+   columns and fits at about 85%. The table sheets paginate naturally at 100% with the header
+   row repeating, so anything printed is readable.
+3. **Vertical alignment was inconsistent.** Only the wrapping columns were set to top, so on a
+   row made tall by a wrapped question the short values sat at Excel's bottom default — a
+   state's typed notes floated above their own As-Is level. Now top on every column, set at
+   **column** level only: ExcelJS merges that into each cell's own style, confirmed in
+   `styles.xml` where the editable cells carry `applyAlignment="1"`. The per-cell assignment
+   that was also there was redundant, and redundant enough that a mutation could not tell the
+   two mechanisms apart — which made the assertion unprovable until one was removed.
+4. **Autofilter buttons clipped long headers**, and **the README's own title was truncated** to
+   "MITA 4.0 State Self-Assessment W" because the version string in `B2` blocked its overflow.
+   Widths widened, header row taller, and the redundant version dropped from the title band —
+   it already has its own labelled row.
+
+**A trap for the next session: Excel saves over the generated file.** The review session wrote
+test data, Excel's `filterMode="1"`, and a computed `scale="23"` into
+`public/mita-4.0-self-assessment-workbook.xlsx`. Inspecting that afterwards looks exactly like
+a generator bug — it briefly did, and `scale="23"` was nearly filed against our own code before
+the test data in `sharedStrings.xml` gave it away. **Regenerate before inspecting**, and
+confirm the file is ours by checking it carries no `filterMode` attribute.
+
 ### Proving the 508 assertions
 
 `scripts/xlsx/prove-assertions.ts` breaks the thing each assertion covers and confirms the
@@ -1918,28 +1978,28 @@ validate against different runtimes.
 
 Stated plainly, because the artifact goes to CMS.
 
-1. **The workbook has never been opened in Excel.** Everything here is asserted against the
-   OOXML we wrote and against ExcelJS's reader. The 255-character footer limit is precisely
-   the kind of thing that only Excel enforces, and our footer is now 208 — verified as
-   _within the limit_, not verified as _rendering correctly_. The user has Excel and has been
-   asked to check: the footer text, the level dropdowns, the sheet protection, and whether
-   the `A1` notice reads acceptably against the header row directly beneath it.
-2. **Excel's built-in Accessibility Checker has not been run.** That is Wave 7's checklist
-   item and is the manual complement to these automated assertions under P2. Nothing here
-   substitutes for it, and it is what CMS's own review will approximate.
-3. **No formula is verified, because none exists.** Sheets `06`-`09` are Wave 7. The README
+1. **No formula is verified, because none exists.** Sheets `06`-`09` are Wave 7. The README
    describes the scoring rules it _will_ apply and says so explicitly.
-4. **Screen reader behaviour is untested.** The structural properties a screen reader depends
-   on are asserted — single header row, no merged cells, no hidden columns, locked cells
-   selectable, print titles — but no assistive technology has read this file.
-5. **The `A1` notice overflows into adjacent cells rather than wrapping**, which is how it
-   reads across the sheet without a merged cell. That is deliberate, and how it _looks_ at
-   various zoom levels and column widths has not been seen.
-6. The go-live variant (`VITE_DRAFT_MODE=false`) is now asserted structurally — no notice in
-   any cell, footer, or document property; row 1 still populated; no blank rows; page numbers
-   intact; the same row counts as the draft build — but it has not been opened in Excel
-   either. Worth generating and checking once before go-live actually happens, since that is
-   the artifact CMS publishes and it will have had far less human attention than the draft.
+2. **Screen reader behaviour is untested.** The structural properties a screen reader depends
+   on are asserted, and Excel's Accessibility Checker passes clean — but no assistive
+   technology has actually read this file.
+3. **Print output was previewed, not printed.** The footer and the repeating header row were
+   seen in Excel. No page went on paper, and the natural-pagination setup that replaced
+   `fitToWidth` has not been re-checked in Excel since the change — worth a glance at Print
+   Preview on `04_Assessment_Input` next time the file is open.
+4. **The `A1` notice overflows into adjacent cells rather than wrapping**, which is how it
+   reads across the sheet without a merged cell. Judged acceptable in Excel at default zoom;
+   how it behaves at other zoom levels was not explored.
+5. The go-live variant (`VITE_DRAFT_MODE=false`) is asserted structurally — no notice in any
+   cell, footer or document property, row 1 still populated, no blank rows, the same row
+   counts as the draft build — but it has **not** been opened in Excel. Worth generating and
+   checking once before go-live actually happens, since that is the artifact CMS publishes and
+   it will have had far less human attention than the draft.
+6. **The four defects found in Excel were all invisible to the suite, and none was a 508
+   property.** Alignment, page numbering, print scaling and a clipped title are not things a
+   structural assertion covers. That is the general lesson rather than a gap to close: for a
+   visual artifact, some verification only comes from opening it, and Wave 7 should budget for
+   another pass rather than assuming a green suite means a good spreadsheet.
 
 ## 8k. Wave 7 Pre-Brief (maturity profile and formulas)
 
@@ -1952,8 +2012,10 @@ still true.
 - **Section 5.4 in full**, especially the rounding-point table. Rounding happens at
   _different points_ in different rollups, and getting that wrong is how the workbook
   silently disagrees with the tool.
-- **Section 8j above**, particularly the two defects that only the raw artifact revealed. The
-  blank-cell one directly affects the completion column on `07`.
+- **Section 8j above**, both the defects the raw artifact revealed and the four the Excel pass
+  revealed. The blank-cell one directly affects the completion column on `07`, and the
+  print-scaling one means new sheets should not reintroduce `fitToWidth` without checking how
+  wide they actually are.
 - `calculateDimensionScore` in `src/services/scoring.ts` is the single canonical scorer.
   `summariseDimensionsAcrossAreas` in `pdfExport.ts` is the reference for `09`.
 

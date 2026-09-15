@@ -42,6 +42,7 @@ import {
   CRITERIA_REFERENCE_COLUMNS,
   FIRST_DATA_ROW,
   HEADER_ROW,
+  HEADER_ROW_HEIGHT,
   LEVEL_DROPDOWN_VALUES,
   MATURITY_LEVEL_COLUMNS,
   NAMED_RANGES,
@@ -51,7 +52,7 @@ import {
   renderHeader,
   type ColumnDefinition,
 } from './constants.ts';
-import { buildReadmeRows, getAppVersion } from './readme.ts';
+import { buildReadmeRows } from './readme.ts';
 import {
   buildAssessmentInputRows,
   buildCapabilityReferenceRows,
@@ -211,19 +212,19 @@ function applyNoticeRow(sheet: ExcelJS.Worksheet): void {
   // cells outright, and Excel lets a long string overflow into the empty cells beside
   // it, so the notice reads across the sheet without any merge.
 
-  // Page numbers are unconditional. Wrapping the whole footer in the draft check left the
-  // go-live artifact with no `<headerFooter>` at all, so a printed 1,625-row sheet had no
-  // "Page 3 of 41" — and the go-live test asserting the footer lacks the notice label was
-  // equally satisfied by there being no footer.
-  const pageNumbers = '&R&8Page &P of &N';
-  const footer = isDraft()
-    ? `&L&8${escapeHeaderFooter(DRAFT_NOTICE_SHORT_LINE)}${pageNumbers}`
-    : pageNumbers;
-  assertFooterFits(sheet.name, footer);
-  sheet.headerFooter.oddFooter = footer;
-  // `evenFooter` is deliberately not set. Without a `differentOddEven` flag Excel uses
-  // `oddFooter` for every page and ignores `evenFooter`, so setting it would be dead
-  // weight that reads like coverage.
+  // No page numbers. `&P of &N` reported nonsense in Excel — "1 of 24" on the first page
+  // and "114 of 24" after scrolling right — because the sheet spans a grid of pages rather
+  // than a single column of them, and `&N` counts only one dimension of that grid. Dropped
+  // on the user's call during Excel verification rather than papered over: on a sheet nobody
+  // prints whole, a page number that contradicts itself is worse than none.
+  if (isDraft()) {
+    const footer = `&L&8${escapeHeaderFooter(DRAFT_NOTICE_SHORT_LINE)}`;
+    assertFooterFits(sheet.name, footer);
+    sheet.headerFooter.oddFooter = footer;
+    // `evenFooter` is deliberately not set. Without a `differentOddEven` flag Excel uses
+    // `oddFooter` for every page and ignores `evenFooter`, so setting it would be dead
+    // weight that reads like coverage.
+  }
 }
 
 /**
@@ -311,12 +312,23 @@ interface TableSheetSpec {
 function addTableSheet(workbook: ExcelJS.Workbook, spec: TableSheetSpec): void {
   const sheet = workbook.addWorksheet(spec.name);
 
+  // Vertical alignment is set on **every** column, not only the wrapping ones.
+  //
+  // Excel's default is bottom, and only the wrap columns were being set to top — so on a
+  // row made tall by a wrapped question, the short values sat at the bottom while the
+  // question started at the top, and a state's typed notes floated above their own As-Is
+  // level. Found in Excel during review; invisible to every structural assertion, because
+  // alignment is not a 508 property.
+  //
+  // Top rather than bottom, which is the opposite of the first instinct: on a row whose
+  // height is driven by one long wrapped cell, top-alignment puts each value on the same
+  // visual line as the beginning of the text it answers. Bottom-alignment also lines the
+  // values up with each other, but pushes them away from the start of the question. It is a
+  // one-word change here if that reads better in practice.
   spec.columns.forEach((column, index) => {
     const sheetColumn = sheet.getColumn(index + 1);
     sheetColumn.width = column.width;
-    if (column.wrap) {
-      sheetColumn.alignment = { wrapText: true, vertical: 'top' };
-    }
+    sheetColumn.alignment = { vertical: 'top', wrapText: column.wrap === true };
   });
 
   applyNoticeRow(sheet);
@@ -329,7 +341,7 @@ function addTableSheet(workbook: ExcelJS.Workbook, spec: TableSheetSpec): void {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.headerFill } };
     cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
   });
-  headerRow.height = 30;
+  headerRow.height = HEADER_ROW_HEIGHT;
   headerRow.commit();
 
   spec.rows.forEach((row, rowIndex) => {
@@ -349,9 +361,11 @@ function addTableSheet(workbook: ExcelJS.Workbook, spec: TableSheetSpec): void {
       // cells on save, so writing them would have made a state's re-saved file behave
       // differently from the generated one.
       cell.value = value === undefined || value === '' ? null : value;
-      if (column.wrap) {
-        cell.alignment = { wrapText: true, vertical: 'top' };
-      }
+      // No per-cell alignment: the column-level alignment set above is merged into each
+      // cell's own style by ExcelJS, verified in `styles.xml` — the editable cells carry
+      // `applyAlignment="1"` with `vertical="top"` even though only the column was set.
+      // Setting it here as well was redundant, and redundant enough that a mutation could
+      // not tell the two mechanisms apart, which made the alignment assertion unprovable.
       if (column.editable) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.inputFill } };
         // Unlocked before the sheet-level protection below, which locks everything else.
@@ -506,18 +520,31 @@ function lastIndexOfNonIdentifier(columns: readonly ColumnDefinition[]): number 
 }
 
 /**
- * Print setup: landscape, fit to width, and the header row repeated on every page.
+ * Print setup: landscape, the header row repeated on every page, and no forced scaling.
  *
- * `printTitlesRow` is what makes a printed 1,625-row sheet usable — without it, page
- * 2 onward is unlabelled columns of text, which is a 508 problem on paper as much as
- * a usability one.
+ * `printTitlesRow` is what makes a printed sheet usable — without it, page 2 onward is
+ * unlabelled columns of text, which is a 508 problem on paper as much as a usability one.
+ *
+ * ## Why `fitToWidth` is not used on the table sheets
+ *
+ * It was, and it was a bad instruction. `04_Assessment_Input` is about 498 character-widths
+ * across, roughly five landscape pages at 100%. Telling Excel to fit that onto one page
+ * width makes it obey at around 23% scale — technically one page wide, and completely
+ * illegible. It also made the page numbering incoherent in Page Layout view, which is how
+ * the problem surfaced during review in Excel.
+ *
+ * Natural pagination at 100% is the better trade: anything printed is readable, and the
+ * repeated header row means a page from the middle of the sheet still identifies its
+ * columns. Printing all 1,625 rows is a lot of paper, but that is inherent to the content
+ * and the realistic case is printing a filtered subset.
+ *
+ * `00_README` is the exception and keeps `fitToWidth` — it is two columns, about 144
+ * character-widths, which fits one page at roughly 85% and stays perfectly readable.
  */
-function applyPrintSetup(sheet: ExcelJS.Worksheet): void {
+function applyPrintSetup(sheet: ExcelJS.Worksheet, options: { fitToWidth?: boolean } = {}): void {
   sheet.pageSetup = {
     orientation: 'landscape',
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0,
+    ...(options.fitToWidth ? { fitToPage: true, fitToWidth: 1, fitToHeight: 0 } : {}),
     printTitlesRow: `${HEADER_ROW}:${HEADER_ROW}`,
     margins: {
       left: 0.4,
@@ -594,10 +621,13 @@ function addReadmeSheet(workbook: ExcelJS.Workbook): void {
     pattern: 'solid',
     fgColor: { argb: COLORS.headerFill },
   };
-  // The second cell is filled to the same colour rather than merged across, so the
-  // title band reads as one band without a merged cell.
-  titleRow.getCell(2).value = `Version ${getAppVersion()}`;
-  titleRow.getCell(2).font = { bold: true, color: { argb: COLORS.headerFont } };
+
+  // The second cell is filled to the same colour but left **empty**, so the band reads as
+  // one continuous band with no merged cell, and the 39-character title can overflow
+  // across it. A fill does not block overflow; content does — and putting the version here
+  // was doing exactly that, clipping the workbook's own title to "MITA 4.0 State
+  // Self-Assessment W" in Excel. The version is already its own labelled row below, so it
+  // was redundant as well as harmful.
   titleRow.getCell(2).fill = {
     type: 'pattern',
     pattern: 'solid',
@@ -619,6 +649,7 @@ function addReadmeSheet(workbook: ExcelJS.Workbook): void {
 
     if (row.kind === 'heading') {
       sheetRow.getCell(1).font = { bold: true, size: 12 };
+      sheetRow.getCell(1).alignment = { vertical: 'top' };
     } else {
       sheetRow.getCell(1).font = { bold: true };
       sheetRow.getCell(1).alignment = { vertical: 'top', wrapText: true };
@@ -630,9 +661,13 @@ function addReadmeSheet(workbook: ExcelJS.Workbook): void {
   }
 
   sheet.views = [{ state: 'frozen', ySplit: HEADER_ROW, activeCell: 'A1' }];
-  applyPrintSetup(sheet);
+
+  // `fitToWidth` here but not on the table sheets: the README is two columns and about 144
+  // character-widths, which fits one page at roughly 85% and stays readable. See
+  // `applyPrintSetup` for why the same instruction is wrong on a 498-wide data sheet.
+  applyPrintSetup(sheet, { fitToWidth: true });
   // No printTitlesRow: the README has no repeating header, and pointing print titles
-  // at the title band would repeat a version banner on every page.
+  // at the title band would repeat it on every page.
   if (sheet.pageSetup) {
     delete sheet.pageSetup.printTitlesRow;
   }

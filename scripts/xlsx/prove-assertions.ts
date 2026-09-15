@@ -202,11 +202,11 @@ export const MUTATION_CASES: MutationCase[] = [
   {
     assertion: 'notice appears in the print footer',
     file: 'scripts/xlsx/workbook.ts',
-    find: `  const footer = isDraft()
-    ? \`&L&8\${escapeHeaderFooter(DRAFT_NOTICE_SHORT_LINE)}\${pageNumbers}\`
-    : pageNumbers;
-  assertFooterFits(sheet.name, footer);`,
-    replace: `  const footer = pageNumbers;`,
+    find: `    const footer = \`&L&8\${escapeHeaderFooter(DRAFT_NOTICE_SHORT_LINE)}\`;
+    assertFooterFits(sheet.name, footer);
+    sheet.headerFooter.oddFooter = footer;`,
+    replace: `    const footer = '&L&8';
+    sheet.headerFooter.oddFooter = footer;`,
     test: 'puts the notice in the print footer of every sheet, within Excel limits',
   },
   {
@@ -252,12 +252,8 @@ export const MUTATION_CASES: MutationCase[] = [
   {
     assertion: 'no column is hidden',
     file: 'scripts/xlsx/workbook.ts',
-    find: `    if (column.wrap) {
-      sheetColumn.alignment = { wrapText: true, vertical: 'top' };
-    }`,
-    replace: `    if (column.wrap) {
-      sheetColumn.alignment = { wrapText: true, vertical: 'top' };
-    }
+    find: `    sheetColumn.alignment = { vertical: 'top', wrapText: column.wrap === true };`,
+    replace: `    sheetColumn.alignment = { vertical: 'top', wrapText: column.wrap === true };
     if (column.identifier) {
       sheetColumn.hidden = true;
     }`,
@@ -422,15 +418,30 @@ export const MUTATION_CASES: MutationCase[] = [
     test: 'fills every editable data cell and no reference cell',
   },
   {
+    // Reverts to the pre-fix form: alignment only on the wrapping columns, leaving every
+    // other column at Excel's bottom default. That is the state the user saw in Excel, where
+    // typed notes floated above their own As-Is level.
+    assertion: 'every column is aligned to the top of the row',
+    file: 'scripts/xlsx/workbook.ts',
+    find: `    sheetColumn.alignment = { vertical: 'top', wrapText: column.wrap === true };`,
+    replace: `    if (column.wrap) {
+      sheetColumn.alignment = { vertical: 'top', wrapText: true };
+    }`,
+    test: 'aligns every column of every table sheet to the top of the row',
+  },
+  {
+    assertion: 'header columns leave room for the filter button',
+    file: 'scripts/xlsx/constants.ts',
+    find: `  flag: 22,`,
+    replace: `  flag: 8,`,
+    test: 'leaves room for the filter button beside every header word',
+  },
+  {
     assertion: 'page numbers survive in go-live mode',
     file: 'scripts/xlsx/workbook.ts',
-    find: `  const footer = isDraft()
-    ? \`&L&8\${escapeHeaderFooter(DRAFT_NOTICE_SHORT_LINE)}\${pageNumbers}\`
-    : pageNumbers;`,
-    replace: `  const footer = isDraft()
-    ? \`&L&8\${escapeHeaderFooter(DRAFT_NOTICE_SHORT_LINE)}\${pageNumbers}\`
-    : '';`,
-    test: 'still prints page numbers on every sheet',
+    find: `    printTitlesRow: \`\${HEADER_ROW}:\${HEADER_ROW}\`,`,
+    replace: ``,
+    test: 'keeps the header row repeating on printed pages',
   },
   {
     assertion: 'footer length guard rejects an over-long footer',
@@ -465,9 +476,9 @@ export const MUTATION_CASES: MutationCase[] = [
     // an over-long footer if the guard were ever bypassed.
     assertion: 'raw: footer stays within Excel 255-char limit',
     file: 'scripts/xlsx/workbook.ts',
-    find: `  assertFooterFits(sheet.name, footer);
-  sheet.headerFooter.oddFooter = footer;`,
-    replace: `  sheet.headerFooter.oddFooter = footer.padEnd(300, ' ');`,
+    find: `    assertFooterFits(sheet.name, footer);
+    sheet.headerFooter.oddFooter = footer;`,
+    replace: `    sheet.headerFooter.oddFooter = footer.padEnd(300, ' ');`,
     test: 'puts the notice in the footer of every sheet, within Excel 255-char limit',
     testFile: 'scripts/xlsx/workbook.raw.test.ts',
   },

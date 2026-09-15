@@ -157,16 +157,39 @@ export interface ColumnDefinition {
  */
 export const EDITABLE_HEADER_SUFFIX = ' (enter value)';
 
-/** Column widths, in Excel's character-width units. */
+/**
+ * Column widths, in Excel's character-width units.
+ *
+ * **Every width has to leave room for the autofilter button**, which Excel draws over the
+ * bottom-right corner of the header cell and which overlaps the text rather than reflowing
+ * it. Headers wrap to two lines, so the constraint is that the longest wrapped line plus
+ * roughly three characters of button still fits. `flag` and `level` exist as their own sizes
+ * because their headers are long relative to any sensible data width — "Information
+ * Management Area" and "As-Is Level (enter value)" were both being clipped at the earlier
+ * widths, found by looking at the sheet in Excel.
+ */
 export const COL_WIDTHS = {
   id: 22,
+  /** Short headers with short values: "Layer", "Level", "Level Name". */
   short: 16,
+  /** Yes/No flag columns, sized for the header rather than the value. */
+  flag: 22,
   medium: 30,
   long: 46,
-  level: 20,
+  /** Level entry. Sized for "As-Is Level (enter value)" wrapped over two lines. */
+  level: 26,
   notes: 40,
   description: 62,
 } as const;
+
+/**
+ * Height of the header row, in points.
+ *
+ * Three wrapped lines at 11pt. Two was not enough once the editable columns gained their
+ * "(enter value)" suffix, and a clipped header defeats the point of having the suffix — it
+ * is there so editability is conveyed in words rather than by fill colour alone.
+ */
+export const HEADER_ROW_HEIGHT = 44;
 
 /**
  * Resolve a column's rendered header text, appending the editable signal.
@@ -206,7 +229,7 @@ export const CAPABILITY_REFERENCE_COLUMNS: readonly ColumnDefinition[] = [
   {
     key: 'informationManagement',
     header: 'Information Management Area',
-    width: COL_WIDTHS.short,
+    width: COL_WIDTHS.flag,
   },
   {
     key: 'assessedDimensions',
@@ -289,7 +312,7 @@ export const ASSESSMENT_INPUT_COLUMNS: readonly ColumnDefinition[] = [
   {
     key: 'informationManagement',
     header: 'Information Management Area',
-    width: COL_WIDTHS.short,
+    width: COL_WIDTHS.flag,
   },
   { key: 'dimensionName', header: 'Dimension', width: COL_WIDTHS.medium },
   { key: 'subDimensionName', header: 'Sub-Dimension', width: COL_WIDTHS.medium },

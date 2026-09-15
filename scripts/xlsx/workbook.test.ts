@@ -744,14 +744,26 @@ describe('go-live mode (VITE_DRAFT_MODE=false)', () => {
   });
 
   /**
-   * Page numbers are not part of the notice and must survive its removal. The draft-mode
-   * assertion of this cannot cover go-live — it reads the draft workbook — so wrapping the
-   * whole footer in the draft check left printed go-live sheets with no page numbers and
-   * nothing noticed.
+   * With the notice gone and page numbers dropped, there is nothing left for a footer to
+   * carry, so the go-live build legitimately has none. Asserted as empty rather than left
+   * implicit, because "the footer does not contain the notice" would also be satisfied by a
+   * footer that failed to render for an unrelated reason.
    */
-  it('still prints page numbers on every sheet', () => {
+  it('emits no footer at all, the notice having been its only content', () => {
     for (const worksheet of released.worksheets) {
-      expect(worksheet.headerFooter?.oddFooter ?? '', worksheet.name).toContain('Page &P of &N');
+      expect(worksheet.headerFooter?.oddFooter ?? '', worksheet.name).toBe('');
+    }
+  });
+
+  /**
+   * The repeating header row is not part of the notice and must survive its removal — it is
+   * what makes a printed page from the middle of a 1,625-row sheet identify its own columns.
+   */
+  it('keeps the header row repeating on printed pages', () => {
+    for (const { name } of TABLE_SHEETS) {
+      expect(releasedSheet(name).pageSetup?.printTitlesRow, name).toBe(
+        `${HEADER_ROW}:${HEADER_ROW}`
+      );
     }
   });
 
@@ -865,6 +877,50 @@ describe('508: locked cells stay reachable by assistive technology', () => {
    * with no value still has to carry its fill, which is exactly what could regress if
    * ExcelJS changed how it emits valueless styled cells.
    */
+  /**
+   * Uniform vertical alignment across every column of a row.
+   *
+   * Excel defaults to bottom, and only the wrapping columns were being set to top — so on a
+   * row made tall by a wrapped question, a state's typed notes floated above their own
+   * As-Is level. Alignment is not a 508 property, so no structural assertion could see it;
+   * it was found by looking at the sheet in Excel.
+   */
+  it('aligns every column of every table sheet to the top of the row', () => {
+    for (const { name, columns } of TABLE_SHEETS) {
+      const worksheet = sheet(name);
+      columns.forEach((column, index) => {
+        expect(
+          worksheet.getCell(FIRST_DATA_ROW, index + 1).alignment?.vertical,
+          `${name} ${column.key}`
+        ).toBe('top');
+      });
+    }
+  });
+
+  /**
+   * Every header must have room for its text alongside the autofilter button, which Excel
+   * draws over the header cell's bottom-right corner and which clips text rather than
+   * reflowing it. This asserts the cheap, deterministic half: no single unbreakable word in
+   * a header is wider than its column minus button clearance. Whether the wrapped result
+   * *looks* right is a visual check, recorded in Section 8j as verified in Excel.
+   */
+  it('leaves room for the filter button beside every header word', () => {
+    const filterButtonWidth = 3;
+    for (const { name, columns } of TABLE_SHEETS) {
+      for (const column of columns) {
+        const longestWord = Math.max(
+          ...renderHeader(column)
+            .split(/\s+/)
+            .map((word) => word.length)
+        );
+        expect(
+          column.width,
+          `${name} ${column.key}: width ${column.width} cannot fit "${longestWord}" chars + button`
+        ).toBeGreaterThanOrEqual(longestWord + filterButtonWidth);
+      }
+    }
+  });
+
   it('fills every editable data cell and no reference cell', () => {
     for (const { name, columns } of TABLE_SHEETS) {
       const worksheet = sheet(name);
@@ -1089,14 +1145,27 @@ describe('navigation aids', () => {
   });
 
   /**
-   * Page numbers are independent of the notice. Wrapping the whole footer in the draft
-   * check left the go-live artifact with no `<headerFooter>` element at all, so a printed
-   * 1,625-row sheet had no "Page 3 of 41" — and the go-live assertion that the footer lacks
-   * the notice label was equally satisfied by there being no footer.
+   * No page-number field anywhere. `&P of &N` reported "1 of 24" on the first page and
+   * "114 of 24" after scrolling right, because the sheet spans a grid of pages while `&N`
+   * counts one dimension of that grid. Removed on the user's call during Excel verification.
+   * Pinned so it is not reintroduced without confronting the pagination first.
    */
-  it('prints page numbers on every sheet in both modes', () => {
+  it('puts no page-number field in any footer', () => {
     for (const worksheet of workbook.worksheets) {
-      expect(worksheet.headerFooter?.oddFooter ?? '', worksheet.name).toContain('Page &P of &N');
+      expect(worksheet.headerFooter?.oddFooter ?? '', worksheet.name).not.toContain('&P');
+      expect(worksheet.headerFooter?.oddFooter ?? '', worksheet.name).not.toContain('&N');
+    }
+  });
+
+  /**
+   * `fitToWidth` on a table sheet forced Excel to roughly 23% scale to obey it — one page
+   * wide and illegible, and the source of the incoherent page numbering above. Only the
+   * README is narrow enough for the instruction to help.
+   */
+  it('forces page-width scaling only on the README', () => {
+    expect(sheet(SHEET_NAMES.README).pageSetup?.fitToPage).toBe(true);
+    for (const { name } of TABLE_SHEETS) {
+      expect(sheet(name).pageSetup?.fitToPage, name).toBeFalsy();
     }
   });
 });
