@@ -368,6 +368,12 @@ function addTableSheet(workbook: ExcelJS.Workbook, spec: TableSheetSpec): void {
       // not tell the two mechanisms apart, which made the alignment assertion unprovable.
       if (column.editable) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.inputFill } };
+        // All four sides, because both directions were lost. The fill hides Excel's
+        // gridlines, so without this the input block is an undifferentiated area: rows are
+        // hard to track across a wide sheet, and the three adjacent text columns on `04`
+        // have no visible boundary at all. See `COLORS.inputBorder`.
+        const edge = { style: 'thin' as const, color: { argb: COLORS.inputBorder } };
+        cell.border = { top: edge, left: edge, bottom: edge, right: edge };
         // Unlocked before the sheet-level protection below, which locks everything else.
         cell.protection = { locked: false };
       }
@@ -546,6 +552,12 @@ function applyPrintSetup(sheet: ExcelJS.Worksheet, options: { fitToWidth?: boole
     orientation: 'landscape',
     ...(options.fitToWidth ? { fitToPage: true, fitToWidth: 1, fitToHeight: 0 } : {}),
     printTitlesRow: `${HEADER_ROW}:${HEADER_ROW}`,
+    // Gridlines are off by default when printing, which would have made the ruling
+    // inconsistent on paper: the editable columns carry real borders, so without this the
+    // printed input block would be the only ruled part of the sheet. Turning them on makes
+    // print match screen, where the borders exist precisely to imitate gridlines the fill
+    // covers up.
+    showGridLines: true,
     margins: {
       left: 0.4,
       right: 0.4,

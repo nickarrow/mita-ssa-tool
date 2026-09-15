@@ -1835,7 +1835,7 @@ Recorded as OBS-40.
 ### Verified in Excel — 2026-09-15
 
 The user opened the generated workbook. **This is the check nothing automated could
-substitute for**, and it found four defects the whole suite was blind to.
+substitute for**, and it found five defects the whole suite was blind to.
 
 | Check                           | Result                                                               |
 | ------------------------------- | -------------------------------------------------------------------- |
@@ -1854,8 +1854,11 @@ assertions and the closest available approximation of CMS's own 508 review. It d
 mean cleared — CMS runs its own review on its own clock — but it removes the most likely
 category of surprise.
 
-**Four defects found by looking, none of them a 508 property**, which is exactly why no
-assertion covered them:
+**Five defects found by looking, none of them something a 508 checker flags**, which is
+exactly why no assertion covered them. Note the pattern: four of the five are consequences of
+_styling_ — a fill that hides gridlines, an alignment default, a scale instruction, a blocked
+text overflow. Structural assertions do not see styling, and Excel's Accessibility Checker
+passed clean through all of them.
 
 1. **Page numbers were incoherent.** `&P of &N` printed "1 of 24" on the first page and
    "114 of 24" after scrolling right, because the sheet spans a _grid_ of pages while `&N`
@@ -1876,6 +1879,23 @@ assertion covered them:
    "MITA 4.0 State Self-Assessment W" because the version string in `B2` blocked its overflow.
    Widths widened, header row taller, and the redundant version dropped from the title band —
    it already has its own labelled row.
+5. **The editable columns had no cell borders**, so the input area read as one undifferentiated
+   block of yellow. The cause is that **a solid fill covers Excel's gridlines**: the unfilled
+   reference columns kept their ruling and the input columns lost it, in both directions — on
+   `04` the three adjacent text columns (Notes, Barriers, Plans) had no visible boundary at
+   all, which is worse than the row-tracking problem. Thin borders on all four sides of every
+   editable cell now, in `#8C8C8C`, which measures 3.19:1 against the fill.
+
+   Two things worth knowing about that fix. The border colour clears WCAG 1.4.11 even though
+   it arguably need not — the row and column structure is available programmatically, so a
+   border duplicating it is a redundant aid, and Excel's own gridlines are only about 1.48:1 —
+   but clearing 3:1 costs nothing and removes the argument. And **gridlines print off by
+   default**, which would have left the editable columns as the only ruled part of a printed
+   sheet, so `printOptions gridLines="1"` is now set: the borders exist to imitate gridlines,
+   so the two have to appear together or neither does.
+
+   Cost is negligible. Borders are defined once in `styles.xml` and referenced by style index,
+   so ruling 8,200 cells added one border definition and no measurable file size.
 
 **A trap for the next session: Excel saves over the generated file.** The review session wrote
 test data, Excel's `filterMode="1"`, and a computed `scale="23"` into
@@ -1995,11 +2015,14 @@ Stated plainly, because the artifact goes to CMS.
    counts as the draft build — but it has **not** been opened in Excel. Worth generating and
    checking once before go-live actually happens, since that is the artifact CMS publishes and
    it will have had far less human attention than the draft.
-6. **The four defects found in Excel were all invisible to the suite, and none was a 508
-   property.** Alignment, page numbering, print scaling and a clipped title are not things a
-   structural assertion covers. That is the general lesson rather than a gap to close: for a
-   visual artifact, some verification only comes from opening it, and Wave 7 should budget for
-   another pass rather than assuming a green suite means a good spreadsheet.
+6. **The five defects found in Excel were all invisible to the suite, and none is something a
+   508 checker flags.** Alignment, page numbering, print scaling, a clipped title, and missing
+   cell ruling are consequences of styling, and structural assertions do not see styling —
+   Excel's own Accessibility Checker passed clean through all five. That is the general lesson
+   rather than a gap to close: for a visual artifact some verification only comes from opening
+   it, and **Wave 7 should budget for another Excel pass** rather than assuming a green suite
+   means a good spreadsheet. Each of the five now has an assertion and a mutation behind it,
+   so they cannot come back — but the next five will be different.
 
 ## 8k. Wave 7 Pre-Brief (maturity profile and formulas)
 

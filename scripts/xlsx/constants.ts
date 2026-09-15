@@ -440,6 +440,21 @@ export const COLORS = {
   headerFont: 'FFFFFFFF',
   /** Editable cell background. Pale yellow; a redundant signal, never the only one. */
   inputFill: 'FFFFF9E6',
+  /**
+   * Cell border on the editable columns.
+   *
+   * **A solid fill covers Excel's gridlines**, so the input block lost all row and column
+   * separation while the unfilled reference columns kept theirs — on `04` that left Notes,
+   * Barriers and Plans as three adjacent yellow columns with no visible boundary. These
+   * borders put the ruling back.
+   *
+   * `#8C8C8C` measures 3.19:1 against the input fill, chosen so it clears the WCAG 1.4.11
+   * non-text threshold. Strictly it need not: the row and column structure is available
+   * programmatically through the cells and headers, so a border duplicating it is a
+   * redundant visual aid rather than a meaningful graphic — Excel's own gridlines are only
+   * about 1.48:1. Clearing 3:1 anyway costs nothing and removes the argument.
+   */
+  inputBorder: 'FF8C8C8C',
   /** Notice row text. USWDS-derived dark red, 7.03:1 on white — same value as the app banner. */
   noticeFont: 'FFB0142F',
 } as const;

@@ -418,6 +418,27 @@ export const MUTATION_CASES: MutationCase[] = [
     test: 'fills every editable data cell and no reference cell',
   },
   {
+    assertion: 'editable cells are ruled on all four sides',
+    file: 'scripts/xlsx/workbook.ts',
+    find: `        cell.border = { top: edge, left: edge, bottom: edge, right: edge };`,
+    replace: `        cell.border = { top: edge, bottom: edge };`,
+    test: 'rules every editable cell on all four sides and no reference cell',
+  },
+  {
+    assertion: 'input border clears 3:1 on the fill',
+    file: 'scripts/xlsx/constants.ts',
+    find: `  inputBorder: 'FF8C8C8C',`,
+    replace: `  inputBorder: 'FFD4D4D4',`,
+    test: 'keeps the input border above 3:1 against the fill it sits on',
+  },
+  {
+    assertion: 'gridlines print, matching the cell borders',
+    file: 'scripts/xlsx/workbook.ts',
+    find: `    showGridLines: true,`,
+    replace: ``,
+    test: 'prints gridlines so the ruling is consistent on paper',
+  },
+  {
     // Reverts to the pre-fix form: alignment only on the wrapping columns, leaving every
     // other column at Excel's bottom default. That is the state the user saw in Excel, where
     // typed notes floated above their own As-Is level.

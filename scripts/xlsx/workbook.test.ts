@@ -936,6 +936,69 @@ describe('508: locked cells stay reachable by assistive technology', () => {
       });
     }
   });
+
+  /**
+   * Every editable cell is ruled on all four sides, and no reference cell is.
+   *
+   * The fill covers Excel's gridlines, so without borders the input block is an
+   * undifferentiated area — rows are hard to track across a wide sheet and the three
+   * adjacent text columns on `04` have no visible boundary. Reference columns keep their
+   * gridlines and deliberately get no border, which is what makes this assertion able to
+   * fail in both directions.
+   *
+   * Checked on the last data row as well as the first, since the borders are applied in the
+   * same loop as the values and an off-by-one at the end would be invisible at the top.
+   */
+  it('rules every editable cell on all four sides and no reference cell', () => {
+    for (const { name, columns } of TABLE_SHEETS) {
+      const worksheet = sheet(name);
+      const lastRow = worksheet.rowCount;
+
+      for (const row of [FIRST_DATA_ROW, lastRow]) {
+        columns.forEach((column, index) => {
+          const border = worksheet.getCell(row, index + 1).border;
+          const label = `${name} ${column.key} row ${row}`;
+
+          if (column.editable) {
+            for (const side of ['top', 'left', 'bottom', 'right'] as const) {
+              expect(border?.[side]?.style, `${label} has no ${side} border`).toBe('thin');
+              expect(border?.[side]?.color?.argb, `${label} ${side} border colour`).toBe(
+                COLORS.inputBorder
+              );
+            }
+          } else {
+            expect(
+              border?.top ?? border?.left ?? border?.bottom ?? border?.right,
+              label
+            ).toBeUndefined();
+          }
+        });
+      }
+    }
+  });
+
+  /**
+   * The border colour clears WCAG 1.4.11 against the fill it sits on. Not strictly required
+   * — the structure is available programmatically, so a border duplicating it is a redundant
+   * aid, and Excel's own gridlines are only about 1.48:1 — but it costs nothing to clear the
+   * threshold and it removes the argument.
+   */
+  it('keeps the input border above 3:1 against the fill it sits on', () => {
+    expect(
+      contrastRatio(rgbOf(COLORS.inputBorder), rgbOf(COLORS.inputFill))
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  /**
+   * Gridlines print off by default, which would have left the editable columns as the only
+   * ruled part of a printed sheet — the borders exist to imitate the gridlines the fill
+   * covers, so the two have to appear together or neither does.
+   */
+  it('prints gridlines so the ruling is consistent on paper', () => {
+    for (const worksheet of workbook.worksheets) {
+      expect(worksheet.pageSetup?.showGridLines, worksheet.name).toBe(true);
+    }
+  });
 });
 
 // =============================================================================

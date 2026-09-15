@@ -57,10 +57,12 @@ version bump lands with the final wave.
   maturity aspects, built for Section 508 conformance: no merged cells, one header row per
   table, no blank rows, no images, editable columns labelled "(enter value)" in text rather
   than signalled by fill colour alone, and reference cells locked but still selectable so
-  assistive technology can read them. Excel's own Accessibility Checker reports no issues in
-  any category. This first draft carries the reference and input sheets; the score sheets
-  follow. It is generated at build time by a Node script, so it adds nothing to the browser
-  bundle. No download link in the app yet
+  assistive technology can read them. Editable cells are ruled on all four sides, because a
+  solid fill covers Excel's gridlines and the input area would otherwise have no visible row
+  or column boundaries. Excel's own Accessibility Checker reports no issues in any category.
+  This first draft carries the reference and input sheets; the score sheets follow. It is
+  generated at build time by a Node script, so it adds nothing to the browser bundle. No
+  download link in the app yet
 
 ### Changed
 
