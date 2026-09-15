@@ -41,15 +41,15 @@ export const SHEET_NAMES = {
   DIMENSION_SCORES: '09_Dimension_Scores',
 } as const;
 
-/** Sheets this wave builds. Wave 7 adds `06` through `09`. */
-export const WAVE_6_SHEET_NAMES: readonly string[] = [
-  SHEET_NAMES.README,
-  SHEET_NAMES.MATURITY_LEVELS,
-  SHEET_NAMES.CAPABILITY_REFERENCE,
-  SHEET_NAMES.CRITERIA_REFERENCE,
-  SHEET_NAMES.ASSESSMENT_INPUT,
-  SHEET_NAMES.ORGANIZATIONAL_INPUT,
-];
+/**
+ * Every sheet the generator builds.
+ *
+ * Wave 6 built `00`-`05` and this list named only those, so the README could honestly mark
+ * `06`-`09` as not yet included and a test could pin that exact four-name list. Wave 7 completed
+ * the set, so the distinction is gone and the list is simply all of them — which is why the
+ * README no longer carries a "not included" caveat.
+ */
+export const BUILT_SHEET_NAMES: readonly string[] = Object.values(SHEET_NAMES);
 
 /**
  * One-line purpose for each sheet, for the README's sheet index.
@@ -70,6 +70,16 @@ export const SHEET_DESCRIPTIONS: Readonly<Record<string, string>> = {
     'Enter your As-Is and To-Be levels here, one row per aspect per capability area.',
   [SHEET_NAMES.ORGANIZATIONAL_INPUT]:
     'Enter your As-Is and To-Be levels for the 15 organizational aspects of Enterprise Governance.',
+  [SHEET_NAMES.MATURITY_PROFILE]:
+    'Your maturity profile, calculated: one row per capability area per dimension, with the ' +
+    'Technology sub-dimension means shown separately. Updates as you type.',
+  [SHEET_NAMES.AREA_SCORES]:
+    'One row per capability area: overall score, To-Be score, and how much of it you have completed.',
+  [SHEET_NAMES.DOMAIN_SCORES]:
+    'One row per capability domain, plus an overall row across every capability area.',
+  [SHEET_NAMES.DIMENSION_SCORES]:
+    'Your enterprise-wide score for each ORBIT dimension, with the number of capability areas ' +
+    'each figure is averaged over.',
 };
 
 // =============================================================================
@@ -400,6 +410,138 @@ export const ORGANIZATIONAL_INPUT_COLUMNS: readonly ColumnDefinition[] = [
   { key: 'areaId', header: 'Capability Area ID', width: COL_WIDTHS.id, identifier: true },
   { key: 'sectionId', header: 'Section ID', width: COL_WIDTHS.id, identifier: true },
   { key: 'aspectId', header: 'Aspect ID', width: COL_WIDTHS.id, identifier: true },
+];
+
+/**
+ * How a score cell on `06_Maturity_Profile` was arrived at.
+ *
+ * Not decoration — `09_Dimension_Scores` filters on it. The enterprise-wide figure must average
+ * only directly measured dimension scores, because an aggregate is itself derived from those
+ * same scores and folding it in would count those areas twice. The tool gets that exclusion by
+ * accident (an enterprise area simply has no ratings for its aggregated dimension); the workbook
+ * has to state it, because the aggregate value really is sitting in that cell.
+ */
+export const SCORE_SOURCES = {
+  /** Computed from levels a state entered on an input sheet. */
+  entered: 'Entered',
+  /** The domain's aggregate, derived from other domains' areas. Has no To-Be. */
+  aggregate: 'Aggregate',
+  /** One of the three Enterprise Governance sections. */
+  organizational: 'Organizational section',
+} as const;
+
+/**
+ * `06_Maturity_Profile` — one row per capability area per dimension. 216 rows.
+ *
+ * Two things about this column set look redundant and are not.
+ *
+ * **Both a rounded and an unrounded score column.** The roll-ups above this sheet consume
+ * different ones: a standard area averages the **rounded** dimension scores, while the
+ * organizational area averages the **unrounded** section means. That inconsistency is the app's,
+ * deliberately, and 5.4's rounding table is where it is written down. One column could not serve
+ * both.
+ *
+ * **Four sub-dimension mean columns.** Technology is the mean of its two sub-dimension means with
+ * the inner means unrounded, and a sub-dimension with nothing assessed is dropped rather than
+ * zeroed. That drop cannot be expressed inline: `AVERAGE` ignores text inside a cell reference
+ * but returns `#VALUE!` for text passed directly, so `AVERAGE(IFERROR(a,""),IFERROR(b,""))`
+ * breaks the moment one sub-dimension is empty — a common partial state. Writing the means into
+ * cells and averaging *those* gets the drop for free. They are also genuinely useful to read.
+ */
+export const MATURITY_PROFILE_COLUMNS: readonly ColumnDefinition[] = [
+  { key: 'domainName', header: 'Capability Domain', width: COL_WIDTHS.medium },
+  { key: 'areaName', header: 'Capability Area', width: COL_WIDTHS.medium },
+  { key: 'dimensionName', header: 'Dimension', width: COL_WIDTHS.medium },
+  { key: 'source', header: 'Score Source', width: COL_WIDTHS.flag, wrap: true },
+  { key: 'currentScore', header: 'As-Is Score', width: COL_WIDTHS.level },
+  { key: 'targetScore', header: 'To-Be Score', width: COL_WIDTHS.level },
+  { key: 'aspectsAssessed', header: 'Aspects Assessed', width: COL_WIDTHS.flag },
+  {
+    key: 'currentUnrounded',
+    header: 'As-Is Unrounded',
+    width: COL_WIDTHS.level,
+  },
+  { key: 'targetUnrounded', header: 'To-Be Unrounded', width: COL_WIDTHS.level },
+  {
+    key: 'infrastructureCurrent',
+    header: 'Technical Infrastructure Management Mean (As-Is)',
+    width: COL_WIDTHS.medium,
+    wrap: true,
+  },
+  {
+    key: 'applicationCurrent',
+    header: 'Application Management Mean (As-Is)',
+    width: COL_WIDTHS.medium,
+    wrap: true,
+  },
+  {
+    key: 'infrastructureTarget',
+    header: 'Technical Infrastructure Management Mean (To-Be)',
+    width: COL_WIDTHS.medium,
+    wrap: true,
+  },
+  {
+    key: 'applicationTarget',
+    header: 'Application Management Mean (To-Be)',
+    width: COL_WIDTHS.medium,
+    wrap: true,
+  },
+  { key: 'notes', header: 'Notes', width: COL_WIDTHS.notes, wrap: true },
+  { key: 'barriers', header: 'Barriers and Challenges', width: COL_WIDTHS.notes, wrap: true },
+  { key: 'plans', header: 'Advancement Plans', width: COL_WIDTHS.notes, wrap: true },
+  { key: 'domainId', header: 'Domain ID', width: COL_WIDTHS.id, identifier: true },
+  { key: 'areaId', header: 'Capability Area ID', width: COL_WIDTHS.id, identifier: true },
+  { key: 'dimensionId', header: 'Dimension ID', width: COL_WIDTHS.id, identifier: true },
+];
+
+/** `07_Area_Scores` — one row per capability area. 72 rows. */
+export const AREA_SCORES_COLUMNS: readonly ColumnDefinition[] = [
+  { key: 'layer', header: 'Layer', width: COL_WIDTHS.short },
+  { key: 'domainName', header: 'Capability Domain', width: COL_WIDTHS.medium },
+  { key: 'areaName', header: 'Capability Area', width: COL_WIDTHS.medium },
+  { key: 'currentScore', header: 'As-Is Score', width: COL_WIDTHS.level },
+  { key: 'targetScore', header: 'To-Be Score', width: COL_WIDTHS.level },
+  { key: 'completion', header: 'Completion %', width: COL_WIDTHS.flag },
+  { key: 'aspectsAssessed', header: 'Aspects Assessed', width: COL_WIDTHS.flag },
+  { key: 'aspectsAssessable', header: 'Aspects Assessable', width: COL_WIDTHS.flag },
+  { key: 'dimensionsScored', header: 'Dimensions Scored', width: COL_WIDTHS.flag },
+  { key: 'domainId', header: 'Domain ID', width: COL_WIDTHS.id, identifier: true },
+  { key: 'areaId', header: 'Capability Area ID', width: COL_WIDTHS.id, identifier: true },
+];
+
+/**
+ * `08_Domain_Scores` — 14 domain rows plus one overall row. 15 rows.
+ *
+ * The overall row averages the **area** scores on `07`, not the 14 domain scores above it.
+ * `getOverallScore` pools every finalized area equally, so averaging domain scores instead would
+ * weight a 3-area domain the same as an 11-area one and give a different number. See 5.4.1.
+ */
+export const DOMAIN_SCORES_COLUMNS: readonly ColumnDefinition[] = [
+  { key: 'layer', header: 'Layer', width: COL_WIDTHS.short },
+  { key: 'domainName', header: 'Capability Domain', width: COL_WIDTHS.medium },
+  { key: 'currentScore', header: 'As-Is Score', width: COL_WIDTHS.level },
+  { key: 'targetScore', header: 'To-Be Score', width: COL_WIDTHS.level },
+  // Named for the column it counts, because it counts As-Is scores only and sits beside a To-Be
+  // score whose own divisor differs whenever a state's To-Be coverage differs from its As-Is.
+  { key: 'areasScored', header: 'Areas Scored (As-Is)', width: COL_WIDTHS.flag },
+  { key: 'areasInDomain', header: 'Areas In Domain', width: COL_WIDTHS.flag },
+  { key: 'domainId', header: 'Domain ID', width: COL_WIDTHS.id, identifier: true },
+];
+
+/**
+ * `09_Dimension_Scores` — the enterprise-wide ORBIT figure. 3 rows (Decision 17).
+ *
+ * Mirrors the PDF executive summary's ORBIT Dimension Summary, including its visible `Areas`
+ * denominator, so the two artifacts agree in shape as well as in rule. Averages only
+ * `Entered` rows on `06`; see `SCORE_SOURCES`.
+ */
+export const DIMENSION_SCORES_COLUMNS: readonly ColumnDefinition[] = [
+  { key: 'dimensionName', header: 'ORBIT Dimension', width: COL_WIDTHS.medium },
+  { key: 'currentScore', header: 'As-Is Score', width: COL_WIDTHS.level },
+  { key: 'targetScore', header: 'To-Be Score', width: COL_WIDTHS.level },
+  // As-Is only, same as `areasScored` on `08`. See the note there.
+  { key: 'areaCount', header: 'Areas (As-Is)', width: COL_WIDTHS.flag },
+  { key: 'dimensionId', header: 'Dimension ID', width: COL_WIDTHS.id, identifier: true },
 ];
 
 // =============================================================================

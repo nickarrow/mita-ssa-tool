@@ -60,9 +60,26 @@ version bump lands with the final wave.
   assistive technology can read them. Editable cells are ruled on all four sides, because a
   solid fill covers Excel's gridlines and the input area would otherwise have no visible row
   or column boundaries. Excel's own Accessibility Checker reports no issues in any category.
-  This first draft carries the reference and input sheets; the score sheets follow. It is
-  generated at build time by a Node script, so it adds nothing to the browser bundle. No
-  download link in the app yet
+  It is generated at build time by a Node script, so it adds nothing to the browser bundle.
+  No download link in the app yet
+- **Score sheets in the workbook, calculating live as you type.** Four sheets of Excel
+  formulas mirroring the tool's own scoring: a maturity profile with one row per capability
+  area and dimension, per-area scores with completion percentages, domain scores with an
+  overall figure, and an enterprise-wide ORBIT dimension summary. The formulas find your data
+  by capability area and dimension rather than by row position, so the input sheets can be
+  sorted and filtered freely. Aggregate dimensions, the Technology sub-dimension rule, the
+  Enterprise Governance rollup and the treatment of N/A all follow the same rules as the
+  online tool. Where Excel and the tool round a halfway value differently the workbook can
+  differ by 0.1; the README explains which is authoritative and where it can occur
+- **The workbook's arithmetic is verified by making Excel compute it**, not by inspecting
+  formula text. `npm run verify:workbook-excel` opens a temp copy of the workbook in Excel,
+  enters maturity levels, reads the calculated scores back, and compares them against the
+  tool's scoring rules — 36 checks across 8 scenarios. It found three defects that the test
+  suite could not see, each of which would have put a wrong number in a state's submission:
+  completion percentages above 100% on the 21 enterprise-domain capability areas, and
+  capability areas that reported a score before anything had been entered for them, which
+  inflated domain and overall figures. macOS with Excel only, so it is a manual gate rather
+  than part of CI
 
 ### Changed
 

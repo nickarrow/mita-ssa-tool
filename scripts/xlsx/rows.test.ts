@@ -31,10 +31,12 @@ import {
   buildCriteriaReferenceRows,
   buildMaturityLevelRows,
   buildOrganizationalInputRows,
+  type SheetCellValue,
+  type SheetRow,
 } from './rows.ts';
 
 /** Distinct values of one column across a set of rows. */
-function distinct(rows: Array<Record<string, string | number>>, key: string): Set<string> {
+function distinct(rows: readonly SheetRow[], key: string): Set<string> {
   return new Set(rows.map((row) => String(row[key] ?? '')));
 }
 
@@ -205,7 +207,7 @@ describe('03_ORBIT_Criteria_Reference rows', () => {
    * aspect without looking at what those rows say.
    */
   it('numbers levels 1 to 5 in order within every aspect', () => {
-    const byAspect = new Map<string, Array<string | number>>();
+    const byAspect = new Map<string, SheetCellValue[]>();
     for (const row of rows) {
       const key = `${String(row.dimensionId)}|${String(row.subDimensionId)}|${String(row.aspectId)}`;
       byAspect.set(key, [...(byAspect.get(key) ?? []), row.level ?? 'missing']);

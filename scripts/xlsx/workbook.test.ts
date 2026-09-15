@@ -47,7 +47,7 @@ import {
   NOTICE_ROW,
   ORGANIZATIONAL_INPUT_COLUMNS,
   SHEET_NAMES,
-  WAVE_6_SHEET_NAMES,
+  BUILT_SHEET_NAMES,
   renderHeader,
   type ColumnDefinition,
 } from './constants.ts';
@@ -134,7 +134,7 @@ const AA_NORMAL_TEXT = 4.5;
 
 describe('workbook structure', () => {
   it('contains exactly the six sheets this wave builds, in order', () => {
-    expect(workbook.worksheets.map((worksheet) => worksheet.name)).toEqual([...WAVE_6_SHEET_NAMES]);
+    expect(workbook.worksheets.map((worksheet) => worksheet.name)).toEqual([...BUILT_SHEET_NAMES]);
   });
 
   it('names every sheet descriptively with a numeric order prefix', () => {
@@ -1255,23 +1255,16 @@ describe('00_README content', () => {
   });
 
   /**
-   * Sheets 06-09 are Wave 7. The README says so, so a pilot reviewer is not left
-   * looking for a tab that does not exist — and this asserts the two lists stay in
-   * step, so a sheet added later without a README update fails here.
+   * Every sheet is now built, so nothing may be marked as absent. The Wave 6 version of this
+   * test asserted the opposite — that `06`-`09` were described as "not included" — and
+   * inverting it is the point: a reviewer must not be told a tab is missing when it is there,
+   * and equally must not be left hunting for one that is not.
    */
-  it('marks the sheets not yet included as such', () => {
+  it('describes every sheet as present, none as missing', () => {
     const readme = sheet(SHEET_NAMES.README);
-    const notYetBuilt = Object.values(SHEET_NAMES).filter(
-      (name) => !WAVE_6_SHEET_NAMES.includes(name)
-    );
-    expect(notYetBuilt).toEqual([
-      SHEET_NAMES.MATURITY_PROFILE,
-      SHEET_NAMES.AREA_SCORES,
-      SHEET_NAMES.DOMAIN_SCORES,
-      SHEET_NAMES.DIMENSION_SCORES,
-    ]);
+    expect(BUILT_SHEET_NAMES).toEqual(Object.values(SHEET_NAMES));
 
-    for (const sheetName of notYetBuilt) {
+    for (const sheetName of Object.values(SHEET_NAMES)) {
       let described = '';
       for (let row = 1; row <= readme.rowCount; row += 1) {
         if (cellText(readme, row, 1) === sheetName) {
@@ -1279,8 +1272,21 @@ describe('00_README content', () => {
           break;
         }
       }
-      expect(described, sheetName).toContain('Not included in this draft');
+      expect(described, `${sheetName} has no README description`).not.toBe('');
+      expect(described, `${sheetName} is described as missing`).not.toContain('Not included');
     }
+  });
+
+  it('tells the reader the score sheets calculate themselves', () => {
+    const readme = sheet(SHEET_NAMES.README);
+    let text = '';
+    for (let row = 1; row <= readme.rowCount; row += 1) {
+      if (cellText(readme, row, 1) === 'Scores update as you type') {
+        text = cellText(readme, row, 2);
+        break;
+      }
+    }
+    expect(text).toContain('nothing on those sheets for you to fill in');
   });
 
   /**

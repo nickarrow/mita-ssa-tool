@@ -36,15 +36,19 @@ import {
   DRAFT_NOTICE_SHORT_LINE,
 } from '../../src/constants/draftNotice.ts';
 import {
+  AREA_SCORES_COLUMNS,
   ASSESSMENT_INPUT_COLUMNS,
   CAPABILITY_REFERENCE_COLUMNS,
   COLORS,
   CRITERIA_REFERENCE_COLUMNS,
+  DIMENSION_SCORES_COLUMNS,
+  DOMAIN_SCORES_COLUMNS,
   FIRST_DATA_ROW,
   HEADER_ROW,
   HEADER_ROW_HEIGHT,
   LEVEL_DROPDOWN_VALUES,
   MATURITY_LEVEL_COLUMNS,
+  MATURITY_PROFILE_COLUMNS,
   NAMED_RANGES,
   NOTICE_ROW,
   ORGANIZATIONAL_INPUT_COLUMNS,
@@ -52,6 +56,14 @@ import {
   renderHeader,
   type ColumnDefinition,
 } from './constants.ts';
+import {
+  buildAreaScoreRows,
+  buildDimensionScoreRows,
+  buildDomainScoreRows,
+  buildMaturityProfileRows,
+  resolveAggregateFormulas,
+} from './profile-rows.ts';
+import type { InputExtents } from './scoring-spec.ts';
 import { buildReadmeRows } from './readme.ts';
 import {
   buildAssessmentInputRows,
@@ -110,6 +122,9 @@ export function buildWorkbook(): ExcelJS.Workbook {
     freezeColumns: 2,
   });
 
+  const assessmentRows = buildAssessmentInputRows().length;
+  const organizationalRows = buildOrganizationalInputRows().length;
+
   addTableSheet(workbook, {
     name: SHEET_NAMES.ORGANIZATIONAL_INPUT,
     columns: ORGANIZATIONAL_INPUT_COLUMNS,
@@ -117,7 +132,55 @@ export function buildWorkbook(): ExcelJS.Workbook {
     freezeColumns: 2,
   });
 
+  addComputedSheets(workbook, {
+    assessmentLastRow: HEADER_ROW + assessmentRows,
+    organizationalLastRow: HEADER_ROW + organizationalRows,
+  });
+
   return workbook;
+}
+
+/**
+ * The four computed sheets, `06` through `09`.
+ *
+ * Built in dependency order and the order matters: `07` needs to know where each row landed on
+ * `06`, `08` reads `07`, and `09` reads `06`. The profile row index threads that through rather
+ * than each sheet recomputing addresses, because two independent derivations of "which row is
+ * Provider Enrollment's Technology score" is exactly how a formula silently addresses the wrong
+ * area.
+ */
+function addComputedSheets(workbook: ExcelJS.Workbook, extents: InputExtents): void {
+  const profile = buildMaturityProfileRows(extents);
+  resolveAggregateFormulas(profile);
+
+  addTableSheet(workbook, {
+    name: SHEET_NAMES.MATURITY_PROFILE,
+    columns: MATURITY_PROFILE_COLUMNS,
+    rows: profile.rows,
+    freezeColumns: 3,
+  });
+
+  const areaRows = buildAreaScoreRows(profile);
+  addTableSheet(workbook, {
+    name: SHEET_NAMES.AREA_SCORES,
+    columns: AREA_SCORES_COLUMNS,
+    rows: areaRows,
+    freezeColumns: 3,
+  });
+
+  addTableSheet(workbook, {
+    name: SHEET_NAMES.DOMAIN_SCORES,
+    columns: DOMAIN_SCORES_COLUMNS,
+    rows: buildDomainScoreRows(HEADER_ROW + areaRows.length),
+    freezeColumns: 2,
+  });
+
+  addTableSheet(workbook, {
+    name: SHEET_NAMES.DIMENSION_SCORES,
+    columns: DIMENSION_SCORES_COLUMNS,
+    rows: buildDimensionScoreRows(profile.lastRow),
+    freezeColumns: 1,
+  });
 }
 
 // =============================================================================
@@ -351,7 +414,7 @@ function addTableSheet(workbook: ExcelJS.Workbook, spec: TableSheetSpec): void {
       const value = row[column.key];
       // `null`, not `''`. An empty string is a *text cell holding nothing*, so
       // `ISBLANK` returns FALSE and `COUNTBLANK` returns 0 — which would make any
-      // Wave 7 completion formula of the form "count the filled-in level cells" report
+      // completion formula of the form "count the filled-in level cells" report
       // a blank workbook as 100% complete, while the score formulas (`AVERAGEIF` with
       // `">0"`, which skips text) correctly reported nothing. Two figures on one sheet
       // disagreeing about the same cells is the worst available outcome.
@@ -360,6 +423,12 @@ function addTableSheet(workbook: ExcelJS.Workbook, spec: TableSheetSpec): void {
       // input fill and the unlocked protection survive. Excel also drops empty-string
       // cells on save, so writing them would have made a state's re-saved file behave
       // differently from the generated one.
+      //
+      // A `{ formula }` object needs no special case: that is ExcelJS's own shape for a
+      // formula cell, so assigning it works exactly like assigning a string or a number and
+      // the computed sheets inherit this sheet's styling, protection and 508 treatment for
+      // free. An earlier version branched on it and returned `value` either way, which was
+      // dead logic dressed up as a special case.
       cell.value = value === undefined || value === '' ? null : value;
       // No per-cell alignment: the column-level alignment set above is merged into each
       // cell's own style by ExcelJS, verified in `styles.xml` — the editable cells carry

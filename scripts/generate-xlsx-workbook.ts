@@ -26,7 +26,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import process from 'node:process';
 
-import { fromRepoRoot } from './xlsx/paths.ts';
+import { WORKBOOK_OUTPUT_PATH } from './xlsx/paths.ts';
 import {
   getAllAreasWithDomains,
   getAllDomains,
@@ -41,23 +41,9 @@ import {
   buildOrganizationalInputRows,
 } from './xlsx/rows.ts';
 import { SHEET_NAMES } from './xlsx/constants.ts';
+import { expectedComputedRowCounts } from './xlsx/profile-rows.ts';
 import { isDraft } from './xlsx/env.ts';
 import { buildWorkbook, writeWorkbookBuffer } from './xlsx/workbook.ts';
-
-/**
- * Where the workbook is written, as repository-root-relative segments.
- *
- * Kept as a single constant because three other places refer to the same path — the
- * `.gitignore` entry, the in-app download links added in Wave 8, and the CI check.
- * The filename is stable and unversioned so the guidance-site URL never breaks
- * (Decision 14).
- */
-const OUTPUT_SEGMENTS = ['public', 'mita-4.0-self-assessment-workbook.xlsx'];
-
-/** Absolute path of the output file. */
-export function getOutputPath(): string {
-  return fromRepoRoot(...OUTPUT_SEGMENTS);
-}
 
 /**
  * Row counts per sheet, for the summary log.
@@ -67,17 +53,22 @@ export function getOutputPath(): string {
  * the model changes — which is the whole reason for logging it.
  */
 function summariseRowCounts(): Array<[string, number]> {
+  const computed = expectedComputedRowCounts();
   return [
     [SHEET_NAMES.MATURITY_LEVELS, buildMaturityLevelRows().length],
     [SHEET_NAMES.CAPABILITY_REFERENCE, buildCapabilityReferenceRows().length],
     [SHEET_NAMES.CRITERIA_REFERENCE, buildCriteriaReferenceRows().length],
     [SHEET_NAMES.ASSESSMENT_INPUT, buildAssessmentInputRows().length],
     [SHEET_NAMES.ORGANIZATIONAL_INPUT, buildOrganizationalInputRows().length],
+    [SHEET_NAMES.MATURITY_PROFILE, computed[SHEET_NAMES.MATURITY_PROFILE] ?? 0],
+    [SHEET_NAMES.AREA_SCORES, computed[SHEET_NAMES.AREA_SCORES] ?? 0],
+    [SHEET_NAMES.DOMAIN_SCORES, computed[SHEET_NAMES.DOMAIN_SCORES] ?? 0],
+    [SHEET_NAMES.DIMENSION_SCORES, computed[SHEET_NAMES.DIMENSION_SCORES] ?? 0],
   ];
 }
 
 async function main(): Promise<void> {
-  const outputPath = getOutputPath();
+  const outputPath = WORKBOOK_OUTPUT_PATH;
 
   const workbook = buildWorkbook();
   const buffer = await writeWorkbookBuffer(workbook);

@@ -24,7 +24,7 @@ import {
   getCapabilityModel,
   getOrbitModel,
 } from './model.ts';
-import { NA_TOKEN, SHEET_DESCRIPTIONS, SHEET_NAMES, WAVE_6_SHEET_NAMES } from './constants.ts';
+import { BUILT_SHEET_NAMES, NA_TOKEN, SHEET_DESCRIPTIONS, SHEET_NAMES } from './constants.ts';
 import { buildAssessmentInputRows, buildCriteriaReferenceRows } from './rows.ts';
 
 /**
@@ -80,17 +80,15 @@ export const INFORMATION_MANAGEMENT_GUIDANCE =
  * One line describing a sheet, for the README's index.
  *
  * Throws on a built sheet with no description rather than falling back to an empty
- * string. The fallback was the bug: Wave 7 promoting `06`-`09` into `WAVE_6_SHEET_NAMES`
- * without adding descriptions would have produced blank value cells, and nothing would
- * have caught it — the no-blank-rows assertion is satisfied by the label in column A,
+ * string. The fallback was the bug, and the case it guarded against then happened: Wave 7
+ * promoted `06`-`09` into the built list, and without a description each would have produced
+ * a blank value cell that nothing would have caught — the no-blank-rows assertion is
+ * satisfied by the label in column A,
  * and heading rows legitimately have an empty value column.
  */
 function describeSheet(sheetName: string): string {
-  if (!WAVE_6_SHEET_NAMES.includes(sheetName)) {
-    return (
-      'Not included in this draft of the workbook. Scores are calculated on this sheet in a ' +
-      'later draft.'
-    );
+  if (!BUILT_SHEET_NAMES.includes(sheetName)) {
+    return 'Not included in this draft of the workbook.';
   }
 
   const description = SHEET_DESCRIPTIONS[sheetName];
@@ -140,11 +138,10 @@ export function buildReadmeRows(): ReadmeRow[] {
         'recorded here is the same assessment.'
     ),
     entry(
-      'What this draft does not do yet',
-      'This draft records your assessment; it does not calculate scores. The score sheets ' +
-        `(${SHEET_NAMES.MATURITY_PROFILE} onwards) are added in a later draft, and no cell in ` +
-        'this workbook contains a formula. The rules those sheets will apply are described ' +
-        'below so you can see they match the online tool.'
+      'Scores update as you type',
+      `Sheets ${SHEET_NAMES.MATURITY_PROFILE} through ${SHEET_NAMES.DIMENSION_SCORES} calculate ` +
+        'themselves from what you enter. You do not need to do anything to refresh them, and ' +
+        'there is nothing on those sheets for you to fill in.'
     ),
     entry('Capability Reference Model version', capabilityModel.version),
     entry('Maturity Model version', orbitModel.version),
@@ -209,7 +206,7 @@ export function buildReadmeRows(): ReadmeRow[] {
     heading('Information Management guidance'),
     note(INFORMATION_MANAGEMENT_GUIDANCE),
 
-    heading('How scores will be calculated (not computed in this draft)'),
+    heading('How scores are calculated'),
     entry(
       'Excluded values',
       `Blank cells and ${NA_TOKEN} are both left out of every average. An aspect you have not ` +
@@ -226,7 +223,12 @@ export function buildReadmeRows(): ReadmeRow[] {
         'has 5, so averaging all 11 together would weight Infrastructure more heavily. The two ' +
         'sub-dimension averages are not rounded before being averaged.'
     ),
-    entry('Capability area score', "The average of that area's dimension scores."),
+    entry(
+      'Capability area score',
+      "The average of that area's dimension scores. A dimension with nothing assessed is left " +
+        'out rather than counted as zero, so an area with only one dimension filled in scores ' +
+        'that dimension. An area where you have entered nothing shows no score at all.'
+    ),
     entry(
       'Enterprise Governance score',
       'The average of the three organizational section averages. Sections with nothing assessed ' +
@@ -239,6 +241,15 @@ export function buildReadmeRows(): ReadmeRow[] {
         'is the average of the Information scores of the other domains\u2019 capability areas. ' +
         'The Technology Management domain works the same way for Technology. Those dimensions ' +
         'have no input rows on sheet 04, which is why some areas have fewer rows than others.'
+    ),
+    entry(
+      'Aggregate rows before you start',
+      `Because an aggregate is drawn from other domains\u2019 areas, sheet ` +
+        `${SHEET_NAMES.MATURITY_PROFILE} can show an aggregate figure for a Data Management or ` +
+        'Technology Management area before you have entered anything for that area. Sheet ' +
+        `${SHEET_NAMES.AREA_SCORES} leaves such an area blank until you do, so an area you have ` +
+        'not worked on does not count toward your domain or overall scores. Aggregate rows also ' +
+        'have no To-Be figure, because the online tool does not set a target for a derived score.'
     ),
 
     heading('Known differences from the online tool'),
@@ -253,14 +264,28 @@ export function buildReadmeRows(): ReadmeRow[] {
     entry(
       'Rounding',
       'Excel and the online tool round a value that falls exactly halfway between two decimals ' +
-        'in slightly different ways, so a score can differ by 0.1 in rare cases.'
+        'in slightly different ways, so a score can differ by 0.1. Where they differ, the online ' +
+        'tool is the authority: it produces the score you see on screen and the score in the CSV ' +
+        'profile you submit. The difference is never more than 0.1. It cannot happen at all in a ' +
+        'dimension score, nor in a capability area score built from three ORBIT dimensions. It ' +
+        'can happen in two places: the Enterprise Governance score, which averages the three ' +
+        'section averages before rounding, and a capability area score where only two of the ' +
+        'three dimensions have been assessed.'
     ),
     entry(
       'Row counts',
       `Sheet ${SHEET_NAMES.ASSESSMENT_INPUT} has ${assessmentRowCount.toLocaleString('en-US')} ` +
         `rows and sheet ${SHEET_NAMES.CRITERIA_REFERENCE} has ` +
-        `${criteriaRowCount.toLocaleString('en-US')} rows. If you add or remove rows, the ` +
-        'scores in a later draft of this workbook will not calculate correctly.'
+        `${criteriaRowCount.toLocaleString('en-US')} rows. If you add or remove rows, the scores ` +
+        'will not calculate correctly.'
+    ),
+    entry(
+      'Sorting',
+      'You can sort and filter the input sheets freely. The score formulas find your data by ' +
+        'capability area and dimension, not by row position, so reordering those sheets is safe. ' +
+        `Do not sort or reorder sheets ${SHEET_NAMES.MATURITY_PROFILE} through ` +
+        `${SHEET_NAMES.DIMENSION_SCORES}: those refer to each other by row, so reordering them ` +
+        'would pair scores with the wrong capability areas. They are protected to prevent it.'
     ),
 
     heading('Accessibility'),

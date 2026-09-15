@@ -41,6 +41,23 @@ export function fromRepoRoot(...segments: string[]): string {
 }
 
 /**
+ * Where the workbook is written.
+ *
+ * Lives here rather than in the generator because more than one consumer needs it — the generator
+ * writes it and `verify-workbook-in-excel.ts` reads it — and the generator is a top-level script
+ * that runs `main()` on import, so importing a constant from it would generate a workbook as a side
+ * effect.
+ *
+ * The filename is stable and carries no version, so the guidance-site URL never breaks when the
+ * model changes (Decision 14). Versions are printed inside the workbook on `00_README`. Also
+ * referenced by the `.gitignore` entry, the in-app download links, and the CI check.
+ */
+export const WORKBOOK_OUTPUT_PATH = fromRepoRoot(
+  'public',
+  'mita-4.0-self-assessment-workbook.xlsx'
+);
+
+/**
  * The timestamp stamped into the workbook, as a build input rather than "now".
  *
  * Two dates go into the artifact: the "Workbook generated" row on the README and the

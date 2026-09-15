@@ -97,17 +97,11 @@ beforeAll(async () => {
 
 describe('raw OOXML: file inventory', () => {
   it('maps every expected sheet name to an archive part', async () => {
-    for (const name of [
-      SHEET_NAMES.README,
-      SHEET_NAMES.MATURITY_LEVELS,
-      SHEET_NAMES.CAPABILITY_REFERENCE,
-      SHEET_NAMES.CRITERIA_REFERENCE,
-      SHEET_NAMES.ASSESSMENT_INPUT,
-      SHEET_NAMES.ORGANIZATIONAL_INPUT,
-    ]) {
+    for (const name of Object.values(SHEET_NAMES)) {
       expect(sheetParts.get(name), name).toMatch(/^xl\/worksheets\/sheet\d+\.xml$/);
     }
-    expect(sheetParts.size).toBe(6);
+    expect(sheetParts.size).toBe(Object.values(SHEET_NAMES).length);
+    expect(sheetParts.size).toBe(10);
   });
 
   /**

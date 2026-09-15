@@ -206,6 +206,17 @@ export interface OrganizationalAspectLocation {
   aspect: OrbitAspect;
 }
 
+/**
+ * Display name of an organizational section.
+ *
+ * Deleted in Wave 6 as an unused export and reinstated here, now that `06_Maturity_Profile` has a
+ * row per section and needs to label it. That is the rule working as intended rather than churn:
+ * an export lands when its consumer exists, not a wave early.
+ */
+export function getOrganizationalSectionName(sectionId: OrganizationalAssessmentId): string {
+  return orbitModel.organizationalAssessments[sectionId].name;
+}
+
 /** Every organizational aspect across the three sections, in display order. 15 of them. */
 export function getAllOrganizationalAspectLocations(): OrganizationalAspectLocation[] {
   return ORGANIZATIONAL_SECTIONS.flatMap((sectionId) => {

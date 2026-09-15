@@ -66,6 +66,9 @@ const SOURCES = [
   'scripts/xlsx/readme.ts',
   'scripts/xlsx/model.ts',
   'scripts/xlsx/paths.ts',
+  'scripts/xlsx/scoring-spec.ts',
+  'scripts/xlsx/profile-rows.ts',
+  'scripts/xlsx/excel-rounding.ts',
 ];
 
 /**
@@ -277,7 +280,7 @@ export const MUTATION_CASES: MutationCase[] = [
     assertion: 'README lists every sheet including the unbuilt ones',
     file: 'scripts/xlsx/readme.ts',
     find: `    ...Object.values(SHEET_NAMES).map((sheetName) =>`,
-    replace: `    ...WAVE_6_SHEET_NAMES.map((sheetName) =>`,
+    replace: `    ...BUILT_SHEET_NAMES.slice(0, 6).map((sheetName) =>`,
     test: 'lists every sheet in the workbook, built or not',
   },
   {
@@ -559,6 +562,427 @@ export const MUTATION_CASES: MutationCase[] = [
     replace: ``,
     test: 'repeats the header row on printed pages of the table sheets',
     testFile: 'scripts/xlsx/workbook.raw.test.ts',
+  },
+
+  // ===========================================================================
+  // Wave 7: the scoring model. These matter more than the 508 cases above, because a wrong
+  // formula is a wrong number in a state's submission to CMS rather than a cosmetic defect —
+  // and unlike the 508 assertions, nothing about a wrong score is visible on inspection.
+  //
+  // Every mutation here is a rule someone could plausibly "simplify" into place: dropping a
+  // redundant-looking `">0"`, rounding the sub-dimension means because every other mean is
+  // rounded, averaging domain scores for the overall figure because that reads naturally.
+  // ===========================================================================
+  {
+    assertion: 'a pasted 0 or negative is excluded from every mean',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `    (level): level is number => typeof level === 'number' && level > 0
+  );`,
+    replace: `    (level): level is number => typeof level === 'number'
+  );`,
+    test: 'excludes a pasted zero or negative exactly as the app does',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
+  },
+  {
+    assertion: 'nothing assessed yields null, not zero',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  if (assessed.length === 0) {
+    return null;
+  }
+  return assessed.reduce((sum, level) => sum + level, 0) / assessed.length;`,
+    replace: `  if (assessed.length === 0) {
+    return 0;
+  }
+  return assessed.reduce((sum, level) => sum + level, 0) / assessed.length;`,
+    test: 'drops a dimension with nothing assessed rather than scoring it zero',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
+  },
+  {
+    // The flat mean over all 11 Technology aspects — the original OBS-21 defect, which took
+    // three waves to clear out of five call sites.
+    assertion: 'Technology is the mean of two sub-dimension means, not 11 aspects',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  const subDimensionMeans = [
+    meanOfAssessed(levels.technologyInfrastructureManagement),
+    meanOfAssessed(levels.applicationManagement),
+  ].filter((mean): mean is number => mean !== null);`,
+    replace: `  const flat = meanOfAssessed([
+    ...levels.technologyInfrastructureManagement,
+    ...levels.applicationManagement,
+  ]);
+  const subDimensionMeans = flat === null ? [] : [flat];`,
+    test: 'averages the two sub-dimension means, not the 11 aspects',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
+  },
+  {
+    // The other half of OBS-21: right structure, wrong rounding point. No fixture in the suite
+    // could distinguish this until one with a fractional inner mean was added.
+    assertion: "Technology's inner sub-dimension means are not rounded first",
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  const subDimensionMeans = [
+    meanOfAssessed(levels.technologyInfrastructureManagement),
+    meanOfAssessed(levels.applicationManagement),
+  ].filter((mean): mean is number => mean !== null);`,
+    replace: `  const subDimensionMeans = [
+    roundToOneDecimal(meanOfAssessed(levels.technologyInfrastructureManagement)),
+    roundToOneDecimal(meanOfAssessed(levels.applicationManagement)),
+  ].filter((mean): mean is number => mean !== null);`,
+    test: 'agrees with the app: fractional inner mean',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
+  },
+  {
+    assertion: 'a dimension with no score shrinks the divisor rather than counting as zero',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  const present = scores.filter((score): score is number => score !== null);`,
+    replace: `  const present = scores.map((score) => score ?? 0);`,
+    test: 'drops dimensions with no score, shrinking the divisor',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
+  },
+  {
+    assertion: 'the organizational area averages unrounded section means',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  const sectionMeans = sectionLevels
+    .map((levels) => meanOfAssessed(levels))
+    .filter((mean): mean is number => mean !== null);`,
+    replace: `  const sectionMeans = sectionLevels
+    .map((levels) => roundToOneDecimal(meanOfAssessed(levels)))
+    .filter((mean): mean is number => mean !== null);`,
+    test: 'gives a different answer depending on where rounding happens',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
+  },
+  {
+    assertion: 'completion counts N/A as assessed, inverting the exclusion rule',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  const entered = levels.filter((level) => level !== '').length;`,
+    replace: `  const entered = levels.filter((level) => typeof level === 'number' && level > 0).length;`,
+    test: 'counts an N/A entry as complete',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
+  },
+  {
+    assertion: 'an unknown column throws rather than addressing the wrong data',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  if (index < 0) {
+    throw new Error(\`No column named "\${key}". Available: \${columns.map((c) => c.key).join(', ')}\`);
+  }`,
+    replace: `  if (index < 0) {
+    return 'A';
+  }`,
+    test: 'throws for an unknown column rather than guessing',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
+  },
+  {
+    assertion: 'multi-letter column references are built in the right order',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `    letters = String.fromCharCode(65 + modulo) + letters;`,
+    replace: `    letters += String.fromCharCode(65 + modulo);`,
+    test: 'converts index',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
+  },
+  {
+    // A single-cell reference into an input sheet is the sorting bug: a state reorders 1,625
+    // rows and every such formula silently reads a different area's data.
+    assertion: 'no formula reaches into an input sheet by row position',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  return \`'\${sheetName}'!$\${letter}$\${FIRST_DATA_ROW}:$\${letter}$\${lastRow}\`;`,
+    replace: `  return \`'\${sheetName}'!$\${letter}$\${FIRST_DATA_ROW}\`;`,
+    test: 'never references a single cell on an input sheet',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'completion tests for a non-empty cell, not > 0',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  return \`COUNTIFS(\${assessmentCriteria(criteria, extents)},\${levels},"<>")\`;`,
+    replace: `  return \`COUNTIFS(\${assessmentCriteria(criteria, extents)},\${levels},">0")\`;`,
+    test: 'counts a non-empty level cell, so N/A counts toward completion',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the unrounded column carries no ROUND',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  return \`IFERROR(AVERAGEIFS(\${levels},\${assessmentCriteria(criteria, extents)},\${levels},">0"),"")\`;`,
+    replace: `  return \`IFERROR(ROUND(AVERAGEIFS(\${levels},\${assessmentCriteria(criteria, extents)},\${levels},">0"),1),"")\`;`,
+    test: 'keeps the unrounded column free of ROUND on every row that has one',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the organizational sections are scored against their own input sheet',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  const levels = dataRange(
+    SHEET_NAMES.ORGANIZATIONAL_INPUT,
+    letterOf(ORGANIZATIONAL_INPUT_COLUMNS, levelKey),
+    extents.organizationalLastRow
+  );`,
+    replace: `  const levels = dataRange(
+    SHEET_NAMES.ASSESSMENT_INPUT,
+    letterOf(ASSESSMENT_INPUT_COLUMNS, levelKey),
+    extents.assessmentLastRow
+  );`,
+    test: 'scores an organizational section against the organizational input sheet',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'every computed sheet has the expected row count',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `  for (const sectionId of ORGANIZATIONAL_SECTIONS) {
+    const sheetRow = FIRST_DATA_ROW + rows.length;`,
+    replace: `  for (const sectionId of ORGANIZATIONAL_SECTIONS.slice(0, 2)) {
+    const sheetRow = FIRST_DATA_ROW + rows.length;`,
+    test: 'builds the expected number of rows on each computed sheet',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the 21 aggregate rows are labelled as aggregates',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    source: SCORE_SOURCES.aggregate,`,
+    replace: `    source: SCORE_SOURCES.entered,`,
+    test: 'marks 21 rows as aggregates, one per enterprise-domain area',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'an aggregate row has no To-Be figure',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    targetScore: NOT_APPLICABLE,`,
+    replace: `    targetScore: formula(\`{{aggregate:\${dimensionId}}}\`),`,
+    test: 'marks the To-Be cell not applicable on every aggregate row',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    // Reverts to the empty strings the first draft used, which produced 21 genuinely blank cells
+    // on `06` in a workbook whose every other inapplicable cell says so in words.
+    assertion: 'no computed-sheet cell is left empty',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    targetScore: NOT_APPLICABLE,`,
+    replace: `    targetScore: '',`,
+    test: 'writes no empty cell on any computed sheet',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    // The defect this wave shipped and then caught: the contributing-area count in the cell that
+    // feeds completion's numerator, over a denominator that excludes the aggregated dimension.
+    assertion: 'an aggregate row contributes zero assessed aspects',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    aspectsAssessed: 0,`,
+    replace: `    aspectsAssessed: formula(\`{{aggregateUnrounded:\${dimensionId}}}\`),`,
+    test: 'counts zero assessed aspects on an aggregate row',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'completion can never exceed 100%',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    aspectsAssessed: 0,`,
+    replace: `    aspectsAssessed: formula(\`{{aggregateUnrounded:\${dimensionId}}}\`),`,
+    test: 'cannot report completion above 100% on any area',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the aggregate averages per-area scores, not raw input cells',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `  const scoreRange = profileRange('currentScore', lastRow);`,
+    replace: `  const scoreRange = dataRange(SHEET_NAMES.ASSESSMENT_INPUT, 'H', 1627);`,
+    test: 'averages per-area scores for the aggregate, not raw input cells',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the aggregate excludes both enterprise domains, not just its own',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `        ...Object.keys(DOMAIN_AGGREGATE_DIMENSIONS).map((enterpriseDomainId) => ({
+          range: domainIdRange,
+          value: \`<>\${enterpriseDomainId}\`,
+        })),`,
+    replace: `        {
+          range: domainIdRange,
+          value: \`<>\${dimensionId === 'information' ? 'data-management' : 'technical'}\`,
+        },`,
+    test: 'excludes both enterprise domains from every aggregate',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    // Reverts to reusing the mean's criteria, which made the count a constant 50 because every row
+    // exists at generation time. Found by a reviewer reading the emitted Notes cell.
+    assertion: 'the aggregate note counts scored areas, not rows that exist',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `      const count = countFormula([...criteria, { range: scoreRange, value: '>0' }]);`,
+    replace: `      const count = countFormula(criteria);`,
+    test: 'counts only areas that produced a score, not every row that exists',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the aggregate note reads like the CSV profile',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `              \`IF(\${count}=0,"No contributing capability areas yet",\` +
+              \`"(Aggregate from "&\${count}&" assessment"&IF(\${count}=1,"","s")&")")\``,
+    replace: `              \`"(Aggregate)"\``,
+    test: 'writes the same contributing-count note the CSV writes',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'Technology reads its two sub-dimension mean cells',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    currentScore: formula(
+      isTechnology
+        ? technologyDimensionFormula(infrastructureCell, applicationCell)
+        : plainDimensionFormula('currentLevel', dimensionCriteria, extents)
+    ),`,
+    replace: `    currentScore: formula(plainDimensionFormula('currentLevel', dimensionCriteria, extents)),`,
+    test: 'scores Technology from its two sub-dimension mean cells',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the sub-dimension mean cells stay unrounded',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    infrastructureCurrent: isTechnology
+      ? formula(
+          unroundedMeanFormula(
+            'currentLevel',
+            subDimensionCriteria('technologyInfrastructureManagement'),
+            extents
+          )
+        )
+      : NOT_APPLICABLE,`,
+    replace: `    infrastructureCurrent: isTechnology
+      ? formula(
+          plainDimensionFormula(
+            'currentLevel',
+            subDimensionCriteria('technologyInfrastructureManagement'),
+            extents
+          )
+        )
+      : NOT_APPLICABLE,`,
+    test: 'computes each Technology sub-dimension mean unrounded',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the organizational area averages the unrounded column, standard areas the rounded',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    const scoreKey = organizational ? 'currentUnrounded' : 'currentScore';
+    const targetKey = organizational ? 'targetUnrounded' : 'targetScore';`,
+    replace: `    const scoreKey = 'currentScore';
+    const targetKey = 'targetScore';`,
+    test: 'averages unrounded section means for the organizational area',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'completion divides by the area-specific assessable count',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    const assessable = getAssessableAspectCountForArea(area.id, domain.id);`,
+    replace: `    const assessable = 26;`,
+    test: 'divides completion by the area-specific assessable count',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the overall row averages area scores, not the 14 domain scores',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    currentScore: formula(\`IFERROR(ROUND(AVERAGE(\${scoreRange}),1),"")\`),
+    targetScore: formula(\`IFERROR(ROUND(AVERAGE(\${targetRange}),1),"")\`),
+    areasScored: formula(\`COUNT(\${scoreRange})\`),`,
+    replace: `    currentScore: formula(
+      \`IFERROR(ROUND(AVERAGE('\${SHEET_NAMES.DOMAIN_SCORES}'!$C$3:$C$16),1),"")\`
+    ),
+    targetScore: formula(\`IFERROR(ROUND(AVERAGE(\${targetRange}),1),"")\`),
+    areasScored: formula(\`COUNT(\${scoreRange})\`),`,
+    test: 'computes the overall row from area scores, not domain scores',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'a domain score averages only its own areas',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `      currentScore: formula(filteredMeanFormula(scoreRange, criteria)),
+      targetScore: formula(filteredMeanFormula(targetRange, criteria)),
+      areasScored: formula(\`COUNTIFS(\${domainIdRange},"\${domain.id}",\${scoreRange},">0")\`),`,
+    replace: `      currentScore: formula(\`IFERROR(ROUND(AVERAGE(\${scoreRange}),1),"")\`),
+      targetScore: formula(\`IFERROR(ROUND(AVERAGE(\${targetRange}),1),"")\`),
+      areasScored: formula(\`COUNTIFS(\${domainIdRange},"\${domain.id}",\${scoreRange},">0")\`),`,
+    test: 'averages one domain from its own areas only',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    // Without the source filter the 21 aggregate rows join the enterprise-wide figure, counting
+    // those areas twice: once directly and once through the aggregate derived from them.
+    assertion: 'the enterprise-wide dimension figure excludes aggregate rows',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `    const criteria = [
+      { range: dimensionIdRange, value: dimensionId },
+      { range: sourceRange, value: SCORE_SOURCES.entered },
+    ];`,
+    replace: `    const criteria = [{ range: dimensionIdRange, value: dimensionId }];`,
+    test: 'excludes aggregate rows from the enterprise-wide dimension figure',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the enterprise-wide figure shows its own denominator',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `      areaCount: formula(
+        \`COUNTIFS(\${dimensionIdRange},"\${dimensionId}",\${sourceRange},"\${SCORE_SOURCES.entered}",\${scoreRange},">0")\`
+      ),`,
+    replace: `      areaCount: 71,`,
+    test: 'shows a visible Areas denominator on each dimension row',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'input data is addressed by ID column, never by position',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `  const areaCriteria = [{ key: 'areaId', value: area.id }];`,
+    replace: `  const areaCriteria: Array<{ key: string; value: string }> = [];`,
+    test: 'addresses input data by ID column on every profile row that reads it',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    // `halfway.test.ts` shares the app's rounding primitive on purpose, so it is blind to Excel
+    // differing — but it must still notice the app's own primitive changing under it.
+    assertion: "the divergence enumeration tracks the app's real rounding primitive",
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  return value === null ? null : Math.round(value * 10) / 10;`,
+    replace: `  return value === null ? null : Math.round(value * 100) / 100;`,
+    test: 'splits on 4.05 / 3 exactly as the plan describes',
+    testFile: 'scripts/xlsx/halfway.test.ts',
+  },
+  {
+    assertion: 'the 313 divergent organizational cases are really enumerated',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  return value === null ? null : Math.round(value * 10) / 10;`,
+    replace: `  return value === null ? null : Math.round(value * 100) / 100;`,
+    test: 'finds 313 divergent organizational area scores',
+    testFile: 'scripts/xlsx/halfway.test.ts',
+  },
+  {
+    // Found by evaluating the workbook in Excel: an aggregate is computed domain-wide from other
+    // domains' areas, so it is non-empty while the area holding it is untouched. Without the guard,
+    // 21 areas the state never opened joined the domain and overall averages.
+    assertion: 'an untouched area scores blank even when its aggregate is live',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `      currentScore: formula(enteredGuard(meanOfCellsFormula(currentCells))),`,
+    replace: `      currentScore: formula(meanOfCellsFormula(currentCells)),`,
+    test: 'blanks an area score until the state has entered something for that area',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    // The guard and the completion numerator must count the same cells, or the workbook can report
+    // a score for an area it simultaneously calls 0% complete.
+    assertion: 'the entered guard and the completion numerator count the same cells',
+    file: 'scripts/xlsx/profile-rows.ts',
+    find: `      completion: formula(\`ROUND(\${enteredCount}/\${assessable}*100,0)\`),`,
+    replace: `      completion: formula(\`ROUND(COUNT(\${currentCells.join(',')})/\${assessable}*100,0)\`),`,
+    test: 'gates the score on the same cells completion counts',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    assertion: 'the Excel model rounds half AWAY from zero, not half up past the midpoint',
+    file: 'scripts/xlsx/excel-rounding.ts',
+    find: `  const tenths = Number(whole) * 10 + firstDecimal + (secondDecimal >= 5 ? 1 : 0);`,
+    replace: `  const tenths = Number(whole) * 10 + firstDecimal + (secondDecimal > 5 ? 1 : 0);`,
+    test: 'matches both models for each fixture',
+    testFile: 'scripts/xlsx/halfway.test.ts',
+  },
+  {
+    // The mutation that caught the model modelling the wrong thing. The first implementation
+    // survived this unchanged, because a float fudge downstream was absorbing the difference —
+    // which meant the "15 significant digits" mechanism was decorative.
+    assertion: 'the Excel model normalises to 15 significant digits before rounding',
+    file: 'scripts/xlsx/excel-rounding.ts',
+    find: `  const normalised = Math.abs(value).toPrecision(15);`,
+    replace: `  const normalised = String(Math.abs(value));`,
+    test: 'rounds on the normalised decimal digits, not on the raw float',
+    testFile: 'scripts/xlsx/halfway.test.ts',
   },
 ];
 

@@ -20,6 +20,7 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "generate:workbook": "node scripts/generate-xlsx-workbook.ts",
+    "verify:workbook-excel": "node scripts/verify-workbook-in-excel.ts",
     "audit:code": "knip",
     "prepare": "husky"
   },

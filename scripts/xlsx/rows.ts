@@ -25,8 +25,22 @@ import { NA_TOKEN } from './constants.ts';
 
 import type { LevelKey } from '../../src/types/index.ts';
 
+/**
+ * A formula cell, in ExcelJS's own shape.
+ *
+ * Passing `{ formula }` straight through means the computed sheets need no separate write path
+ * in `addTableSheet` — the same function places literal values and formulas, so every sheet gets
+ * the same styling, protection and 508 treatment without that having to be remembered twice.
+ */
+export interface FormulaCell {
+  formula: string;
+}
+
+/** Anything a cell can hold. */
+export type SheetCellValue = string | number | FormulaCell;
+
 /** A built row: column key to cell value. */
-export type SheetRow = Record<string, string | number>;
+export type SheetRow = Record<string, SheetCellValue>;
 
 /**
  * How a boolean flag renders in a cell.

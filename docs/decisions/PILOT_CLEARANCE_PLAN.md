@@ -31,19 +31,24 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                                                                     |
 | Commits so far | Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c` |
-| Pushed         | Drop 1 is pushed and live. **Wave 6 is committed locally, not yet pushed or deployed** — it changes nothing a stakeholder can see, since the download links are Wave 8                            |
-| Deployed       | Drop 1 only. Pages dispatched from this branch at `84ec16c` on September 11, so the live build is **all of Drop 1 plus the CMS top/bottom notices**. Wave 6 is not in it                          |
-| Green at       | 903 tests / 41 files; typecheck, lint, knip, `format:check` and `build` all clean. Workbook opened in Excel; its Accessibility Checker passes clean in every category — see 8j                    |
+| Pushed         | Drop 1 is pushed and live. **Waves 6 and 7 are committed locally, not pushed or deployed** — they change nothing a stakeholder can see, since the download links are Wave 8                       |
+| Deployed       | Drop 1 only. Pages dispatched from this branch at `84ec16c` on September 11, so the live build is **all of Drop 1 plus the CMS top/bottom notices**. Waves 6 and 7 are not in it                  |
+| Green at       | 989 tests / 44 files; typecheck, lint, knip, `format:check` and `build` all clean. 89/89 mutations proved failable. Workbook arithmetic verified by driving Excel — 36/36 — see 8l                |
 | Node floor     | **22.18.** The workbook generator is a `.ts` file run directly by Node and needs native type stripping. Declared in `engines`, `.nvmrc`, and both workflows — which were on Node 20               |
-| Next wave      | **Wave 7 — XLSX maturity profile and formulas.** See the pre-brief in Section 8k                                                                                                                  |
+| Next wave      | **Wave 8 — delivery, docs, handoff.** See the pre-brief in Section 8m                                                                                                                             |
 
 > **Drop 1 is delivered.** Waves 1-5 are done and deployed, which is the whole of the Friday
 > September 12 scope, plus the CMS-requested top and bottom notices (Decision 15).
 
 > **Wave 6 opened Drop 2 and is complete.** The generator produces sheets `00`-`05` with the
 > 508 structure from 5.3. Nothing about it is visible in the deployed app yet, so it needed
-> no stakeholder-facing deploy. Section 8j is the record; read it before Wave 7, it contains
-> two defects that only surfaced by inspecting the real artifact.
+> no stakeholder-facing deploy. Section 8j is the record; it contains two defects that only
+> surfaced by inspecting the real artifact.
+> **Wave 7 is complete.** Sheets `06`-`09` compute scores, and the arithmetic is verified by
+> driving Excel rather than by asserting on formula strings — which found three wrong-number
+> defects after 989 tests and 89 mutations were green. Section 8l is the record. One checklist
+> item is still open and needs a human in front of Excel: re-running the Accessibility Checker
+> now that the four new sheets exist.
 
 > **The deploy target is the fork, not the CMS org repo — and `gh` gets this wrong by
 > default.** `origin` is `naretakis/mita-ssa-tool` (redirecting to `nickarrow/mita-ssa-tool`)
@@ -91,16 +96,17 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
    Section 8 has grown organically and its subsections are not in wave order. Where to look:
 
-   | Looking for                                     | Section                                                      |
-   | ----------------------------------------------- | ------------------------------------------------------------ |
-   | Baseline to restore if a wave needs backing out | 8, "Wave 0 baseline"                                         |
-   | What Waves 2, 3 learned                         | 8, "Wave 2 notes" and "Wave 3 notes"                         |
-   | Review of the plan itself, before any code      | 8b                                                           |
-   | Accessibility: the record to point CMS at       | **8d** (method, results, and what it does _not_ establish)   |
-   | Accessibility: lessons and traps                | 8h, 8i                                                       |
-   | Export scoring and the draft notice             | **8e**                                                       |
-   | The workbook: what Wave 6 built and learned     | **8j** (read before Wave 7)                                  |
-   | Pre-briefs                                      | 8c (Wave 4), 8f (Wave 5), 8g (Wave 6), **8k (Wave 7, next)** |
+   | Looking for                                     | Section                                                                   |
+   | ----------------------------------------------- | ------------------------------------------------------------------------- |
+   | Baseline to restore if a wave needs backing out | 8, "Wave 0 baseline"                                                      |
+   | What Waves 2, 3 learned                         | 8, "Wave 2 notes" and "Wave 3 notes"                                      |
+   | Review of the plan itself, before any code      | 8b                                                                        |
+   | Accessibility: the record to point CMS at       | **8d** (method, results, and what it does _not_ establish)                |
+   | Accessibility: lessons and traps                | 8h, 8i                                                                    |
+   | Export scoring and the draft notice             | **8e**                                                                    |
+   | The workbook: what Wave 6 built and learned     | **8j**                                                                    |
+   | The formulas, and how the arithmetic was proved | **8l** (read before touching any score cell)                              |
+   | Pre-briefs                                      | 8c (Wave 4), 8f (Wave 5), 8g (Wave 6), 8k (Wave 7), **8m (Wave 8, next)** |
 
 2. Find the first wave with unchecked boxes — that is the current position.
 3. Confirm the repo agrees with the checkboxes before trusting them:
@@ -427,7 +433,7 @@ the reference implementation, with the 508 corrections in 5.3 and the v4 model a
 | `03_ORBIT_Criteria_Reference` | 205   | 41 aspects x 5 levels: criteria text and suggested documentation                                |
 | `04_Assessment_Input`         | 1,625 | One row per assessable aspect per standard capability area                                      |
 | `05_Organizational_Input`     | 15    | The `enterprise-governance` aspects, with section as a column                                   |
-| `06_Maturity_Profile`         | 228   | 213 standard rows (71 areas x 3 dimensions) + 15 organizational aspect rows                     |
+| `06_Maturity_Profile`         | 216   | One row per area and dimension: 213 standard (71 x 3) + 3 organizational section rows           |
 | `07_Area_Scores`              | 72    | One row per capability area: score, completion, domain                                          |
 | `08_Domain_Scores`            | 15    | 14 domain rows + 1 overall row                                                                  |
 | `09_Dimension_Scores`         | 3     | Enterprise-wide B/I/T figure, As-Is and To-Be, with the Areas denominator (Decision 17)         |
@@ -444,10 +450,22 @@ surfaced in results, and already a column in the CSV maturity profile — so Dec
 it in scope.
 
 **Score rollups live on their own sheets, not as extra rows in the profile.** `06` is one
-row per area-and-dimension so it mirrors the CSV profile shape. Area, domain, and overall
-rollups go on `07` and `08`, each a clean single-header-row table. Technology sub-dimension
-means are two extra **columns** on `06`, populated only on Technology rows — no extra rows,
-no merged cells.
+row per area-and-dimension. Area, domain, and overall rollups go on `07`, `08` and `09`, each a
+clean single-header-row table. Technology sub-dimension means are extra **columns** on `06`,
+populated only on Technology rows — no extra rows, no merged cells.
+
+**`06` is 216 rows, not the 228 stated earlier.** This section previously specified "213
+standard rows + 15 organizational aspect rows", which contradicted its own "one row per
+area-and-dimension" in the same paragraph. Resolved in Wave 7 in favour of the uniform shape:
+213 standard dimension rows plus **3 organizational section rows**.
+
+The 15-aspect version came from mirroring the CSV profile, which emits organizational aspects
+individually. But the CSV emits them under `Section:` **label rows** — precisely the shape 5.3
+forbids carrying forward — so the workbook cannot mirror that layout regardless. And on a sheet
+whose purpose is _computed_ values, an aspect row would be a copy of a cell on
+`05_Organizational_Input` rather than a computation, while the section mean is genuinely
+computed and is what the area score needs. Per-aspect organizational detail stays on `05`,
+where a state enters it.
 
 **`03` has no "question" column.** All 205 per-level `questions` arrays in the model are
 empty (OBS-23), so such a column would be entirely blank and would fail the
@@ -514,10 +532,50 @@ silently disagrees with the tool. Authoritative source is `src/services/scoring.
 | Enterprise-wide dimension | Mean of the per-area dimension scores, finalized areas only. Aggregate dimensions are **not** folded in — an aggregate derives from these same per-area scores, so counting it double-counts those areas | per-area scores **already rounded**, then round          |
 | **To-Be, every rollup**   | Identical to the As-Is rule at the same level, reading `targetLevel` instead of `currentLevel`. An absent `targetLevel` is excluded exactly like unassessed                                              | identical to the As-Is row above it                      |
 
-Exclusions, uniform everywhere: unassessed (`0`) and N/A (`-1`) are both left out of every
-average. A dimension with no assessed aspects is **dropped** from the area average rather
-than counted as zero — Excel's `AVERAGE` over blanks matches this, but the test suite must
-assert it rather than assume it.
+Exclusions, uniform everywhere **in averages**: unassessed (`0`) and N/A (`-1`) are both left
+out. A dimension with no assessed aspects is **dropped** from the area average rather than
+counted as zero — Excel's `AVERAGE` over blanks matches this, but the test suite must assert
+it rather than assume it.
+
+### 5.4.1 Three rules the table above omits
+
+Added in Wave 7 after reading every rollup implementation. None contradicts the table; each is
+a rule a formula needs and could not get from it.
+
+**Completion percentage — and N/A counts here, unlike everywhere else.** `useScores.ts:112`
+counts ratings where `currentLevel > 0 || currentLevel === -1`, so **an N/A determination
+counts as assessed for completion** while being excluded from every average. Read literally,
+the exclusions paragraph above points the wrong way for this one column. The denominator is
+`getAssessableAspectCountForArea`: **26** for an ordinary area, **16** for a Data Management
+area, **15** for a Technology Management area, **15** for `enterprise-governance`. Then
+`Math.round((assessed / total) * 100)` to an integer percent.
+
+In Excel that is "count cells that are non-blank", because blank ≡ no rating row ≡ level 0,
+and the `N/A` token is non-blank. `COUNTA` over the level column, not `COUNTIF(">0")`.
+
+**The tool's single overall score is not a mean of domain scores.** `getOverallScore`
+(`useScores.ts:174`) averages the **stored area scores across every finalized area in every
+domain**, each area counting once. Averaging the 14 domain scores instead would weight small
+domains more heavily and produce a different number. The "Enterprise-wide dimension" row above
+is the per-dimension PDF figure, a different quantity from this.
+
+**For the two enterprise domains, one of an area's three dimension scores is the aggregate.**
+`finalizeAssessment` injects it with `dimensionScores.set(aggregatedDimension, aggregateScore)`
+_after_ computing the manual ones, so the aggregate replaces rather than supplements — and if
+the aggregate is `null` the dimension is absent and the divisor drops to 2. The "Standard area"
+row does not say this; it is only recoverable by reading Decision P1 alongside it.
+
+Also worth stating precisely, because the wording above is looser than the code: the
+aggregate's population filter is `status === 'finalized' && !isEnterpriseDomain(domain)`, so
+**both** enterprise domains are excluded from **both** aggregates. And the enterprise-wide
+row's "aggregates are not folded in" holds by _absence of ratings_ rather than by a filter —
+`summariseDimensionsAcrossAreas` has no `isEnterpriseDomain` guard, so imported or legacy data
+carrying an Information rating on a Data Management area would silently be counted.
+
+**The aggregate dimension has no To-Be value.** `generateStandardAreaProfile` sets
+`toBeAvg = ''` on an aggregate row and puts `(Aggregate from N assessments)` in its notes. The
+workbook must leave the aggregate's To-Be cell empty rather than computing one, or it invents a
+figure the tool does not have.
 
 **Resolved — there is now exactly one rule to mirror.** This section previously recorded a
 blocker: the tool computed the Technology dimension two different ways and the workbook could
@@ -776,47 +834,44 @@ the next wave with a red repo.
 
 ### Wave 7 — XLSX maturity profile and formulas
 
-- [ ] Flat `06_Maturity_Profile`: real Domain / Capability Area / Dimension columns
-      replacing the reference implementation's merged label rows
-- [ ] `AVERAGEIFS` rollups for the standard dimensions, with Technology as the mean of
+Record in **Section 8l**. Everything below is done except the two items that need a human in
+front of Excel, which are called out as such.
+
+- [x] Flat `06_Maturity_Profile`: real Domain / Capability Area / Dimension columns
+      replacing the reference implementation's merged label rows. 216 rows
+- [x] `AVERAGEIFS` rollups for the standard dimensions, with Technology as the mean of
       its two sub-dimension means (**not** a flat mean of 11 aspects)
-- [ ] Organizational rows: per-aspect values plus section means, and an area score that
-      is the mean of section means
-- [ ] Aggregate-dimension cells per P1(a): formula averaging the dimension across
+- [x] Organizational rows — **as 3 section rows, not per-aspect.** The per-aspect shape 5.2
+      originally described needs "Section:" label rows that 5.3 forbids, and it would be a
+      copy of `05` rather than a computation. See 8l
+- [x] Aggregate-dimension cells per P1(a): formula averaging the dimension across
       non-enterprise areas, mirroring `getAggregateDimensionScore`
-- [ ] `TEXTJOIN` rollups for notes, barriers, and plans
-- [ ] To-Be rollups mirroring every As-Is rollup
-- [ ] `07_Area_Scores`, `08_Domain_Scores` and `09_Dimension_Scores` sheets per 5.2.
-      `09` is the enterprise-wide dimension figure agreed in Decision 17 — mean of per-area
-      dimension scores with a visible Areas denominator, mirroring the PDF executive
-      summary. All three sheet names are already in `SHEET_NAMES` and listed on the README
-      as "not included in this draft", and a test pins that exact four-name list, so each
-      one turns a test red as it is built
-- [ ] **Decide the `Finalized?` question before writing the `08` and `09` formulas.** The
-      tool counts only finalized areas toward domain scores, aggregates and the
-      enterprise-wide figure; the workbook has no status concept, so as designed it counts
-      everything entered and its numbers legitimately differ from the tool's mid-assessment.
-      A `Finalized? (enter Yes/No)` input column on `07` would let `08` and `09` reproduce
-      the tool's population exactly via `AVERAGEIFS`, at the cost of introducing an input
-      the tool has no analogue for — in the tool, finalizing is an action behind a dialog;
-      here it would be a cell a state can forget. Raised with the user in Wave 6 and
-      deferred to this wave deliberately, so the choice is made with the formulas in view.
-      Whichever way it goes, `00_README` already documents the divergence and that text
-      needs updating to match
-- [ ] Halfway-value fixture set (e.g. `4.05 / 3`) comparing Excel `ROUND` against JS
-      `Math.round(x * 10) / 10`; record which primitive is authoritative
-- [ ] JS reference implementation of the formula spec, tested against
+- [x] `TEXTJOIN` rollups for notes, barriers, and plans
+- [x] To-Be rollups mirroring every As-Is rollup, except the aggregate, which has no
+      target in the tool either
+- [x] `07_Area_Scores`, `08_Domain_Scores` and `09_Dimension_Scores` sheets per 5.2
+- [x] **The `Finalized?` question: decided against.** No status column. A cell a state can
+      forget produces silently wrong domain scores, and the divergence it would close only
+      exists mid-assessment. What was added instead is narrower and needs no input: an area
+      scores blank until the state has entered at least one level _for that area_. That is the
+      closest representable analogue of "has no assessment record", and it fixed a real defect
+      — see 8l. `00_README` updated
+- [x] Halfway-value fixture set comparing Excel `ROUND` against JS `Math.round(x * 10) / 10`;
+      authoritative primitive recorded. **And now measured rather than modelled** — see 8l
+- [x] JS reference implementation of the formula spec, tested against
       `calculateDimensionScore` on shared fixtures (5.4 step 1)
-- [ ] Snapshot tests on generated formula strings (5.4 step 2)
-- [ ] Open the generated file in Excel and hand-verify a standard area, an enterprise
-      domain area, and the organizational area. **Budget for this rather than treating it as
-      a formality** — Wave 6's Excel pass found four defects that 903 green tests could not
-      see, none of them a 508 property. Also glance at Print Preview on `04`, since the
-      natural-pagination setup that replaced `fitToWidth` has not been seen in Excel
-- [ ] Re-run Excel's Accessibility Checker after the new sheets land. Wave 6's run was clean
-      in every category, including "Avoid red formatting" and "Use of merged cells", so any
-      new finding is attributable to `06`-`09` rather than to the existing structure
-- [ ] Verify green
+- [x] Snapshot tests on generated formula strings (5.4 step 2)
+- [x] Arithmetic verified in Excel — **scripted, not by hand.** `npm run verify:workbook-excel`
+      drives Excel over AppleScript, seeds input cells, and reads the computed cells back. 36
+      checks across 8 scenarios. This replaced the hand-verification the plan called for and
+      found three defects the 989-test suite could not, exactly as budgeted for
+- [ ] **Needs a human:** re-run Excel's Accessibility Checker now that `06`-`09` exist.
+      Wave 6's run was clean in every category, so any finding is attributable to the new
+      sheets. Also glance at Print Preview on `04` and `06` — the natural-pagination setup
+      that replaced `fitToWidth` was fixed _after_ the Wave 6 Excel pass and has not been
+      seen since, and `06` is the widest sheet in the workbook at 19 columns
+- [x] Verify green — 989 tests / 44 files, 89/89 mutations, typecheck / lint / format / knip /
+      build all clean
 
 ### Wave 8 — Delivery, docs, handoff
 
@@ -2084,3 +2139,268 @@ still true.
 - **The `Finalized?` question on the checklist is a real fork, not a formality.** Decide it
   before writing `08` and `09`, and update the README's "Known differences" text to match
   whichever way it goes.
+
+## 8l. Wave 7 Notes — 2026-09-14
+
+The wave where the workbook started computing. Four new sheets, `06`-`09`, holding Excel
+formulas that have to produce the same numbers as `calculateDimensionScore` and the rollups
+above it.
+
+The headline is not the formulas. It is that **the arithmetic is now verified by making Excel
+compute it**, rather than by asserting on formula strings — and that this found three defects
+after 989 tests and 89 proved-failable mutations were all green. Every one of them would have
+shipped a wrong number to CMS.
+
+### What was built
+
+| Sheet                 | Rows | What it holds                                                        |
+| --------------------- | ---- | -------------------------------------------------------------------- |
+| `06_Maturity_Profile` | 216  | 71 standard areas × 3 dimensions, plus 3 organizational section rows |
+| `07_Area_Scores`      | 72   | One per capability area, with completion % and visible divisors      |
+| `08_Domain_Scores`    | 15   | 14 domains plus an overall row                                       |
+| `09_Dimension_Scores` | 3    | The enterprise-wide ORBIT figure (Decision 17)                       |
+
+Three modules, all new: `scoring-spec.ts` (the rule, expressed once as JS and once as formula
+generators), `profile-rows.ts` (the row builders), `excel-rounding.ts` (a model of Excel's
+`ROUND`, plus the fixtures that check the model).
+
+### `06` is 216 rows, not 228
+
+5.2 contradicted itself, giving both a row count of 228 and a uniform
+one-row-per-area-and-dimension shape. 216 = 71 × 3 + 3, resolving it in favour of the uniform
+shape with **one row per organizational section** rather than per organizational aspect.
+
+The per-aspect alternative needs "Section:" label rows, which 5.3 forbids, and it would be a
+copy of `05_Organizational_Input` rather than a computation. The section means are what the area
+score consumes, so they are what the sheet carries.
+
+### The `Finalized?` question: decided against, and something better added
+
+The tool counts only _finalized_ areas toward domain scores and aggregates. A workbook has no
+status, so the plan offered a `Finalized? (enter Yes/No)` input column to reproduce the tool's
+population exactly.
+
+Rejected. It introduces an input the tool has no analogue for — finalizing is an action behind a
+dialog there, a cell a state can forget here — and a forgotten cell produces silently wrong
+domain scores, which is worse than the divergence it closes. The divergence only exists
+mid-assessment and is documented on `00_README`.
+
+What went in instead is narrower and needs no input: **an area scores blank until the state has
+entered at least one level for that area.** That is the closest representable analogue of "has
+no assessment record", and it turned out to fix a real defect rather than being a nicety — see
+defect 3 below.
+
+### Three defects the tests could not see
+
+Two were found by opening the artifact, one by a reviewer reading an emitted cell. All three
+produce a plausible-looking wrong number, which is the failure mode that matters here.
+
+**1. Completion over 100% on all 21 enterprise-domain areas.** The aggregate row's
+`Aspects Assessed` cell held a count of _contributing capability areas_. `07` sums the three
+dimension rows' `Aspects Assessed` as the numerator of completion %, while
+`getAssessableAspectCountForArea` leaves the aggregated dimension's aspects out of the
+denominator (26 drops to 16 for Data Management, 15 for Technology Management). So up to 11 was
+being added to a numerator over a denominator of 16.
+
+Fixed by making the cell a literal `0`, which is also the honest figure: a state enters no
+aspects for an aggregated dimension. The contributing-area count survives in the Notes cell,
+which is where the CSV profile puts it too.
+
+Found by a test written to assert something else — that the completion count tests for a
+non-empty cell rather than `">0"`. The filter caught a row whose `COUNTIFS` was over the wrong
+sheet entirely.
+
+**2. Twenty-one blank cells in a workbook whose every other inapplicable cell says so in
+words.** The aggregate rows' To-Be was `''`. A blank reads as "not filled in yet" to a screen
+reader and to a person; the meaning needed is "there will never be a value here". Changed to the
+text `Not applicable`, matching the sub-dimension columns.
+
+Safe for the rollup above, and this is load-bearing rather than incidental: `AVERAGE` ignores
+text inside a **cell reference** exactly as it ignores a blank, so `07`'s divisor still drops
+from 3 to 2. Measured in Excel, not assumed — `AVERAGE(J4,J5,J6)` with `J4` = "Not applicable",
+`J5` = 3, `J6` = 4 returns 3.5.
+
+**3. Twenty-one never-opened areas inflating the domain and overall scores.** This is the one
+worth remembering. An aggregate is computed **domain-wide from other domains' areas**, so it is
+non-empty while the area holding it is untouched. Seeding a single Information level in any
+ordinary area therefore gave all ten Data Management areas a score, and all eleven Technology
+Management areas too.
+
+Measured: two seeded areas scoring 3.5 and 2.0 should give an overall of 2.8. Excel returned
+3.6, because 21 phantom areas had joined the average. The entered-guard above fixes it, and the
+`07` scenario now asserts an untouched enterprise-domain area and its domain both read blank.
+
+No string assertion could have caught this. The formulas were all individually correct.
+
+**4. (Found by review, not by Excel.) The aggregate note frozen at "50 assessments".**
+`resolveAggregateFormulas` reused the mean's criteria list for the note's `COUNTIFS`.
+`AVERAGEIFS` ignores non-numeric cells in its average range for free; `COUNTIFS` does not. Since
+all 216 rows exist at generation time, the count was a **constant** — every aggregate note read
+`(Aggregate from 50 assessments)` on a blank workbook, beside a blank score, while the CSV
+profile would say 3. Both the zero branch and the singular branch were unreachable.
+
+Fixed by adding `scoreRange,">0"` to the count only. Not to the mean: that formula sits _in_ the
+score column, and Excel tolerates a self-reference in `AVERAGEIFS`'s average range but not in a
+criteria range. The reviewer measured that distinction rather than assuming it.
+
+### The Excel/JS rounding divergence is real — measured, not modelled
+
+5.4 flagged that Excel's `ROUND` and the app's `Math.round(x * 10) / 10` disagree on decimal
+halfway values, and that mitigation step 1 cannot catch it because it shares the JS primitive.
+`halfway.test.ts` enumerated the divergence against a _model_ of Excel's behaviour that nothing
+could check.
+
+It can now. All five fixtures were evaluated in Excel 16 on macOS and **all five returned the
+Excel-style answer**:
+
+| Formula                         | App gives | Excel gives |
+| ------------------------------- | --------- | ----------- |
+| `=ROUND(4.05/3,1)`              | 1.3       | **1.4**     |
+| `=ROUND(AVERAGE(1.2,1.9),1)`    | 1.5       | **1.6**     |
+| `=ROUND(AVERAGE(2.8,2.9),1)`    | 2.8       | **2.9**     |
+| `=ROUND(AVERAGE(4.3,4.6),1)`    | 4.4       | **4.5**     |
+| `=ROUND(AVERAGE(1,1.8,1.25),1)` | 1.3       | **1.4**     |
+
+**Authoritative primitive: the tool.** A state reads their score on screen and submits it through
+the CSV profile, both from `Math.round(x * 10) / 10`. Where Excel differs the workbook is wrong
+by definition, and the difference is always exactly 0.1. Documented on `00_README` rather than
+engineered around.
+
+Where it can actually bite, from the enumeration:
+
+| Rollup                                         | Divergent combinations |
+| ---------------------------------------------- | ---------------------- |
+| Any dimension score                            | **0**                  |
+| Technology (mean of 2 unrounded sub-dim means) | **0** of 2,009         |
+| Standard area, all 3 dimensions scored         | **0** of 68,921        |
+| Standard area, only 2 dimensions scored        | 32 of 1,681            |
+| Organizational area, 3 sections assessed       | 313 of 50,225 (~0.6%)  |
+
+So Technology — the score this project spent three waves getting right — cannot diverge. What
+can is the Enterprise Governance score and a two-dimension area. The README names both, after a
+reviewer pointed out the first draft aimed its caveat away from exactly those cases.
+
+### The model was right for the wrong reason
+
+Worth recording as a method note. The first `excelStyleRound` normalised to 15 significant
+digits (Excel's documented mechanism) and then compared a float remainder against 0.5 with a
+`toPrecision(12)` fudge to absorb representation error. A mutation removing the normalisation
+**did not fail any test**. Investigating: across the 120,827 values reachable from the model's
+rollups, dropping the normalisation changes nothing. The fudge was doing all the work.
+
+The function agreed with every fixture while modelling the wrong thing, and no fixture could
+reveal it — only the mutation harness did. Rewritten to round on the normalised decimal digits,
+where half-away-from-zero at 1dp is exactly "is the second decimal digit ≥ 5" and there is no
+float error to absorb.
+
+### Scripted Excel verification: `npm run verify:workbook-excel`
+
+The plan called for opening the file and hand-verifying three areas. That was replaced with
+`scripts/verify-workbook-in-excel.ts`, which drives Excel over AppleScript: copy the workbook to
+a temp file, seed input cells, `calculate full`, read the computed cells, close without saving,
+compare against the same JS model the unit tests use. 36 checks across 8 scenarios, plus the 5
+rounding fixtures in a scratch workbook.
+
+Better than hand-verification in three ways: it is repeatable, it derives every cell address from
+the generator's own builders so a stale address is an error rather than a wrong reading, and it
+covers cases nobody would think to check by hand — the blank workbook, a Technology dimension
+with one sub-dimension empty, a fixture where the two rounding points give different answers.
+
+**Not in CI.** It needs macOS and a licensed Excel. It is a manual gate before shipping a
+workbook change, and it can rot, so it is written to fail loudly.
+
+Traps found while building it:
+
+- `calculate` takes a range or a worksheet, **not a workbook**. `calculate wb` fails with a bare
+  `Parameter error (-50)`. Use application-level `calculate full`.
+- Calculation mode is forced to automatic and restored. If a user's Excel were set to manual,
+  every reading would be the stale value the file was written with — a blank — and a blank
+  compared against a blank expectation would let the whole run pass while proving nothing.
+- One Excel session **per scenario**. Scenarios seed overlapping areas, so sharing a session
+  would make each scenario's expected values depend on what ran before it.
+- Excel autosaves, so the deliverable is never opened — only ever a fresh temp copy.
+
+### Two vacuities in the verifier itself, found by auditing it
+
+The verifier is the thing nothing else checks, so it got the same treatment as everything else.
+
+**`matches('', 0)` returned `true`.** `Number('')` is 0 and `Number.isFinite(0)` is true, so every
+`expected: 0` check — the aggregate's assessed count, the blank-workbook area count, completion at
+0% — passed on a cell that was simply empty. Precisely the case they exist to distinguish. Fixed
+by rejecting an empty reading for any numeric expectation.
+
+**Nine checks expect an empty reading, and an empty reading is what a wrong cell address
+produces.** Added `validateAddresses`, which runs before Excel is involved: a cell expected to be
+empty at runtime must hold a _formula_ in the generated file, since a formula returning `""` is
+the only way a computed cell legitimately reads empty; a cell expected to hold a value must not be
+blank; and every seed must land on a cell that is blank in the file, since the editable input cells
+are the only blank ones. Proved by pointing an address at row 500 and confirming it fires in both
+directions.
+
+Also pinned the iteration count of every filtered loop in `profile-rows.test.ts` (195, 216, 132).
+A loop that `continue`s past every row asserts nothing and still passes, and these filters are one
+string literal away from excluding everything.
+
+### Mutation harness: 89 of 89
+
+Up from 51 at the end of Wave 6. The Wave 7 cases target the scoring rules rather than 508
+properties, and each is a mistake someone could plausibly make: dropping a redundant-looking
+`">0"`, rounding the sub-dimension means because every other mean is rounded, averaging domain
+scores for the overall figure because that reads naturally.
+
+`footer.test.ts`'s staleness guard earned its keep again — it caught two mutations pointing at the
+same test, twice. Both times the right fix was to split the test, because they really were two
+claims.
+
+### Limitations — what this wave's verification does not establish
+
+- **36 checks are 36 checks.** The scenarios cover the rules 5.4 identifies as risky, not the
+  cross product of 72 areas × 3 dimensions × every partial-fill state.
+- **The divergence enumeration is still modelled.** Five confirmed points make the model
+  credible; 313 of 50,225 comes from the model, not from 50,225 trips through Excel.
+- **One version of one spreadsheet program.** Excel 16 on macOS. Nothing has opened the file in
+  Excel for Windows, Excel on the web, LibreOffice, or Google Sheets, and `TEXTJOIN` over an
+  implicit array is the most likely thing to behave differently.
+- **No screen reader has touched the computed sheets.** Excel's Accessibility Checker has not run
+  since `06`-`09` landed either; that is the one Wave 7 checklist item still open.
+- **Print Preview on `06`** is unseen. It is the widest sheet in the workbook at 19 columns, and
+  the natural-pagination setup that replaced `fitToWidth` was fixed after the last Excel pass.
+
+## 8m. Wave 8 Pre-Brief (delivery, docs, handoff)
+
+Wave 8 is the last wave of Drop 2 and the first one since Wave 5 whose output a stakeholder can
+actually see. Nothing in Waves 6 or 7 is visible in the app yet: the workbook is generated but
+unreachable, because the download links are this wave.
+
+### State of the tree
+
+Waves 6 and 7 are committed on `feature/pilot-clearance` and **not pushed, not deployed**.
+`origin/main` is still roughly ten commits behind at the pre-v4 model, and `deploy.yml`
+auto-triggers on push to `main` — so pushing to `main` would silently revert the live pilot site
+to a stale build. Deploy by manual `workflow_dispatch` from the feature branch, dispatched
+against the fork explicitly.
+
+### Read first
+
+- **Section 8l above**, particularly the scripted Excel verification. If Wave 8 changes anything
+  the generator emits, `npm run verify:workbook-excel` is the gate, and it needs Excel.
+- **`scripts/xlsx/paths.ts`** — the measured `SOURCE_DATE_EPOCH` finding. Two runs with the epoch
+  fixed produce byte-identical _unzipped content_ but different `.xlsx` bytes, because ExcelJS
+  stamps ZIP entry timestamps it does not expose. A CI drift check must unzip and diff the parts,
+  or just regenerate and run the suite. Diffing the `.xlsx` will report a change every run.
+- **OBS-37** — `jspdf` has a critical advisory and `react-router` a high one, both in production
+  dependencies, both unfixed. Decide whether Drop 2 ships with them.
+
+### Traps specific to this wave
+
+- **The workbook is gitignored**, so `npm run dev` has no file and the three download links
+  would 404. A `predev` step or a graceful message, not a link that fails silently.
+- **CI runs Node 22.18** now (both workflows were moved off 20 in Wave 6, because the generator
+  relies on native type stripping). `.nvmrc` and `engines` both pin it. Adding the generator to
+  `ci.yml` should be a matter of one step, but the node version is the thing that breaks first.
+- **The go-live switch is one variable in two places.** `VITE_DRAFT_MODE=false` removes the
+  notice from the app _and_ the workbook. `workbook.test.ts` has a go-live suite that runs the
+  whole generator with the flag flipped, so that path is covered — but nothing has generated a
+  go-live workbook and opened it.
+- **Version bump and CHANGELOG** are release-checklist items in the steering doc, and Drop 2 adds
+  a user-facing feature (the workbook), so this is a MINOR bump at least.
