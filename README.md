@@ -166,8 +166,10 @@ npm run test:watch   # Watch mode
 npm run test:coverage # Coverage report
 
 # Offline workbook (see "Offline Excel Workbook" below)
-npm run generate:workbook      # Generate public/mita-4.0-self-assessment-workbook.xlsx
-npm run verify:workbook-excel  # Verify its formulas by driving Excel (macOS + Excel only)
+# Generated automatically by `npm run build` and `npm run dev`; these are for running it alone.
+npm run generate:workbook         # Generate public/mita-4.0-self-assessment-workbook.xlsx
+npm run verify:workbook-artifact  # Check the workbook that shipped into dist/
+npm run verify:workbook-excel     # Verify its formulas by driving Excel (macOS + Excel only)
 ```
 
 ## Offline Excel Workbook
@@ -184,7 +186,9 @@ cells, one header row per table, no blank rows, no images, and editable columns 
 text rather than signalled by fill colour alone.
 
 It is generated at build time by a Node script under `scripts/`, so it adds nothing to the
-browser bundle, and it is gitignored as a build output.
+browser bundle, and it is gitignored as a build output. `npm run build` and `npm run dev` both
+generate it automatically, so a fresh clone needs no extra step — just `npm install` and either
+command.
 
 ### Verifying it
 
@@ -193,6 +197,11 @@ Excel formula. `npm run verify:workbook-excel` closes that gap by driving Micros
 AppleScript: it copies the workbook, enters maturity levels and notes, reads the calculated
 cells back, and compares them against the app's scoring rules. It needs macOS and a licensed
 Excel, so it is a manual gate before shipping a workbook change rather than part of CI.
+
+`npm run verify:workbook-artifact` checks a third thing: the copy that actually ships. The test
+suite builds a workbook in memory and never reads a file, and the Excel gate reads the `public/`
+copy, so neither would notice a build that failed to put the workbook into `dist/` — which is
+what the in-app download links serve. Both CI and the deploy workflow run it after the build.
 
 `node scripts/xlsx/prove-assertions.ts` is a mutation harness that breaks the generator in
 turn and confirms the relevant test fails, so the accessibility and scoring assertions are

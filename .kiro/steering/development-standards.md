@@ -881,8 +881,9 @@ npm run test:watch   # Watch mode
 npm run test:coverage # Coverage report
 
 # Build-time artifacts
-npm run generate:workbook      # Regenerate the offline XLSX workbook into public/
-npm run verify:workbook-excel  # Verify its formulas in Excel (macOS + Excel only, not in CI)
+npm run generate:workbook         # Regenerate the offline XLSX workbook into public/
+npm run verify:workbook-artifact  # Check the workbook that shipped into dist/
+npm run verify:workbook-excel     # Verify its formulas in Excel (macOS + Excel only, not in CI)
 ```
 
 **Node 22.18 or newer is required** (declared in `engines` and `.nvmrc`). The workbook
@@ -910,6 +911,7 @@ run under `npm test`.
 | `scripts/xlsx/profile-rows.ts`        | Row builders for the four calculated sheets, `06`-`09`                      |
 | `scripts/xlsx/excel-rounding.ts`      | Model of Excel's `ROUND`, plus the fixtures that check the model            |
 | `scripts/xlsx/prove-assertions.ts`    | Mutation harness proving each assertion can fail                            |
+| `scripts/verify-workbook-artifact.ts` | Integrity check on the workbook that shipped into `dist/`                   |
 | `scripts/verify-workbook-in-excel.ts` | Arithmetic verification by driving Excel over AppleScript                   |
 
 ### Verifying workbook changes
@@ -927,6 +929,23 @@ So, for any change to what the generator emits:
    run it.** If you add a column, add an expectation that reads it.
 3. `node scripts/xlsx/prove-assertions.ts` — confirms every assertion can still fail. It rewrites
    source files in place and restores them, so run it on a clean tree and never alongside `npm test`.
+
+**Generation is automatic.** A `prebuild` script generates the workbook, so `npm run build` always
+produces a current one — locally, in `ci.yml` and in `deploy.yml` alike. `predev` does the same for
+the dev server, because the artifact is gitignored and the in-app download links would otherwise
+404 in development. Step 1 above is therefore rarely needed by hand.
+
+**`npm run verify:workbook-artifact` covers the file that ships**, which is a different object from
+the ones above: `npm test` builds a workbook in memory and never reads a file, and
+`verify:workbook-excel` reads the `public/` copy. This one opens `dist/` — the only copy a pilot
+user downloads — and checks it is a real, complete, openable workbook. Both workflows run it after
+the build, so a site whose download links 404 fails the deploy rather than shipping. It is an
+integrity check only; correctness is still steps 2 and 3.
+
+Do not add a `public/`-versus-`dist/` comparison to it. That was built and removed: the build
+timestamp lands in `docProps/core.xml`, so two runs of an unchanged model differ in content as well
+as in ZIP bytes, and the check fired on healthy trees while catching nothing the presence, ZIP,
+open and sheet checks miss.
 
 Two rules earned the hard way:
 

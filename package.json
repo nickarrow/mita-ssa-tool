@@ -8,7 +8,9 @@
     "node": ">=22.18.0"
   },
   "scripts": {
+    "predev": "npm run generate:workbook",
     "dev": "vite",
+    "prebuild": "npm run generate:workbook",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -20,6 +22,7 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "generate:workbook": "node scripts/generate-xlsx-workbook.ts",
+    "verify:workbook-artifact": "node scripts/verify-workbook-artifact.ts",
     "verify:workbook-excel": "node scripts/verify-workbook-in-excel.ts",
     "audit:code": "knip",
     "prepare": "husky"

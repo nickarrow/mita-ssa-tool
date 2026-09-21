@@ -41,6 +41,16 @@ export function fromRepoRoot(...segments: string[]): string {
 }
 
 /**
+ * The workbook's filename, in one place.
+ *
+ * Both the generated copy under `public/` and the shipped copy under `dist/` are built from
+ * this, so a rename cannot leave the artifact check looking at a path the generator no longer
+ * writes. Also duplicated — deliberately, as a literal — in `.gitignore` and in the in-app
+ * download link, neither of which can import from here.
+ */
+const WORKBOOK_FILENAME = 'mita-4.0-self-assessment-workbook.xlsx';
+
+/**
  * Where the workbook is written.
  *
  * Lives here rather than in the generator because more than one consumer needs it — the generator
@@ -52,10 +62,21 @@ export function fromRepoRoot(...segments: string[]): string {
  * model changes (Decision 14). Versions are printed inside the workbook on `00_README`. Also
  * referenced by the `.gitignore` entry, the in-app download links, and the CI check.
  */
-export const WORKBOOK_OUTPUT_PATH = fromRepoRoot(
-  'public',
-  'mita-4.0-self-assessment-workbook.xlsx'
-);
+export const WORKBOOK_OUTPUT_PATH = fromRepoRoot('public', WORKBOOK_FILENAME);
+
+/**
+ * Where the workbook ends up in the built site.
+ *
+ * Vite copies `public/` into `dist/` verbatim, so this is the same bytes at a different path —
+ * and *that* is the thing worth checking, because it is the only copy a pilot user ever
+ * downloads. `npm run verify:workbook-artifact` compares the two byte-for-byte and opens the
+ * `dist/` one, which is end-to-end coverage the test suite cannot give: the suite builds a
+ * workbook in memory and never touches either file.
+ *
+ * Kept beside `WORKBOOK_OUTPUT_PATH` and built from the same `WORKBOOK_FILENAME` so the two
+ * cannot drift into checking different files.
+ */
+export const DIST_WORKBOOK_PATH = fromRepoRoot('dist', WORKBOOK_FILENAME);
 
 /**
  * The timestamp stamped into the workbook, as a build input rather than "now".

@@ -641,10 +641,18 @@ comparison, and records which primitive is authoritative.
   `.xlsx` bytes still differ because ExcelJS stamps ZIP entry times it does not expose. So
   a CI drift check must unzip and diff the parts, or just regenerate and run the suite —
   diffing the `.xlsx` itself reports a change on every run
-- `npm run build` runs the generator first, so local and CI builds are identical and
-  `deploy.yml` needs no XLSX-specific step
+- `npm run build` runs the generator first, so local and CI builds are identical.
+  **Done in Wave 8** via a `prebuild` script, with `predev` doing the same for the dev server
+  so the in-app download links resolve in development too. An earlier revision of this line
+  said `deploy.yml` therefore "needs no XLSX-specific step" — it does have one, deliberately:
+  both workflows run `npm run verify:workbook-artifact` after the build so a site whose
+  download links 404 fails the deploy instead of shipping
 - Generated artifact is gitignored — it is a build output, not source
-- `ci.yml` runs the generator plus its validation tests so PRs catch model drift
+- `ci.yml` runs the generator plus its validation tests so PRs catch model drift. The
+  generator runs as a side effect of `prebuild`, which is not redundant with `npm test`: the
+  suite imports the generator's modules through Vite's transform and builds a workbook in
+  memory, so it would not catch a failure of Node's native type stripping — the reason 22.18
+  is the floor
 - In-app download links: Import/Export page (primary), Landing page (Decision 10), Guide
 - ExcelJS is a `devDependency`. It never enters the browser bundle of an offline-first
   PWA, and its supply-chain exposure is limited to CI. Worth knowing: upstream `exceljs`
