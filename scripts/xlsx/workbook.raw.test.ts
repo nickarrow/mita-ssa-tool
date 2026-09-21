@@ -406,21 +406,27 @@ describe('raw OOXML: print setup', () => {
 });
 
 /**
- * Formula dialect: every function name must be spelled the way the file format requires.
+ * Formula dialect: the workbook must not use a function newer than Excel 2007.
  *
- * This is the suite that would have caught the `#NAME?` defect. Worksheet functions added after
- * Excel 2007 have to be **stored** with an `_xlfn.` prefix; Excel strips it for display, so a file
- * containing the bare name shows `#NAME?` in every cell that uses it. ExcelJS does not prefix
- * anything, so the generator must.
+ * Two separate hazards, and the allowlist below covers both at once.
  *
- * `TEXTJOIN` shipped unprefixed and all 648 notes, barriers and plans cells on `06` read `#NAME?`
- * until a user opened the workbook. The formula-string tests could not see it: they assert what the
- * generator emits, and `TEXTJOIN(` was exactly what it emitted. The string was right and the
- * dialect was wrong, which is a distinction only the file format can make.
+ * **Storage.** A worksheet function added after Excel 2007 has to be *stored* with an `_xlfn.`
+ * prefix. Excel strips it for display, so the formula bar looks right, but a file containing the
+ * bare name shows `#NAME?` in every cell that uses it. ExcelJS prefixes nothing.
  *
- * So this checks the emitted names against the set that predates the prefix rule, rather than
- * checking for `TEXTJOIN` specifically. The next post-2007 function someone reaches for — `IFS`,
- * `CONCAT`, `MAXIFS`, `XLOOKUP`, `TEXTAFTER` — fails here instead of in a state's hands.
+ * **Availability.** Even correctly prefixed, the function only resolves in a version of Excel that
+ * has it. `TEXTJOIN` was used here for the three text roll-ups and **does not exist in Excel 2016
+ * or earlier** — so once the prefix was fixed, states on an older Office would still have seen
+ * `#NAME?` in all 648 cells. It was replaced with `IF`/`&`/`MID`, which are all ancient.
+ *
+ * The first of those shipped and was found by a user opening the file. The formula-string tests
+ * could not see it: they assert what the generator emits, and `TEXTJOIN(` was exactly what it
+ * emitted. The string was right and the dialect was wrong, which is a distinction only the file
+ * format can make.
+ *
+ * So the check is on emitted names against a set that predates the prefix rule. Anything newer
+ * fails here — whether or not it is prefixed — which keeps the Excel 2007 floor a property of the
+ * build rather than a claim in a document.
  */
 describe('raw OOXML: formula dialect', () => {
   /**
@@ -429,7 +435,7 @@ describe('raw OOXML: formula dialect', () => {
    * Deliberately an allowlist rather than a denylist of new functions: a denylist silently permits
    * whatever nobody thought to add to it, which is how this defect happened.
    */
-  const NO_PREFIX_NEEDED = new Set([
+  const AVAILABLE_IN_EXCEL_2007 = new Set([
     'AVERAGE',
     'AVERAGEIFS',
     'COUNT',
@@ -438,11 +444,15 @@ describe('raw OOXML: formula dialect', () => {
     'COUNTIFS',
     'IF',
     'IFERROR',
+    'LEN',
     'MAX',
+    'MID',
     'MIN',
     'ROUND',
+    'SUBSTITUTE',
     'SUM',
     'SUMIFS',
+    'TRIM',
   ]);
 
   /** Every function name appearing in a `<f>` element, across every sheet. */
@@ -479,27 +489,34 @@ describe('raw OOXML: formula dialect', () => {
     }
   });
 
-  it('prefixes every function that postdates Excel 2007 with _xlfn.', async () => {
+  it('uses no function newer than Excel 2007', async () => {
     const offenders: string[] = [];
     for (const [name, sheets] of await emittedFunctionNames()) {
-      if (name.startsWith('_xlfn.') || NO_PREFIX_NEEDED.has(name)) {
+      if (AVAILABLE_IN_EXCEL_2007.has(name)) {
         continue;
       }
       offenders.push(`${name} on ${sheets.join(', ')}`);
     }
 
-    // A name here is either a post-2007 function missing its prefix — which renders as `#NAME?` in
-    // every cell — or a 2007-or-older function that belongs in NO_PREFIX_NEEDED. Check which before
-    // adding it to the allowlist.
+    // A name here is a function that either needs an `_xlfn.` prefix to be stored correctly, or
+    // does not exist in an older Excel, or both. Before adding it to the allowlist, check when it
+    // was introduced — the allowlist is the workbook's compatibility floor, not a convenience.
     expect(offenders).toEqual([]);
   });
 
-  it('stores TEXTJOIN prefixed, since that is the one that shipped broken', async () => {
-    const names = await emittedFunctionNames();
-    expect([...names.keys()]).toContain('_xlfn.TEXTJOIN');
-    expect([...names.keys()]).not.toContain('TEXTJOIN');
+  /**
+   * `TEXTJOIN` specifically, because it is the one that shipped broken twice — first stored without
+   * its prefix, then still unavailable in Excel 2016 once the prefix was added. Its absence is the
+   * regression test.
+   */
+  it('does not use TEXTJOIN, which needs Excel 2019 or later', async () => {
+    const names = [...(await emittedFunctionNames()).keys()];
+    expect(names).not.toContain('TEXTJOIN');
+    expect(names).not.toContain('_xlfn.TEXTJOIN');
 
-    // And it is on the sheet that consumes it, not stranded somewhere harmless.
-    expect(names.get('_xlfn.TEXTJOIN')).toContain(SHEET_NAMES.MATURITY_PROFILE);
+    // And the text roll-ups it used to serve are still present, so this is not passing because the
+    // columns were quietly dropped.
+    const profile = decodeXml(await sheetXml(SHEET_NAMES.MATURITY_PROFILE));
+    expect((profile.match(/MID\(IF\(/g) ?? []).length).toBe(195 * 3);
   });
 });

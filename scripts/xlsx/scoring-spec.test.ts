@@ -20,8 +20,10 @@ import { calculateDimensionScore } from '../../src/services/scoring';
 import type { RatingForScoring } from '../../src/services/scoring';
 
 import {
+  TEXT_SEPARATOR,
   columnLetter,
   completionPercentage,
+  joinTextFormula,
   letterOf,
   meanOfAssessed,
   meanOfScores,
@@ -277,6 +279,62 @@ describe('completion counts N/A, unlike every average', () => {
 
   it('returns zero rather than dividing by zero', () => {
     expect(completionPercentage([3], 0)).toBe(0);
+  });
+});
+
+/**
+ * The text concatenation, which replaced `TEXTJOIN` because that function does not exist in Excel
+ * 2016 or earlier. The shape carries the semantics, so the shape is what gets pinned.
+ */
+describe('text concatenation', () => {
+  const BLOCK = { firstRow: 10, lastRow: 13 };
+
+  function formulaFor(block = BLOCK): string {
+    return joinTextFormula('04_Assessment_Input', ASSESSMENT_INPUT_COLUMNS, 'notes', block);
+  }
+
+  it('emits one guarded term per row in the block', () => {
+    const formula = formulaFor();
+    // One `IF` per row, each guarding that row's own cell.
+    expect((formula.match(/IF\(/g) ?? []).length).toBe(4);
+    for (const row of [10, 11, 12, 13]) {
+      expect(formula, `row ${String(row)}`).toContain(
+        `IF('04_Assessment_Input'!$J$${String(row)}="","","${TEXT_SEPARATOR}"&'04_Assessment_Input'!$J$${String(row)})`
+      );
+    }
+    // And no row outside the block.
+    expect(formula).not.toContain('$J$9');
+    expect(formula).not.toContain('$J$14');
+  });
+
+  /**
+   * Every term contributes a *leading* separator, which makes the terms uniform — no special case
+   * for "first non-empty cell" — and `MID` then drops it. Starting at 1 instead would leave every
+   * populated cell reading " | text".
+   */
+  it('strips the leading separator so a single entry has no prefix', () => {
+    const formula = formulaFor();
+    expect(formula.startsWith('MID(')).toBe(true);
+    // Derived from the separator, not hardcoded: a three-character separator is skipped by starting
+    // at the fourth character.
+    expect(TEXT_SEPARATOR).toHaveLength(3);
+    expect(formula).toMatch(new RegExp(`,${String(TEXT_SEPARATOR.length + 1)},32767\\)$`));
+    expect(formula).not.toMatch(/,1,32767\)$/);
+  });
+
+  it('handles a single-row block without a special case', () => {
+    const formula = formulaFor({ firstRow: 7, lastRow: 7 });
+    expect((formula.match(/IF\(/g) ?? []).length).toBe(1);
+    expect(formula).toMatch(/,4,32767\)$/);
+  });
+
+  /**
+   * Stays well inside Excel's 8,192-character formula limit at the largest block the model
+   * produces — Technology's 11 aspects.
+   */
+  it('stays within the formula length limit at the largest block', () => {
+    const longest = formulaFor({ firstRow: 1000, lastRow: 1010 });
+    expect(longest.length).toBeLessThan(8192);
   });
 });
 

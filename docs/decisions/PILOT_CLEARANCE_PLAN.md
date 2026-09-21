@@ -52,8 +52,9 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 > reading. Section 8l is the record and the most useful thing in this document to read before
 > touching the workbook again.
 >
-> **One decision is open and belongs to Wave 8:** `TEXTJOIN` requires Excel 2019 or later, which
-> narrows the workbook's floor from Excel 2007 for the sake of three convenience columns. See 8m.
+> **No decisions are open.** The one Wave 7 handed forward — `TEXTJOIN` requiring Excel 2019 — was
+> settled before Wave 8 began: it is gone, replaced by explicit concatenation, and the workbook's
+> Excel 2007 floor is now enforced by a test over the emitted file. See 8m.
 
 > **The deploy target is the fork, not the CMS org repo — and `gh` gets this wrong by
 > default.** `origin` is `naretakis/mita-ssa-tool` (redirecting to `nickarrow/mita-ssa-tool`)
@@ -2443,34 +2444,34 @@ against the fork explicitly.
 - **OBS-37** — `jspdf` has a critical advisory and `react-router` a high one, both in production
   dependencies, both unfixed. Decide whether Drop 2 ships with them.
 
-### Decide first: does `TEXTJOIN` stay?
+### Resolved before Wave 8 started: `TEXTJOIN` is gone
 
-The only open decision carried out of Wave 7, and it should be settled before the download links
-make the workbook reachable.
+`TEXTJOIN` **requires Excel 2019, 2021, 2024 or Microsoft 365 and does not exist in Excel 2016 or
+earlier**, where the three text roll-up columns on `06_Maturity_Profile` showed `#NAME?`. Everything
+else the generator emits is Excel 2007 or older, so one function serving three convenience columns
+raised the workbook's floor by twelve years, for an audience where a 2016 perpetual install is
+entirely plausible.
 
-`TEXTJOIN` **requires Excel 2019, 2021, 2024 or Microsoft 365. It does not exist in Excel 2016 or
-earlier**, where the three text roll-up columns on `06_Maturity_Profile` show `#NAME?`. Everything
-else in the workbook — `AVERAGEIFS`, `COUNTIFS`, `IFERROR`, `ROUND`, `SUM`, `AVERAGE`, `COUNT` — is
-Excel 2007 or older. So one function, serving three convenience columns, raises the workbook's floor
-by twelve years, for an audience where a 2016 perpetual install is entirely plausible.
+Replaced with explicit concatenation, which needs nothing newer than Excel 2007:
 
-Three options:
+```
+MID(IF(a="","", " | "&a) & IF(b="","", " | "&b) & ... , 4, 32767)
+```
 
-1. **Keep it, document it.** Already done — `00_README` now carries an "Excel version" entry saying
-   those three columns need Excel 2019+, that no score is affected, and that nothing a state enters
-   is lost. Cheapest, and a state on 2016 sees three broken columns in an otherwise working file.
-2. **Replace it with a universally compatible concatenation.** Because the roll-ups now address a
-   _contiguous block_ rather than filtering, this is mechanical: build
-   `IF(a="","", " | "&a) & IF(b="","", " | "&b) & …` and wrap in `MID(…,4,32767)` to strip the
-   leading separator. Works in Excel 2007, no array semantics, ~500 characters for an 11-aspect
-   block against an 8,192 limit. Verbose to read in the formula bar, invisible in the result.
-3. **Drop the three columns.** Removes 648 cells of risk. The state's text still lives on `04` and
-   `05` where they typed it, and the app's CSV and PDF carry per-dimension text already.
+Each term contributes a _leading_ separator so the terms are uniform — no special case for "the
+first non-empty cell" — and `MID` drops it. An empty block concatenates to `""`, and `MID` on an
+empty string is `""`, so nothing needs a guard. The start offset is derived from the separator
+length rather than hardcoded.
 
-**Recommendation: option 2.** It removes the workbook's only post-2007 dependency for bounded,
-contained work, and `npm run verify:workbook-excel` already has a scenario that reads every text
-column, so the change is provable rather than hoped for. Option 1 is defensible only if Wave 8 is
-tight on time, and option 3 gives up something the plan asked for.
+Verified in Excel across the cases that matter: an empty block, a single entry with no leading
+separator, a gap in the middle, the last row of the block included, the boundary between two
+organizational sections, and cross-area isolation. Longest emitted formula is 848 characters against
+Excel's 8,192 limit; the file grew from 191 KB to 217 KB.
+
+**The Excel 2007 floor is now enforced rather than claimed.** `workbook.raw.test.ts` scans every
+`<f>` element in the archive and fails on any function name outside an allowlist of pre-2007
+functions. That covers both hazards a newer function brings — needing an `_xlfn.` prefix that
+ExcelJS does not add, _and_ not existing in the reader's Excel. Adding one fails the build.
 
 ### Traps specific to this wave
 
@@ -2507,7 +2508,10 @@ text cell. That gap is now closed with a dedicated scenario.
 **1. `#NAME?` in all 648 text cells.** Every worksheet function added after Excel 2007 must be
 _stored_ with an `_xlfn.` prefix. Excel strips it for display, so the formula bar shows
 `TEXTJOIN(...)`, but a file containing the bare name is using a function Excel does not recognise.
-ExcelJS does no prefixing. Fixed by emitting `_xlfn.TEXTJOIN`.
+ExcelJS does no prefixing. Fixed at the time by emitting `_xlfn.TEXTJOIN`, then superseded entirely
+once it emerged that `TEXTJOIN` does not exist in Excel 2016 either — see "Resolved before Wave 8
+started" in 8m. The prefix rule is still worth knowing, and the allowlist guard it produced now
+enforces the Excel 2007 floor as a whole.
 
 Worth knowing: the prefix is **file-format only**. Typing `=_xlfn.TEXTJOIN(...)` into a cell gives
 `#NAME?`, which briefly made a diagnostic probe look like a contradiction.

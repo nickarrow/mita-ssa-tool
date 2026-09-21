@@ -824,11 +824,12 @@ function buildScenarios(): Scenario[] {
       cellOn(SHEET_NAMES.ORGANIZATIONAL_INPUT, ORGANIZATIONAL_INPUT_COLUMNS, 'notes', row);
 
     scenarios.push({
-      name: 'notes, barriers and plans concatenated by TEXTJOIN',
+      name: 'notes, barriers and plans concatenated',
       rationale:
-        'TEXTJOIN must be stored as _xlfn.TEXTJOIN or every cell reads #NAME?, and it must join a ' +
-        'plain contiguous range rather than filtering with IF — the IF form silently reads another ' +
-        "area's rows. Both shipped broken and no string assertion could see either.",
+        'Three defects lived in these columns: TEXTJOIN stored without its _xlfn. prefix, then ' +
+        'TEXTJOIN itself being absent from Excel 2016, and an IF-based filter that silently read ' +
+        "another area's rows. None was visible to a string assertion. Now a plain IF/&/MID " +
+        'concatenation over the row block, with every function available in Excel 2007.',
       seeds: [
         { cell: notesColumn(firstRow), value: 'First note' },
         // Second aspect deliberately left blank, so the TRUE argument that skips empties is
@@ -881,8 +882,9 @@ function buildScenarios(): Scenario[] {
           expected: 'A plan',
         },
         {
-          // The single-criterion builder. This is the one that returned #VALUE!.
-          label: 'organizational notes joined, via the single-criterion builder',
+          // The organizational builder, which reads sheet 05 rather than 04. Its cells were the
+          // ones that returned #VALUE! under the old IF-based form.
+          label: 'organizational notes joined, off the other input sheet',
           cell: cellOn(
             SHEET_NAMES.MATURITY_PROFILE,
             MATURITY_PROFILE_COLUMNS,

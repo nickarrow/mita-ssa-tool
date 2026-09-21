@@ -14,9 +14,10 @@ version bump lands with the final wave.
 ### Fixed
 
 - **Notes, Barriers and Advancement Plans on the workbook's maturity profile sheet showed
-  `#NAME?`** instead of your text. Excel requires functions introduced after Excel 2007 to be
-  written into the file with an internal prefix, which the workbook was omitting, so Excel did
-  not recognise the function at all
+  `#NAME?`** instead of your text. Two causes: the function being used had to be written into
+  the file with an internal prefix that was missing, and the function itself does not exist in
+  Excel 2016 or earlier. Those three columns now use only functions available in Excel 2007, so
+  they work in any version
 - **The same three columns could show text belonging to a different capability area.** Behind
   the `#NAME?` was a second problem: the formula selected rows by matching capability area and
   dimension, and Excel evaluates that kind of comparison against only one row unless the
@@ -27,9 +28,9 @@ version bump lands with the final wave.
 - **The workbook README described sorting and filtering incorrectly.** Filtering the input
   sheets is supported and safe; scores are always calculated over the whole sheet, not just
   the visible rows. Rows must not be reordered, which sheet protection already prevents
-- **The workbook README now states its Excel version requirement.** Everything works in Excel
-  2007 and later except the Notes, Barriers and Advancement Plans columns on the maturity
-  profile sheet, which use a function available only in Excel 2019, 2021, 2024 and Microsoft 365. No score is affected, and nothing a state enters is lost
+- **The whole workbook now works in Excel 2007 and later**, with no add-ins, macros or internet
+  connection. The build fails if a formula uses anything newer, so this holds rather than
+  relying on review
 
 - **Technology dimension score in PDF and CSV exports** (OBS-25). Both computed it as a
   flat mean over all 11 Technology aspects, which weights the 6-aspect Technical

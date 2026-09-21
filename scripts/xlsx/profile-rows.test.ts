@@ -412,20 +412,26 @@ describe('formula snapshots: 06_Maturity_Profile', () => {
    * So the presence of `IF` in one of these formulas is itself the defect, and is asserted against
    * directly. `workbook.raw.test.ts` guards the `_xlfn.` prefix at the file-format level.
    */
-  it('joins text over a contiguous range, with no IF and a prefixed function name', () => {
+  it('concatenates text with functions that exist in Excel 2007', () => {
     let checked = 0;
     for (const row of profile().rows) {
       for (const key of ['notes', 'barriers', 'plans']) {
         const expression = formulaOf(row, key);
-        if (!expression.includes('TEXTJOIN')) {
+        if (!expression.startsWith('MID(')) {
           continue;
         }
         checked += 1;
         const label = `${String(row.areaId)}.${key}`;
-        expect(expression, label).toContain('_xlfn.TEXTJOIN(" | ",TRUE,');
-        // No IF. The criteria-based form cannot be evaluated correctly as a normal formula, so its
-        // presence here is itself the defect.
-        expect(expression, label).not.toContain('IF(');
+
+        // No TEXTJOIN: it needs Excel 2019 and does not exist in 2016 or earlier.
+        expect(expression, label).not.toContain('TEXTJOIN');
+        // Each term guards its own cell, so an empty cell contributes nothing rather than a
+        // stray separator.
+        expect(expression, label).toContain('IF(');
+        expect(expression, label).toContain('," | "&');
+        // The leading separator is dropped by starting at character 4, derived from the separator
+        // length rather than hardcoded.
+        expect(expression, label).toMatch(/,4,32767\)$/);
       }
     }
     // 192 entered rows plus 3 organizational sections, three text columns each. The aggregate rows
@@ -440,7 +446,7 @@ describe('formula snapshots: 06_Maturity_Profile', () => {
    * is the right one. A sheet-wide range would concatenate every area's text into every cell —
    * which is the same wrong output the `IF` form produced, by a different route.
    */
-  it('ranges each text roll-up to exactly its own group of rows', () => {
+  it('references exactly its own group of rows, one term per row', () => {
     const input = buildAssessmentInputRows();
     const organizational = buildOrganizationalInputRows();
     let checked = 0;
@@ -448,29 +454,35 @@ describe('formula snapshots: 06_Maturity_Profile', () => {
     for (const row of profile().rows) {
       for (const key of ['notes', 'barriers', 'plans']) {
         const expression = formulaOf(row, key);
-        if (!expression.includes('TEXTJOIN')) {
+        if (!expression.startsWith('MID(')) {
           continue;
         }
         checked += 1;
         const label = `${String(row.areaId)}.${key}`;
 
-        const range = /'([^']+)'!\$[A-Z]+\$(\d+):\$[A-Z]+\$(\d+)\)$/.exec(expression);
-        expect(range, `${label}: ${expression}`).not.toBeNull();
-        const [, sheet, firstRow, lastRow] = range as RegExpExecArray;
+        // Every cell the formula touches, in the order it touches them.
+        const cells = [...expression.matchAll(/'([^']+)'!\$[A-Z]+\$(\d+)/g)];
+        const sheet = cells[0]?.[1];
+        expect(sheet, label).toBeDefined();
 
-        const owned = (
-          sheet === SHEET_NAMES.ORGANIZATIONAL_INPUT
-            ? organizational.map((candidate, index) => ({ candidate, row: FIRST_DATA_ROW + index }))
-            : input.map((candidate, index) => ({ candidate, row: FIRST_DATA_ROW + index }))
-        ).filter(({ candidate }) =>
-          sheet === SHEET_NAMES.ORGANIZATIONAL_INPUT
-            ? candidate.sectionId === row.dimensionId
-            : candidate.areaId === row.areaId && candidate.dimensionId === row.dimensionId
+        const owned = (sheet === SHEET_NAMES.ORGANIZATIONAL_INPUT ? organizational : input).flatMap(
+          (candidate, index) => {
+            const matches =
+              sheet === SHEET_NAMES.ORGANIZATIONAL_INPUT
+                ? candidate.sectionId === row.dimensionId
+                : candidate.areaId === row.areaId && candidate.dimensionId === row.dimensionId;
+            return matches ? [FIRST_DATA_ROW + index] : [];
+          }
         );
 
         expect(owned.length, label).toBeGreaterThan(0);
-        expect(Number(firstRow), `${label} first row`).toBe(owned[0]?.row);
-        expect(Number(lastRow), `${label} last row`).toBe(owned[owned.length - 1]?.row);
+        // Two references per row — the guard and the value — and nothing outside the group.
+        expect(new Set(cells.map(([, , rowNumber]) => Number(rowNumber))), label).toEqual(
+          new Set(owned)
+        );
+        expect(cells.length, `${label} term count`).toBe(owned.length * 2);
+        // And every reference is to the same sheet, so a block cannot straddle two input sheets.
+        expect(new Set(cells.map(([, sheetName]) => sheetName)), label).toEqual(new Set([sheet]));
       }
     }
     expect(checked).toBe(195 * 3);

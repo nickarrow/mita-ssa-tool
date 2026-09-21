@@ -47,7 +47,7 @@ import {
   organizationalSectionScoreFormula,
   plainDimensionFormula,
   technologyDimensionFormula,
-  textJoinFormula,
+  joinTextFormula,
   unroundedMeanFormula,
   type InputExtents,
 } from './scoring-spec.ts';
@@ -259,9 +259,9 @@ function buildEnteredRow(
     // Range-based, unlike every score above. `assessmentRowBlock` throws if the rows for this
     // area and dimension are not contiguous, so a builder reorder fails generation rather than
     // emitting a formula that reads a neighbouring area's text.
-    notes: formula(textJoinFormula(...assessmentTextArgs(area.id, dimensionId, 'notes'))),
-    barriers: formula(textJoinFormula(...assessmentTextArgs(area.id, dimensionId, 'barriers'))),
-    plans: formula(textJoinFormula(...assessmentTextArgs(area.id, dimensionId, 'plans'))),
+    notes: formula(joinTextFormula(...assessmentTextArgs(area.id, dimensionId, 'notes'))),
+    barriers: formula(joinTextFormula(...assessmentTextArgs(area.id, dimensionId, 'barriers'))),
+    plans: formula(joinTextFormula(...assessmentTextArgs(area.id, dimensionId, 'plans'))),
     domainId: domain.id,
     areaId: area.id,
     dimensionId,
@@ -393,7 +393,7 @@ function organizationalTextJoinFormula(
   key: 'notes' | 'barriers' | 'plans',
   sectionId: string
 ): string {
-  return textJoinFormula(
+  return joinTextFormula(
     SHEET_NAMES.ORGANIZATIONAL_INPUT,
     ORGANIZATIONAL_INPUT_COLUMNS,
     key,

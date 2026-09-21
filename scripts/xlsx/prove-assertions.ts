@@ -797,45 +797,53 @@ export const MUTATION_CASES: MutationCase[] = [
     testFile: 'scripts/xlsx/profile-rows.test.ts',
   },
   {
-    // The dialect defect, reverted. Stored without the prefix, Excel does not recognise the
-    // function and all 648 text cells read `#NAME?`.
-    assertion: 'TEXTJOIN is stored with the _xlfn. prefix the file format requires',
+    // Reverts to `TEXTJOIN`, which shipped broken twice: first stored without its `_xlfn.` prefix,
+    // then still absent from Excel 2016 once the prefix was added. Either way, `#NAME?` in 648 cells.
+    assertion: 'no function newer than Excel 2007 reaches the file',
     file: 'scripts/xlsx/scoring-spec.ts',
-    find: `export const TEXTJOIN = '_xlfn.TEXTJOIN';`,
-    replace: `export const TEXTJOIN = 'TEXTJOIN';`,
-    test: 'stores TEXTJOIN prefixed, since that is the one that shipped broken',
+    find: `  return \`MID(\${terms.join('&')},\${TEXT_SEPARATOR.length + 1},32767)\`;`,
+    replace: `  void terms;
+  return \`TEXTJOIN("\${TEXT_SEPARATOR}",TRUE,'\${sheetName}'!$\${letter}$\${block.firstRow}:$\${letter}$\${block.lastRow})\`;`,
+    test: 'uses no function newer than Excel 2007',
     testFile: 'scripts/xlsx/workbook.raw.test.ts',
   },
   {
-    assertion: 'every emitted function name is spelled for the file format',
+    assertion: 'TEXTJOIN specifically stays out, and the columns it served stay in',
     file: 'scripts/xlsx/scoring-spec.ts',
-    find: `export const TEXTJOIN = '_xlfn.TEXTJOIN';`,
-    replace: `export const TEXTJOIN = 'TEXTJOIN';`,
-    test: 'prefixes every function that postdates Excel 2007 with _xlfn.',
+    find: `  return \`MID(\${terms.join('&')},\${TEXT_SEPARATOR.length + 1},32767)\`;`,
+    replace: `  void terms;
+  return \`TEXTJOIN("\${TEXT_SEPARATOR}",TRUE,'\${sheetName}'!$\${letter}$\${block.firstRow}:$\${letter}$\${block.lastRow})\`;`,
+    test: 'does not use TEXTJOIN, which needs Excel 2019 or later',
     testFile: 'scripts/xlsx/workbook.raw.test.ts',
   },
   {
-    // The mis-attribution defect, reverted to the criteria-based `IF` form. Excel applies implicit
-    // intersection to the condition, so the cell silently reads another area's text.
-    assertion: 'text roll-ups join a contiguous range, never an IF over the ID columns',
+    // Drops the per-cell emptiness guard, so every unfilled aspect contributes a bare separator and
+    // a state with two notes among 26 aspects reads " |  |  | note |  | ...".
+    assertion: 'each concatenation term skips its own empty cell',
     file: 'scripts/xlsx/scoring-spec.ts',
-    find: `  const letter = letterOf(columns, textKey);
-  return \`\${TEXTJOIN}(" | ",TRUE,'\${sheetName}'!$\${letter}$\${block.firstRow}:$\${letter}$\${block.lastRow})\`;`,
-    replace: `  const letter = letterOf(columns, textKey);
-  void block;
-  return \`\${TEXTJOIN}(" | ",TRUE,IF('\${sheetName}'!$A$3:$A$17="x",'\${sheetName}'!$\${letter}$3:$\${letter}$17,""))\`;`,
-    test: 'joins text over a contiguous range, with no IF and a prefixed function name',
+    find: `    terms.push(\`IF(\${cell}="","","\${TEXT_SEPARATOR}"&\${cell})\`);`,
+    replace: `    terms.push(\`"\${TEXT_SEPARATOR}"&\${cell}\`);`,
+    test: 'concatenates text with functions that exist in Excel 2007',
     testFile: 'scripts/xlsx/profile-rows.test.ts',
   },
   {
-    // A sheet-wide range instead of the row's own block: every area's text in every cell.
-    assertion: 'each text range is exactly its own group of rows',
+    // A sheet-wide block instead of the row's own: every area's text in every cell.
+    assertion: 'each text formula references exactly its own group of rows',
     file: 'scripts/xlsx/rows.ts',
     find: `  return { firstRow, lastRow };`,
     replace: `  void lastRow;
   return { firstRow, lastRow: FIRST_DATA_ROW + rows.length - 1 };`,
-    test: 'ranges each text roll-up to exactly its own group of rows',
+    test: 'references exactly its own group of rows, one term per row',
     testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    // Starting at 1 instead of past the separator leaves a leading " | " on every populated cell.
+    assertion: 'the leading separator is stripped',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  return \`MID(\${terms.join('&')},\${TEXT_SEPARATOR.length + 1},32767)\`;`,
+    replace: `  return \`MID(\${terms.join('&')},1,32767)\`;`,
+    test: 'strips the leading separator so a single entry has no prefix',
+    testFile: 'scripts/xlsx/scoring-spec.test.ts',
   },
   {
     // Reverts to reusing the mean's criteria, which made the count a constant 50 because every row

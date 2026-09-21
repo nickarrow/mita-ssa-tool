@@ -364,45 +364,58 @@ export function countFormula(criteria: readonly { range: string; value: string }
   return `COUNTIFS(${pairs})`;
 }
 
-/**
- * `TEXTJOIN`, spelled the way the file format requires.
- *
- * Every worksheet function added after Excel 2007 has to be **stored** with an `_xlfn.` prefix.
- * Excel strips it for display, so the user sees `TEXTJOIN(...)` in the formula bar, but a file
- * containing the bare name produces `#NAME?` in every cell that uses it — Excel does not recognise
- * the function at all. ExcelJS does no prefixing, so it has to be done here.
- *
- * This shipped broken: all 648 notes, barriers and plans cells on `06` read `#NAME?` until a user
- * opened the workbook and said so. Nothing caught it, because the formula-string tests assert on
- * what the generator emits and `TEXTJOIN(` is exactly what it emitted — the string was right and
- * the *dialect* was wrong. The raw-OOXML guard in `workbook.raw.test.ts` now checks every emitted
- * function name against the set that predates the prefix rule.
- *
- * The functions this generator uses that need **no** prefix, because they are 2007 or older:
- * `AVERAGE`, `AVERAGEIFS`, `COUNT`, `COUNTIFS`, `IFERROR`, `IF`, `ROUND`, `SUM`.
- */
-export const TEXTJOIN = '_xlfn.TEXTJOIN';
+/** Separator between concatenated text entries, matching what the CSV profile uses. */
+export const TEXT_SEPARATOR = ' | ';
 
 /**
  * Concatenate the non-empty text entries for one contiguous block of input rows.
  *
- * `TEXTJOIN`'s second argument is `TRUE`, which skips empty cells — without it a state with
- * two notes among 26 aspects would get a cell of mostly separators.
+ * ## Why this is `IF`/`&`/`MID` rather than `TEXTJOIN`
  *
- * **A plain range, not a criteria-based filter.** `TEXTJOIN` has no `IFS` variant, and the
- * criteria-based form `TEXTJOIN(...,IF(ids=x,texts,""))` is broken as a normal formula: Excel
+ * `TEXTJOIN` is the obvious function for this and the workbook used it, but it **requires Excel
+ * 2019, 2021, 2024 or Microsoft 365 — it does not exist in Excel 2016 or earlier**, where every
+ * cell using it reads `#NAME?`. Every other function this generator emits is Excel 2007 or older,
+ * so `TEXTJOIN` alone raised the workbook's floor by twelve years for three convenience columns, in
+ * front of an audience where a 2016 perpetual install is entirely plausible.
+ *
+ * So each cell is concatenated explicitly. Every term contributes `" | " & value`, or nothing when
+ * the cell is empty, and `MID` then drops the leading separator:
+ *
+ * ```
+ * MID(IF(a="","", " | "&a) & IF(b="","", " | "&b) & …, 4, 32767)
+ * ```
+ *
+ * Verbose in the formula bar and identical in the result. `MID` on an empty string returns an empty
+ * string, so a block with nothing entered yields `""` without a special case, and the start offset
+ * is derived from the separator rather than hardcoded as `4`.
+ *
+ * ## Why a row block rather than a criteria-based filter
+ *
+ * The criteria-based form `TEXTJOIN(...,IF(ids=x,texts,""))` is broken as a normal formula: Excel
  * applies implicit intersection to the `IF` condition and silently reads the wrong rows. See
- * `rowBlockOf` in `rows.ts` for the measurement and the full reasoning, including why addressing
- * by row position is safe on a sheet that cannot be sorted.
+ * `rowBlockOf` in `rows.ts` for the measurement and for why addressing by row position is safe on a
+ * sheet that cannot be sorted.
+ *
+ * ## Known limit
+ *
+ * A cell holds at most 32,767 characters, so a state who wrote thousands of characters of notes
+ * across all aspects of one dimension could overflow the concatenation. `TEXTJOIN` had the same
+ * ceiling. Not defended against, because the input that reaches it is implausible and the failure
+ * is a visible Excel error rather than a wrong value.
  */
-export function textJoinFormula(
+export function joinTextFormula(
   sheetName: string,
   columns: readonly ColumnDefinition[],
   textKey: 'notes' | 'barriers' | 'plans',
   block: RowBlock
 ): string {
   const letter = letterOf(columns, textKey);
-  return `${TEXTJOIN}(" | ",TRUE,'${sheetName}'!$${letter}$${block.firstRow}:$${letter}$${block.lastRow})`;
+  const terms: string[] = [];
+  for (let row = block.firstRow; row <= block.lastRow; row += 1) {
+    const cell = `'${sheetName}'!$${letter}$${row}`;
+    terms.push(`IF(${cell}="","","${TEXT_SEPARATOR}"&${cell})`);
+  }
+  return `MID(${terms.join('&')},${TEXT_SEPARATOR.length + 1},32767)`;
 }
 
 /**

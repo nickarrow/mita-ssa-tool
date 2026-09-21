@@ -470,13 +470,20 @@ Two accepted divergences, both documented on `00_README`:
   always 0.1 and is reachable only in the Enterprise Governance score and a capability area with
   only two dimensions assessed.
 
-### Minimum Excel version
+### Minimum Excel version: 2007
 
-`AVERAGEIFS`, `COUNTIFS` and `IFERROR` are Excel 2007 or older. **`TEXTJOIN`, used by the three
-text roll-up columns on `06_Maturity_Profile`, requires Excel 2019, 2021, 2024 or Microsoft 365** —
-it does not exist in Excel 2016 or earlier, where those cells will show `#NAME?`. Nothing else in
-the workbook is affected. See the pilot clearance plan for the open question on whether to replace
-it with a universally compatible concatenation.
+Every emitted function — `AVERAGE`, `AVERAGEIFS`, `COUNT`, `COUNTIFS`, `IF`, `IFERROR`, `MID`,
+`ROUND`, `SUM` — is available in Excel 2007. No add-ins, no macros, no array formulas.
+
+**This is enforced, not asserted.** `workbook.raw.test.ts` scans every `<f>` element in the archive
+and fails on any function name outside an allowlist of pre-2007 functions. Adding a newer function
+therefore fails the build rather than a state's copy of Excel.
+
+The three text roll-up columns on `06_Maturity_Profile` originally used `TEXTJOIN`, which requires
+Excel 2019 or later and does not exist in Excel 2016. They now concatenate explicitly —
+`MID(IF(a="","", " | "&a) & … , 4, 32767)` — which is verbose in the formula bar and identical in
+the result. Two hazards travel with any post-2007 function and the allowlist covers both: it must be
+_stored_ with an `_xlfn.` prefix that ExcelJS does not add, and it must exist in the reader's Excel.
 
 **CSV Maturity Profile Format (standard capability area):**
 
