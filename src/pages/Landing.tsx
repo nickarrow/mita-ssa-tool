@@ -24,7 +24,13 @@ export default function Landing(): JSX.Element {
     {
       icon: <CloudOffIcon sx={{ fontSize: 40, color: 'primary.main' }} />,
       title: 'Works Offline',
-      description: 'Full functionality after initial load, even without an internet connection.',
+      /*
+       * Precise rather than sweeping, on purpose. The app is genuinely usable with no network —
+       * a service worker caches it on the first visit — but "works offline" on its own invites
+       * the reading that it works before you have ever opened it, which is not possible for
+       * anything served over the web. Naming the first visit is the honest version.
+       */
+      description: 'Open it once with a connection, then keep working without one.',
     },
     {
       icon: <AssessmentIcon sx={{ fontSize: 40, color: 'primary.main' }} />,

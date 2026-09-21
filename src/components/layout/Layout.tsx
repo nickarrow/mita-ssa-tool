@@ -7,6 +7,7 @@ import ImportExportIcon from '@mui/icons-material/ImportExport';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { ScrollToTop } from './ScrollToTop';
 import { DraftBanner } from './DraftBanner';
+import { PwaUpdatePrompt } from './PwaUpdatePrompt';
 import { DRAFT_TITLE_MARKER, IS_DRAFT } from '../../constants';
 
 interface LayoutProps {
@@ -158,6 +159,18 @@ export default function Layout({ children }: LayoutProps): JSX.Element {
       >
         {children}
       </Box>
+
+      {/*
+       * Registers the service worker and shows a prompt when a new build is waiting.
+       *
+       * Outside <main> for the same reason the bottom notice below is, and in normal flow rather
+       * than floating: as a fixed-position toast it overlapped the CMS notice and the footer, and
+       * those are a hard requirement (Decision 15). As a flexShrink:0 sibling it cannot cover
+       * anything — <main> shrinks to accommodate it.
+       *
+       * Renders an empty, zero-height live region when there is no update, so it costs no layout.
+       */}
+      <PwaUpdatePrompt />
 
       {/*
        * Bottom notice, above the footer and outside <main> on purpose.

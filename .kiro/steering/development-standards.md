@@ -11,7 +11,11 @@ This document defines the development standards for the MITA 4.0 State Self-Asse
 The MITA 4.0 State Self-Assessment Tool is a Progressive Web App (PWA) that enables State Medicaid Agencies (SMAs) to self-assess their Medicaid Enterprise maturity using the **ORBIT Maturity Model**. Key characteristics:
 
 - **Privacy-First**: All data stays in the browser (IndexedDB). No server, no data transmission.
-- **Offline-First**: Full functionality after initial load, even without network.
+- **Offline-First**: Two separate properties — keep them separate when reasoning about a change.
+  _Storage_ is local (IndexedDB), so saving never touches the network. _Delivery_ is cached by a
+  service worker, so a reload with no network succeeds. Only the first was true until Wave 8; the
+  app shipped the offline claim for months with no service worker at all (OBS-22). If you are
+  about to assert offline behaviour, say which half you mean.
 - **Accessibility**: WCAG 2.1 AA compliant for government use.
 
 ### Key Domain Terminology

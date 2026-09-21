@@ -7,7 +7,10 @@ A Progressive Web App (PWA) enabling State Medicaid Agencies (SMAs) to self-asse
 The MITA 4.0 State Self-Assessment Tool helps State Medicaid Agencies evaluate their Medicaid Enterprise Systems (MES) maturity across **72 capability areas** using the standardized **ORBIT Maturity Model**. The tool is:
 
 - **Privacy-First**: All data stays in your browser. No data is transmitted or stored remotely.
-- **Offline-First**: Full functionality after initial load, even without network connectivity.
+- **Offline-capable**: A service worker caches the app on first visit, so it loads and runs with no
+  network afterwards — including the offline Excel workbook, which is precached too. Updates are
+  offered by prompt rather than applied silently, so a pilot user is never moved to a new build
+  mid-assessment.
 - **Accessible**: WCAG 2.1 AA compliant for government use.
 
 ### What is ORBIT?
@@ -248,7 +251,9 @@ All user data is stored locally:
 - Safari 15+
 - Edge 90+
 
-Requires IndexedDB and Service Worker support for full PWA functionality.
+IndexedDB is required — it is where assessments are stored, so the tool cannot run without it.
+Service Worker support is what makes the app load without a network; where it is unavailable or
+blocked by policy, everything still works while online and saving is unaffected.
 
 ## Contributing
 

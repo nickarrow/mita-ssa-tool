@@ -11,8 +11,24 @@ Pilot clearance work on `feature/pilot-clearance`. See
 `docs/decisions/PILOT_CLEARANCE_PLAN.md` for the scope record and decision log. The
 version bump lands with the final wave.
 
+### Added
+
+- **The tool now genuinely works offline.** It always said it did, and it did not — there was no
+  service worker, so a reload without a connection failed (OBS-22). Open it once with a
+  connection and it now loads and runs with no network at all, including the offline Excel
+  workbook, which is cached alongside the app. Your assessment data was always stored locally, so
+  nothing about saving changes
+- **You are told about new versions instead of being moved to one.** When an update is available a
+  prompt offers to reload; until you accept, you keep working in the version you have. Deliberate,
+  so an assessment in progress is never replaced by a new build mid-edit
+- **A tab icon**, which was referenced but missing (OBS-28), plus the icon set needed to install
+  the tool as an app on a desktop or phone
+
 ### Fixed
 
+- **The offline claim on the home and guide pages was imprecise even once it became true.** Both
+  said "full functionality after initial load," which did not tell you that the first visit needs
+  a connection. They now say so
 - **Security: the critical and high npm advisories in the shipped dependencies are resolved**
   (OBS-37). `jspdf` carried a critical advisory and `react-router` a high one, and both are in
   the code that runs in your browser. Fixed by `jspdf` 4.2.0 → 4.2.1, `react-router-dom`

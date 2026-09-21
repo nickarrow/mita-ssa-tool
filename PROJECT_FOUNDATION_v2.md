@@ -15,7 +15,11 @@ A Progressive Web App (PWA) enabling State Medicaid Agencies (SMAs) to self-asse
 ## Core Principles
 
 1. **Privacy First**: All data stays in the browser. No data transmitted or stored remotely.
-2. **Offline First**: Full functionality after initial load, even without network.
+2. **Offline First**: Two independent halves, worth keeping distinct because for most of this
+   project's life only the first was true (OBS-22). **Storage** is local — IndexedDB, no network
+   involved in saving. **Delivery** is cached — a service worker precaches the app shell and the
+   offline workbook, so a reload with no network succeeds. The service worker landed in Wave 8;
+   before that the app claimed offline support and a reload without network failed.
 3. **Maintainability**: Capability and ORBIT data in separate, easily-editable JSON files.
 4. **Accessibility**: Government-appropriate, WCAG 2.1 AA compliant UI.
 5. **Simplicity**: Clean architecture, minimal dependencies, clear code.
@@ -24,21 +28,21 @@ A Progressive Web App (PWA) enabling State Medicaid Agencies (SMAs) to self-asse
 
 ## Tech Stack
 
-| Layer            | Technology                      |
-| ---------------- | ------------------------------- |
-| Build Tool       | Vite 6                          |
-| Framework        | React 18                        |
-| Language         | TypeScript (strict mode)        |
-| Routing          | React Router v7                 |
-| UI Library       | Material UI (MUI) v6            |
-| State Management | React Hooks + Dexie React Hooks |
-| Client Storage   | Dexie.js (IndexedDB)            |
-| PDF Export       | jsPDF + jsPDF-AutoTable         |
-| ZIP Export       | JSZip                           |
-| Charts           | Chart.js + react-chartjs-2      |
-| Testing          | Vitest + React Testing Library  |
-| PWA              | vite-plugin-pwa                 |
-| CI/CD            | GitHub Actions                  |
+| Layer            | Technology                         |
+| ---------------- | ---------------------------------- |
+| Build Tool       | Vite 6                             |
+| Framework        | React 18                           |
+| Language         | TypeScript (strict mode)           |
+| Routing          | React Router v7                    |
+| UI Library       | Material UI (MUI) v6               |
+| State Management | React Hooks + Dexie React Hooks    |
+| Client Storage   | Dexie.js (IndexedDB)               |
+| PDF Export       | jsPDF + jsPDF-AutoTable            |
+| ZIP Export       | JSZip                              |
+| Charts           | Chart.js + react-chartjs-2         |
+| Testing          | Vitest + React Testing Library     |
+| PWA              | vite-plugin-pwa (prompt-on-update) |
+| CI/CD            | GitHub Actions                     |
 
 ---
 

@@ -175,16 +175,15 @@ async function verify(): Promise<Problem[]> {
     });
   }
 
-  // Open the shipped bytes rather than the generated ones. This is the copy a user downloads,
-  // and opening it is the only check here that exercises a real reader end to end.
+  // Open the shipped file rather than the generated one. This is the copy a user downloads, and
+  // opening it is the only check here that exercises a real reader end to end.
   //
-  // No cast needed: ExcelJS declares `interface Buffer extends ArrayBuffer {}` at the top level
-  // of its .d.ts, which merges with Node's global `Buffer`, so a Node Buffer is assignable.
-  // An earlier version had `as unknown as ExcelJS.Buffer` here, which compiled identically and
-  // silently disabled checking on the argument.
+  // `readFile` by path rather than `load` by buffer, which keeps ExcelJS's `Buffer` type out of
+  // this file entirely — Node's `Buffer` is generic and not assignable to it, so the buffer form
+  // needs a type assertion. `verify-workbook-in-excel.ts` reads by path for the same reason.
   const workbook = new ExcelJS.Workbook();
   try {
-    await workbook.xlsx.load(shipped);
+    await workbook.xlsx.readFile(DIST_WORKBOOK_PATH);
   } catch (error: unknown) {
     problems.push({
       check: 'shipped workbook opens',

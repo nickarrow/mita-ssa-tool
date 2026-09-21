@@ -47,7 +47,7 @@ const VALUE_PROPS = [
   {
     icon: CloudOffIcon,
     title: 'Works offline',
-    body: 'Full functionality after the first load, even without a connection.',
+    body: 'Open it once with a connection, then keep working without one.',
   },
   {
     icon: CodeIcon,
@@ -422,6 +422,32 @@ export default function About(): JSX.Element {
             </Grid>
           ))}
         </Grid>
+
+        {/*
+         * Offline behaviour, described where someone would look for it — inside "How to use the
+         * tool", after the three workflow steps.
+         *
+         * `VALUE_PROPS` near the top of this file says "works offline" in six words. This is the
+         * version that tells a state what to actually expect, including the update prompt, which is
+         * new behaviour a reviewer would otherwise meet with no explanation anywhere.
+         */}
+        <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <CloudOffIcon color="primary" aria-hidden="true" sx={{ mt: 0.25 }} />
+            <Box>
+              <Typography variant="subtitle1" component="h3" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Working without a connection
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Once you have opened this tool with a connection, it will load and run without one —
+                including the offline Excel workbook. Your assessment is stored in your browser
+                either way, so nothing about saving depends on being online. When a new version is
+                released you will see a prompt offering to reload; until you accept it, you keep
+                using the version you have.
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
 
         <Box sx={{ mt: 3 }}>
           <Button

@@ -516,6 +516,10 @@ build output. `vite-plugin-pwa@^0.21.1` is a dependency but unused — and `knip
 explicitly silences it (`"ignoreDependencies": ["vite-plugin-pwa"]`), which is why the
 clean knip run never surfaced it.
 
+**Resolved in Wave 8** by making the claim true rather than removing it (decision P4). The record
+is at the bottom of this entry, including the measurement that the claim now holds, and the
+`knip.json` silencer is gone — the dependency is genuinely used, so nothing needs suppressing.
+
 The claim is made in six places, two of them user-facing:
 
 | Location                                        | Claim                                                                                         |
@@ -538,6 +542,123 @@ Two paths: wire up the plugin that is already installed (small — config plus m
 registration), or remove the claims. Wiring it up is preferable given the copy already
 promises it, but a service worker introduces cache-invalidation behavior that can confuse
 pilot users, so prefer prompt-on-update over silent auto-update.
+
+#### How it was resolved in Wave 8
+
+`VitePWA` is registered in `vite.config.ts` with `registerType: 'prompt'`, and
+`src/components/layout/PwaUpdatePrompt.tsx` performs the registration and renders the prompt.
+
+**Measured, not assumed.** A service worker is easy to configure and hard to confirm, so this was
+verified against a real build by **stopping the server outright** — a stronger test than the
+browser's offline toggle, because there is nothing to fall back to:
+
+| Check                                           | Result                                                                |
+| ----------------------------------------------- | --------------------------------------------------------------------- |
+| Worker registers and activates                  | `activated`, scope `/`, 13 unique precache entries                    |
+| Reload with the server stopped                  | Loads. `navigator.serviceWorker.controller` non-null                  |
+| **Deep link** to `/dashboard`, server stopped   | Loads, `h1` = "Assessment Dashboard"                                  |
+| That deep link came from cache, not the network | `PerformanceNavigationTiming.transferSize` **0**, `workerStart` 0.4ms |
+| Offline workbook fetch                          | 200, 222,655 bytes, valid ZIP magic                                   |
+| SPA navigation offline                          | Dashboard → Guide → Import/Export all render                          |
+| Draft banner offline                            | Present                                                               |
+
+**The precache gap was wider than this entry originally said.** Workbox's schema default is
+`['**/*.{js,wasm,css,html}']` — verified in
+`node_modules/workbox-build/build/schema/GenerateSWOptions.json`, after a first draft of this note
+claimed `js,css,html,ico,png,svg`, which is a figure from a plugin README rather than the real
+default. So without an explicit `globPatterns` the precache would have omitted the workbook **and
+every icon, the favicon and the manifest**. All are now in the pattern and confirmed present in
+`dist/sw.js`.
+
+Two configuration choices worth knowing:
+
+- **`navigateFallbackDenylist: [/\.xlsx$/]`.** A `download`-attribute click is a navigation request
+  in some browsers, and `navigateFallback` would hand it `index.html`. Verified that precache
+  routing already wins — Workbox matches routes in registration order and `precacheAndRoute`
+  registers before the `NavigationRoute` — so this is belt-and-braces. Kept because the failure
+  mode is an `.xlsx` that is silently HTML, which a user would report as "the workbook is corrupt".
+- **`maximumFileSizeToCacheInBytes` raised to 3 MiB — which _raises_ a tripwire rather than
+  creating one.** An earlier version of this note had the causality backwards. `vite-plugin-pwa`
+  sets `throwMaximumFileSizeToCacheInBytes: !showMaximumFileSizeToCacheInBytesWarning`, and that
+  warning flag defaults to `false`, so an oversized asset **already fails the build** at any limit
+  including Workbox's 2 MiB default. Workbox itself only warns; the throw is the plugin's. The
+  reason for 3 MiB is headroom — at 2 MiB a moderate dependency bump would break the build — and if
+  it ever needs raising again, that is the signal to code-split instead (OBS-20).
+
+**A kill switch is documented but not enabled.** A service worker outlives a deploy: if a build
+without `sw.js` ever reaches the site, the update check 404s, the spec aborts the update, and the
+installed worker serves its cached build **indefinitely with no prompt**. `cleanupOutdatedCaches`
+does not help, because it only prunes when a new worker activates and none ever does. That is not
+hypothetical here — `deploy.yml` auto-triggers on push to `main`, and `origin/main` predates the PWA
+entirely. The recovery is `selfDestroying: true`, which emits a worker that unregisters itself and
+clears its caches; it is set to `false` with the procedure written out in `vite.config.ts`, so the
+fix is known before it is needed rather than discovered during an incident.
+
+#### Four defects in the prompt itself, none of which reading the code would have found
+
+1. **No way to dismiss it.** MUI's `Alert` renders its own close button from `onClose` **only when
+   `action` is absent**. The first version passed `onClose` alongside an `action` containing the
+   Reload button, which type-checked, looked right, and left the handler wired and unreachable.
+2. **The message was announced twice.** MUI's `Alert` defaults to `role="alert"` — an _assertive_
+   live region. Paired with a polite region carrying the same sentence, a screen reader announced it
+   both politely and assertively. Found by dumping every `[role]` in the rendered DOM; the test that
+   was supposed to cover this queried only `role="status"` and passed while the defect was live.
+3. **Two false lifecycle claims in comments**, each of which would have justified a wrong change
+   later. `updateServiceWorker(true)`'s argument is documented by the plugin as unused since 0.13.2
+   — the reload comes from its `controlling` listener — and a waiting worker does **not** activate on
+   the next page load, so "dismissing costs nothing" was inverted. Dismissal defers indefinitely
+   until `skipWaiting` or every tab closes. Measured.
+4. **`offlineReady` is returned by the hook and cannot be used.** A "ready to work offline"
+   confirmation was built on it, to make the Guide's "saves itself to your browser" claim observable
+   — and then removed, because **the callback never fires**. Measured three times from a fully reset
+   state (zero registrations, zero caches, fresh navigation, polling the DOM from the first frame):
+   the worker reached `activated` before `useRegisterSW`'s `installed` listener observed the
+   transition, so `onOfflineReady` was never invoked and the notice was unreachable. Rather than ship
+   a dead path that looks like a feature, the Guide's copy now promises only what is observable
+   ("once you have opened this tool with a connection, it will load and run without one"). **Do not
+   re-add a notice on `offlineReady` without first confirming the callback fires** — the natural
+   assumption is that it does, and it does not.
+
+The announcement shape went through three worse designs before the current one; the rejected
+alternatives and why each failed are recorded in `PwaUpdatePrompt.tsx`'s docblock, because each is
+the obvious thing to reach for. The short version: the notice renders **inside** an always-mounted
+polite live region, so the region's contents change rather than the region appearing populated, the
+text exists exactly once in the accessibility tree, and axe's `region` rule is satisfied because a
+live region is exempt from it — which matters since Wave 4 deliberately stopped suppressing that
+rule.
+
+**What this does not establish.** One browser (Chromium via Playwright) on macOS. The first pass
+verified at the root scope (`/`); a second pass verified at the real Pages subpath
+(`/mita-ssa-tool/`), which is where relative precache URLs and a relative `start_url` would break if
+they were going to. No test of a corporate proxy or a policy that blocks service worker registration
+— `README.md` now states the app still works online in that case.
+
+#### The update cycle _was_ exercised against two real builds
+
+Initially recorded as untested. It then happened by accident — rebuilding `dist/` while a worker was
+installed produced exactly the real scenario — so it is now measured rather than inferred:
+
+| Step                                     | Observed                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| Rebuild with the old worker installed    | `registration.waiting` = `installed`, old worker still `controller` |
+| Prompt appears                           | Live region carries the message; Reload and Close both present      |
+| Page still served from the **old** build | Confirmed — new copy absent from the served HTML                    |
+| Press Reload                             | New worker activates, page reloads, **new build served**            |
+| After reload                             | No waiting worker, prompt gone, live region mounted and empty       |
+| Route preserved across the reload        | Stayed on `/guide`                                                  |
+
+**And it found a layout defect.** As a fixed-position toast at `bottom: 16` the prompt overlapped
+both the CMS-required Paperwork Reduction Act notice (629–667px of a 720px viewport) and the footer
+(667–720). Those notices are a hard requirement (Decision 15), so covering one even transiently is
+not acceptable, and a hardcoded offset would be fragile — the footer is suppressed on the assessment
+page and the notice rewraps with viewport width. The prompt is now a normal-flow sibling in
+`Layout`'s column, immediately above the bottom notice. Verified by injecting a 68px stub into the
+live region: the notice stayed at 629–667 and the footer at 667–720, both unmoved and fully visible,
+because the space comes out of the scrollable `main` instead. Idle, the region is `position: static`
+with **zero height** and no children, so it costs no layout on any page.
+
+What remains genuinely unestablished: one browser (Chromium via Playwright) on macOS, and no test
+against a corporate proxy or a policy that blocks service worker registration.
 
 ### OBS-23 — Every per-level `questions` array is empty, and `questionResponses` is dead weight
 
@@ -782,7 +903,16 @@ still report as assertion differences.
 
 ### OBS-28 — The referenced favicon does not exist
 
-**Confirmed** by inspection and by request against the deployed site.
+**Confirmed** by inspection and by request against the deployed site. **Resolved in Wave 8** —
+both halves: `public/favicon.svg` now exists, and the reference is `%BASE_URL%favicon.svg`, which
+Vite substitutes, so it resolves under the Pages subpath. Verified by building with
+`VITE_BASE_PATH=/mita-ssa-tool/` and confirming the emitted href is
+`/mita-ssa-tool/favicon.svg`.
+
+Done alongside the PWA icon set it was expected to pair with (OBS-22): a 192 and 512 icon, a
+maskable 512, and a 180 `apple-touch-icon` for iOS, which ignores the manifest. The icon is a
+geometric glyph rather than lettering so that rasterising it does not depend on an installed font;
+provenance and regeneration commands are in `docs/ICONS.md`.
 
 `index.html:5` declares `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`, but no
 favicon file exists anywhere in the repository — `public/` contains only `404.html`. Both the

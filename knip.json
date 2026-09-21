@@ -2,6 +2,5 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": ["src/main.tsx", "scripts/xlsx/prove-assertions.ts"],
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["vite-plugin-pwa"],
   "ignoreExportsUsedInFile": true
 }

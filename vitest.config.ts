@@ -57,6 +57,18 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      /**
+       * `virtual:pwa-register/react` is a virtual module created by `vite-plugin-pwa`, which this
+       * config deliberately does not load — running Workbox and emitting a service worker on every
+       * test run buys nothing. Without this alias, any test that reaches `PwaUpdatePrompt` fails at
+       * import resolution rather than on an assertion.
+       *
+       * The stub reports no pending update, so the prompt renders nothing by default and cannot
+       * interfere with other tests. See `src/test/pwaRegisterStub.ts`.
+       */
+      'virtual:pwa-register/react': fileURLToPath(
+        new URL('./src/test/pwaRegisterStub.ts', import.meta.url)
+      ),
     },
   },
 });

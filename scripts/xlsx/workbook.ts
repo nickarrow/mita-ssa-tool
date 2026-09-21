@@ -782,3 +782,25 @@ export async function writeWorkbookBuffer(workbook: ExcelJS.Workbook): Promise<B
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
 }
+
+/**
+ * Read a workbook back from a buffer produced by {@link writeWorkbookBuffer}.
+ *
+ * Exists to hold **one** type assertion in **one** place. ExcelJS declares its own
+ * `interface Buffer extends ArrayBuffer {}`, while `@types/node` 25 declares `Buffer` as generic
+ * (`Buffer<TArrayBuffer>`). A Node buffer is therefore not assignable to ExcelJS's parameter type,
+ * and `xlsx.load()` needs an assertion at every call site without a seam like this one.
+ *
+ * Worth knowing how this surfaced, because it looks like an unrelated change breaking the build:
+ * the incompatibility only appears once a full `@types/node` is in the global scope, and for most
+ * of this project's life it was not. Wiring `vite-plugin-pwa` into `vite.config.ts` — which
+ * `tsconfig.json` includes — pulled `workbox-build`'s Node types in and surfaced the mismatch in
+ * three pre-existing call sites at once. The assertion is a genuine gap in ExcelJS's published
+ * types (see OBS-39 for the other one), not a shortcut: the runtime accepts a Node buffer, which
+ * is what every test here has always passed it.
+ */
+export async function loadWorkbookFromBuffer(buffer: Buffer): Promise<ExcelJS.Workbook> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
+  return workbook;
+}

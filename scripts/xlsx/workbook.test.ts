@@ -52,7 +52,12 @@ import {
   type ColumnDefinition,
 } from './constants.ts';
 import { INFORMATION_MANAGEMENT_GUIDANCE } from './readme.ts';
-import { buildWorkbook, columnLetter, writeWorkbookBuffer } from './workbook.ts';
+import {
+  buildWorkbook,
+  columnLetter,
+  loadWorkbookFromBuffer,
+  writeWorkbookBuffer,
+} from './workbook.ts';
 
 /** The table sheets, with the column model each was built from. */
 const TABLE_SHEETS: ReadonlyArray<{ name: string; columns: readonly ColumnDefinition[] }> = [
@@ -68,8 +73,7 @@ let workbook: ExcelJS.Workbook;
 beforeAll(async () => {
   const built = buildWorkbook();
   const buffer = await writeWorkbookBuffer(built);
-  workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  workbook = await loadWorkbookFromBuffer(buffer);
 });
 
 function sheet(name: string): ExcelJS.Worksheet {
@@ -629,8 +633,7 @@ describe('go-live mode (VITE_DRAFT_MODE=false)', () => {
     process.env.VITE_DRAFT_MODE = 'false';
     try {
       const buffer = await writeWorkbookBuffer(buildWorkbook());
-      released = new ExcelJS.Workbook();
-      await released.xlsx.load(buffer);
+      released = await loadWorkbookFromBuffer(buffer);
     } finally {
       if (previous === undefined) {
         delete process.env.VITE_DRAFT_MODE;
