@@ -404,3 +404,102 @@ describe('raw OOXML: print setup', () => {
     }
   });
 });
+
+/**
+ * Formula dialect: every function name must be spelled the way the file format requires.
+ *
+ * This is the suite that would have caught the `#NAME?` defect. Worksheet functions added after
+ * Excel 2007 have to be **stored** with an `_xlfn.` prefix; Excel strips it for display, so a file
+ * containing the bare name shows `#NAME?` in every cell that uses it. ExcelJS does not prefix
+ * anything, so the generator must.
+ *
+ * `TEXTJOIN` shipped unprefixed and all 648 notes, barriers and plans cells on `06` read `#NAME?`
+ * until a user opened the workbook. The formula-string tests could not see it: they assert what the
+ * generator emits, and `TEXTJOIN(` was exactly what it emitted. The string was right and the
+ * dialect was wrong, which is a distinction only the file format can make.
+ *
+ * So this checks the emitted names against the set that predates the prefix rule, rather than
+ * checking for `TEXTJOIN` specifically. The next post-2007 function someone reaches for — `IFS`,
+ * `CONCAT`, `MAXIFS`, `XLOOKUP`, `TEXTAFTER` — fails here instead of in a state's hands.
+ */
+describe('raw OOXML: formula dialect', () => {
+  /**
+   * Functions available in Excel 2007 and earlier, which are stored under their plain name.
+   *
+   * Deliberately an allowlist rather than a denylist of new functions: a denylist silently permits
+   * whatever nobody thought to add to it, which is how this defect happened.
+   */
+  const NO_PREFIX_NEEDED = new Set([
+    'AVERAGE',
+    'AVERAGEIFS',
+    'COUNT',
+    'COUNTA',
+    'COUNTIF',
+    'COUNTIFS',
+    'IF',
+    'IFERROR',
+    'MAX',
+    'MIN',
+    'ROUND',
+    'SUM',
+    'SUMIFS',
+  ]);
+
+  /** Every function name appearing in a `<f>` element, across every sheet. */
+  async function emittedFunctionNames(): Promise<Map<string, string[]>> {
+    const found = new Map<string, string[]>();
+
+    for (const sheetName of sheetParts.keys()) {
+      const xml = await sheetXml(sheetName);
+      for (const match of decodeXml(xml).matchAll(/<f[^>]*>([^<]*)<\/f>/g)) {
+        const formula = match[1] ?? '';
+        // A function call is a name immediately followed by `(`. `_xlfn.` and `_xlws.` are legal
+        // leading characters, so they are captured as part of the name rather than stripped.
+        for (const call of formula.matchAll(
+          /(^|[^A-Z0-9_.])((?:_xl[a-z]+\.)*[A-Z][A-Z0-9_.]*)\(/g
+        )) {
+          const name = call[2];
+          if (name === undefined) {
+            continue;
+          }
+          found.set(name, [...new Set([...(found.get(name) ?? []), sheetName])]);
+        }
+      }
+    }
+    return found;
+  }
+
+  it('emits at least one formula, so this suite is not vacuous', async () => {
+    const names = await emittedFunctionNames();
+    expect(names.size).toBeGreaterThan(0);
+    // The functions the computed sheets are built from. If the scan stopped matching, these would
+    // silently vanish and every assertion below would pass over an empty set.
+    for (const expected of ['AVERAGEIFS', 'COUNTIFS', 'IFERROR', 'ROUND', 'SUM']) {
+      expect([...names.keys()], `scan missed ${expected}`).toContain(expected);
+    }
+  });
+
+  it('prefixes every function that postdates Excel 2007 with _xlfn.', async () => {
+    const offenders: string[] = [];
+    for (const [name, sheets] of await emittedFunctionNames()) {
+      if (name.startsWith('_xlfn.') || NO_PREFIX_NEEDED.has(name)) {
+        continue;
+      }
+      offenders.push(`${name} on ${sheets.join(', ')}`);
+    }
+
+    // A name here is either a post-2007 function missing its prefix — which renders as `#NAME?` in
+    // every cell — or a 2007-or-older function that belongs in NO_PREFIX_NEEDED. Check which before
+    // adding it to the allowlist.
+    expect(offenders).toEqual([]);
+  });
+
+  it('stores TEXTJOIN prefixed, since that is the one that shipped broken', async () => {
+    const names = await emittedFunctionNames();
+    expect([...names.keys()]).toContain('_xlfn.TEXTJOIN');
+    expect([...names.keys()]).not.toContain('TEXTJOIN');
+
+    // And it is on the sheet that consumes it, not stranded somewhere harmless.
+    expect(names.get('_xlfn.TEXTJOIN')).toContain(SHEET_NAMES.MATURITY_PROFILE);
+  });
+});

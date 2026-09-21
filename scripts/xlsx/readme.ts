@@ -280,12 +280,14 @@ export function buildReadmeRows(): ReadmeRow[] {
         'will not calculate correctly.'
     ),
     entry(
-      'Sorting',
-      'You can sort and filter the input sheets freely. The score formulas find your data by ' +
-        'capability area and dimension, not by row position, so reordering those sheets is safe. ' +
-        `Do not sort or reorder sheets ${SHEET_NAMES.MATURITY_PROFILE} through ` +
-        `${SHEET_NAMES.DIMENSION_SCORES}: those refer to each other by row, so reordering them ` +
-        'would pair scores with the wrong capability areas. They are protected to prevent it.'
+      'Filtering and sorting',
+      'Use the filter buttons on the header row freely — filtering only hides rows, and every ' +
+        'score is calculated over your whole sheet regardless of what is on screen. ' +
+        'Do not reorder rows. Every sheet in this workbook is protected, which prevents sorting, ' +
+        'and the calculated sheets identify your data partly by row position. If you unprotect a ' +
+        'sheet and sort it, the scores will still be correct but the Notes, Barriers and ' +
+        'Advancement Plans columns on ' +
+        `${SHEET_NAMES.MATURITY_PROFILE} will show text from the wrong capability areas.`
     ),
 
     heading('Accessibility'),

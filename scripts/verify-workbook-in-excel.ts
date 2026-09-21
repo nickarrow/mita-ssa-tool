@@ -786,6 +786,127 @@ function buildScenarios(): Scenario[] {
   }
 
   // ---------------------------------------------------------------------------
+  // 6b. The TEXTJOIN text columns.
+  //
+  // The gap that let two defects ship. Nothing in this file read a notes, barriers or plans cell,
+  // so `#NAME?` in all 648 of them went unnoticed until a user opened the workbook — and behind it
+  // a second, unrelated `#VALUE!` in the nine organizational text cells. Both were invisible to
+  // the formula-string tests, because the generator emitted exactly the string it intended.
+  //
+  // Covers both builders: the assessment-input one, which joins two criteria with `*`, and the
+  // organizational one, which has a single criterion and therefore needs the explicit `*1`.
+  // ---------------------------------------------------------------------------
+  {
+    const { areaId } = firstAreaInOrdinaryDomain(15);
+    const baRows = inputRowsFor(areaId, 'businessArchitecture');
+    const [firstRow, secondRow, thirdRow] = baRows;
+    if (firstRow === undefined || secondRow === undefined || thirdRow === undefined) {
+      throw new Error('Need at least three Business Architecture aspects for this scenario');
+    }
+
+    const notesColumn = (row: number): CellRef =>
+      cellOn(SHEET_NAMES.ASSESSMENT_INPUT, ASSESSMENT_INPUT_COLUMNS, 'notes', row);
+    const barriersColumn = (row: number): CellRef =>
+      cellOn(SHEET_NAMES.ASSESSMENT_INPUT, ASSESSMENT_INPUT_COLUMNS, 'barriers', row);
+    const plansColumn = (row: number): CellRef =>
+      cellOn(SHEET_NAMES.ASSESSMENT_INPUT, ASSESSMENT_INPUT_COLUMNS, 'plans', row);
+
+    const [sectionA] = ORGANIZATIONAL_SECTIONS;
+    if (sectionA === undefined) {
+      throw new Error('Expected at least one organizational section');
+    }
+    const orgRows = organizationalRowsFor(sectionA);
+    const [orgFirst, orgSecond] = orgRows;
+    if (orgFirst === undefined || orgSecond === undefined) {
+      throw new Error('Need at least two aspects in the first organizational section');
+    }
+    const orgNotes = (row: number): CellRef =>
+      cellOn(SHEET_NAMES.ORGANIZATIONAL_INPUT, ORGANIZATIONAL_INPUT_COLUMNS, 'notes', row);
+
+    scenarios.push({
+      name: 'notes, barriers and plans concatenated by TEXTJOIN',
+      rationale:
+        'TEXTJOIN must be stored as _xlfn.TEXTJOIN or every cell reads #NAME?, and it must join a ' +
+        'plain contiguous range rather than filtering with IF — the IF form silently reads another ' +
+        "area's rows. Both shipped broken and no string assertion could see either.",
+      seeds: [
+        { cell: notesColumn(firstRow), value: 'First note' },
+        // Second aspect deliberately left blank, so the TRUE argument that skips empties is
+        // exercised: a workbook that joined blanks would return "First note |  | Third note".
+        { cell: notesColumn(thirdRow), value: 'Third note' },
+        { cell: barriersColumn(firstRow), value: 'A barrier' },
+        { cell: plansColumn(secondRow), value: 'A plan' },
+        { cell: orgNotes(orgFirst), value: 'Org note one' },
+        { cell: orgNotes(orgSecond), value: 'Org note two' },
+        // A note belonging to a *different* capability area. The regression case: with the
+        // criteria-based IF form, this text appeared in the first area's cell.
+        {
+          cell: notesColumn(
+            inputRowsFor(firstAreaInOrdinaryDomain(16).areaId, 'businessArchitecture')[0] ?? 0
+          ),
+          value: 'OTHER AREA note',
+        },
+      ],
+      expectations: [
+        {
+          // Exactly this area's two notes, and crucially NOT the other area's note seeded above.
+          // Under the old IF form this cell read "First note | Third note | OTHER AREA note".
+          label: "notes joined in row order, blanks skipped, no other area's text",
+          cell: cellOn(
+            SHEET_NAMES.MATURITY_PROFILE,
+            MATURITY_PROFILE_COLUMNS,
+            'notes',
+            profileRowFor(areaId, 'businessArchitecture')
+          ),
+          expected: 'First note | Third note',
+        },
+        {
+          label: 'barriers read the barriers column, not the notes column',
+          cell: cellOn(
+            SHEET_NAMES.MATURITY_PROFILE,
+            MATURITY_PROFILE_COLUMNS,
+            'barriers',
+            profileRowFor(areaId, 'businessArchitecture')
+          ),
+          expected: 'A barrier',
+        },
+        {
+          label: 'plans read the plans column',
+          cell: cellOn(
+            SHEET_NAMES.MATURITY_PROFILE,
+            MATURITY_PROFILE_COLUMNS,
+            'plans',
+            profileRowFor(areaId, 'businessArchitecture')
+          ),
+          expected: 'A plan',
+        },
+        {
+          // The single-criterion builder. This is the one that returned #VALUE!.
+          label: 'organizational notes joined, via the single-criterion builder',
+          cell: cellOn(
+            SHEET_NAMES.MATURITY_PROFILE,
+            MATURITY_PROFILE_COLUMNS,
+            'notes',
+            profileRowFor(ORGANIZATIONAL_ASSESSMENT_AREA_ID, sectionA)
+          ),
+          expected: 'Org note one | Org note two',
+        },
+        {
+          // And symmetrically: the other area gets its own note and only its own.
+          label: "the other area gets its own note and none of the first area's",
+          cell: cellOn(
+            SHEET_NAMES.MATURITY_PROFILE,
+            MATURITY_PROFILE_COLUMNS,
+            'notes',
+            profileRowFor(firstAreaInOrdinaryDomain(16).areaId, 'businessArchitecture')
+          ),
+          expected: 'OTHER AREA note',
+        },
+      ],
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // 7. To-Be travels the same path as As-Is.
   // ---------------------------------------------------------------------------
   {

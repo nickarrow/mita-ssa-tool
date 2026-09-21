@@ -14,11 +14,13 @@
 
 import {
   AREA_SCORES_COLUMNS,
+  ASSESSMENT_INPUT_COLUMNS,
   FIRST_DATA_ROW,
   MATURITY_PROFILE_COLUMNS,
   ORGANIZATIONAL_INPUT_COLUMNS,
   SCORE_SOURCES,
   SHEET_NAMES,
+  type ColumnDefinition,
 } from './constants.ts';
 import {
   DOMAIN_AGGREGATE_DIMENSIONS,
@@ -50,7 +52,9 @@ import {
   type InputExtents,
 } from './scoring-spec.ts';
 
-import type { FormulaCell, SheetRow } from './rows.ts';
+import { assessmentRowBlock, organizationalRowBlock } from './rows.ts';
+
+import type { FormulaCell, RowBlock, SheetRow } from './rows.ts';
 
 import type { OrbitDimensionId } from '../../src/types/index.ts';
 
@@ -69,6 +73,20 @@ function formula(expression: string): FormulaCell {
 
 /** Text placed in a column that does not apply to this row, so no cell is ever empty. */
 const NOT_APPLICABLE = 'Not applicable';
+
+/** Arguments for one assessment-input text roll-up, resolved to a contiguous row block. */
+function assessmentTextArgs(
+  areaId: string,
+  dimensionId: string,
+  key: 'notes' | 'barriers' | 'plans'
+): [string, readonly ColumnDefinition[], 'notes' | 'barriers' | 'plans', RowBlock] {
+  return [
+    SHEET_NAMES.ASSESSMENT_INPUT,
+    ASSESSMENT_INPUT_COLUMNS,
+    key,
+    assessmentRowBlock(areaId, dimensionId),
+  ];
+}
 
 /**
  * A cell reference on `06_Maturity_Profile`, for a formula on another sheet.
@@ -238,9 +256,12 @@ function buildEnteredRow(
           )
         )
       : NOT_APPLICABLE,
-    notes: formula(textJoinFormula('notes', dimensionCriteria, extents)),
-    barriers: formula(textJoinFormula('barriers', dimensionCriteria, extents)),
-    plans: formula(textJoinFormula('plans', dimensionCriteria, extents)),
+    // Range-based, unlike every score above. `assessmentRowBlock` throws if the rows for this
+    // area and dimension are not contiguous, so a builder reorder fails generation rather than
+    // emitting a formula that reads a neighbouring area's text.
+    notes: formula(textJoinFormula(...assessmentTextArgs(area.id, dimensionId, 'notes'))),
+    barriers: formula(textJoinFormula(...assessmentTextArgs(area.id, dimensionId, 'barriers'))),
+    plans: formula(textJoinFormula(...assessmentTextArgs(area.id, dimensionId, 'plans'))),
     domainId: domain.id,
     areaId: area.id,
     dimensionId,
@@ -339,9 +360,9 @@ function buildOrganizationalSectionRow(
     applicationCurrent: NOT_APPLICABLE,
     infrastructureTarget: NOT_APPLICABLE,
     applicationTarget: NOT_APPLICABLE,
-    notes: formula(organizationalTextJoinFormula('notes', sectionId, extents)),
-    barriers: formula(organizationalTextJoinFormula('barriers', sectionId, extents)),
-    plans: formula(organizationalTextJoinFormula('plans', sectionId, extents)),
+    notes: formula(organizationalTextJoinFormula('notes', sectionId)),
+    barriers: formula(organizationalTextJoinFormula('barriers', sectionId)),
+    plans: formula(organizationalTextJoinFormula('plans', sectionId)),
     domainId: 'enterprise-architecture-domain',
     areaId: ORGANIZATIONAL_ASSESSMENT_AREA_ID,
     dimensionId: sectionId,
@@ -363,15 +384,21 @@ function organizationalRange(key: string, extents: InputExtents): string {
   );
 }
 
-/** Concatenate one text field across an organizational section. */
+/**
+ * Concatenate one text field across an organizational section.
+ *
+ * Same range-based shape as the assessment-input roll-up, for the same reason — see `rowBlockOf`.
+ */
 function organizationalTextJoinFormula(
   key: 'notes' | 'barriers' | 'plans',
-  sectionId: string,
-  extents: InputExtents
+  sectionId: string
 ): string {
-  const texts = organizationalRange(key, extents);
-  const sections = organizationalRange('sectionId', extents);
-  return `TEXTJOIN(" | ",TRUE,IF(${sections}="${sectionId}",${texts},""))`;
+  return textJoinFormula(
+    SHEET_NAMES.ORGANIZATIONAL_INPUT,
+    ORGANIZATIONAL_INPUT_COLUMNS,
+    key,
+    organizationalRowBlock(sectionId)
+  );
 }
 
 // =============================================================================

@@ -2442,3 +2442,111 @@ against the fork explicitly.
   go-live workbook and opened it.
 - **Version bump and CHANGELOG** are release-checklist items in the steering doc, and Drop 2 adds
   a user-facing feature (the workbook), so this is a MINOR bump at least.
+
+### Two more defects, found by a user opening the file — 2026-09-16
+
+Both in the `TEXTJOIN` text roll-ups, both invisible to 989 green tests, 89 proved-failable
+mutations and 36 passing Excel arithmetic checks. The reason they were invisible is worth stating
+plainly: **the formula-string tests assert what the generator emits, and the generator emitted
+exactly the string it intended.** The string was right and Excel's reading of it was wrong.
+
+The scripted Excel verification did not catch them either, because it read score cells and never a
+text cell. That gap is now closed with a dedicated scenario.
+
+**1. `#NAME?` in all 648 text cells.** Every worksheet function added after Excel 2007 must be
+_stored_ with an `_xlfn.` prefix. Excel strips it for display, so the formula bar shows
+`TEXTJOIN(...)`, but a file containing the bare name is using a function Excel does not recognise.
+ExcelJS does no prefixing. Fixed by emitting `_xlfn.TEXTJOIN`.
+
+Worth knowing: the prefix is **file-format only**. Typing `=_xlfn.TEXTJOIN(...)` into a cell gives
+`#NAME?`, which briefly made a diagnostic probe look like a contradiction.
+
+The guard is now a raw-OOXML scan of every `<f>` element against an allowlist of functions that
+predate the prefix rule — `AVERAGE`, `AVERAGEIFS`, `COUNT`, `COUNTIFS`, `IF`, `IFERROR`, `ROUND`,
+`SUM`. Deliberately an allowlist, since a denylist silently permits whatever nobody added to it.
+
+**2. Silent cross-area mis-attribution, which was worse.** Behind the `#NAME?` sat a second,
+unrelated defect. The criteria-based form `TEXTJOIN(" | ",TRUE,IF(ids=x,texts,""))` **does not work
+as a normal formula.** Excel applies _implicit intersection_ to the `IF` condition, collapsing the
+range comparison to the single row matching the formula's own row number:
+
+- `N3` sits in sheet row 3. Input row 3 happens to belong to that same area, so the condition is
+  TRUE and `IF` returns the **entire** column, which `TEXTJOIN` then joins.
+- `N48` sits in row 48. Input row 48 belongs to a different area, so the condition is FALSE and the
+  cell returns empty.
+
+Measured on the artifact, with one note on Health Plan Administration and one on Claims
+Adjudication:
+
+```
+N3  Health Plan Administration notes : [HPA note | CLAIMS note]
+N48 Claims Adjudication notes        : []
+```
+
+So one capability area's cell contained another area's free text, and the area that owned it showed
+nothing. On a document a state submits to CMS that is an accuracy problem, not a cosmetic one — and
+it produces plausible-looking output, which is the worst failure mode available.
+
+This also explains an earlier false positive. A probe that seeded two notes and read
+`First note | Third note` looked like proof the formula worked; it was really joining every note in
+the workbook, and those happened to be the only two.
+
+**The `*1` detour.** An intermediate diagnosis held that a _binary_ arithmetic operator forces array
+evaluation while a bare comparison does not, supported by a side-by-side probe where `(cmp)*1`,
+`(cmp)*(cmp)`, `(cmp)+0` and `EXACT` all worked and `cmp` and `--(cmp)` returned `#VALUE!`. That
+probe was itself contaminated by implicit intersection: every probe cell sat in a row that fell
+inside the matching block, so the working cases were false positives too. Recorded because the
+lesson generalises — **a probe placed inside the data it is testing cannot distinguish these two
+mechanisms.**
+
+**The fix: a plain contiguous range.** `TEXTJOIN(" | ",TRUE,'04'!$J$393:$J$397)` skips empty cells
+natively and has no array semantics to get wrong. The input rows for each group are contiguous — 192
+area-and-dimension blocks, 252 with sub-dimensions, 3 organizational sections, zero exceptions —
+because of the loop order in the row builders.
+
+A true CSE array formula also fixes attribution, and was prototyped by patching
+`<f t="array" ref="...">` into 585 cells of the generated archive. Rejected: ExcelJS cannot write
+array formulas, so it needs post-processing of the output archive, and the array form then also
+needs `&""` guards because an empty input cell coerces to `0` and `TEXTJOIN` does not skip zeros.
+Measured output of the prototype: `CLAIMS note | 0 | CLAIMS note two | 0 | 0`.
+
+### Row-position addressing is safe here, and the "sorting" premise was wrong
+
+Section 8k said sorting is deliberately left enabled, so every formula must be criteria-based. That
+premise does not hold, and it matters because the text roll-ups now address rows by position.
+
+Measured with a control, same syntax and same range in both cases:
+
+```
+UNPROTECTED sort: succeeded — N3 moved from health-plan-administration to waiver-management
+PROTECTED   sort: failed
+```
+
+Excel refuses to sort a range containing locked cells, and the reference columns on `04` are locked.
+So a state cannot reorder the input sheets as shipped. Filtering is a different operation — it hides
+rows without moving them, and `TEXTJOIN` over a range includes hidden rows, so a filtered view
+changes no computed value.
+
+Two corrections to things previously believed in this document:
+
+- `<sheetProtection sheet="1" sort="0" autoFilter="0"/>` does **not** mean sorting and filtering are
+  blocked. These attributes are _locks_: `0` means not locked, so both operations are permitted by
+  the protection flags. Sorting is blocked only as a side effect of the locked reference columns.
+  An earlier reading of this session had it backwards and briefly concluded the filter buttons were
+  decorative. They work.
+- `rowBlockOf` throws if a group's rows are not contiguous, so a change to the builder loop order
+  fails generation rather than emitting a range that spans a neighbouring group.
+
+`00_README` now says: filter freely, do not reorder rows, and if you unprotect a sheet and sort it
+the scores stay correct but the three text columns will show text from the wrong capability areas.
+
+### What this says about the verification strategy
+
+The scripted Excel check found three defects the test suite could not. A user opening the file found
+two more that the scripted check could not, purely because it read no text cells. The pattern is
+consistent and worth carrying into Wave 8: **coverage of the real artifact matters more than the
+number of assertions.** 41 checks that touch every column beat 36 that touch only the numeric ones.
+
+Concretely, for anything added to the workbook from here: read at least one cell of every new column
+in `verify-workbook-in-excel.ts`, and prefer a formula whose correctness does not depend on Excel's
+array-evaluation rules.

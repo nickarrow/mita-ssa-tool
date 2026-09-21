@@ -797,6 +797,47 @@ export const MUTATION_CASES: MutationCase[] = [
     testFile: 'scripts/xlsx/profile-rows.test.ts',
   },
   {
+    // The dialect defect, reverted. Stored without the prefix, Excel does not recognise the
+    // function and all 648 text cells read `#NAME?`.
+    assertion: 'TEXTJOIN is stored with the _xlfn. prefix the file format requires',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `export const TEXTJOIN = '_xlfn.TEXTJOIN';`,
+    replace: `export const TEXTJOIN = 'TEXTJOIN';`,
+    test: 'stores TEXTJOIN prefixed, since that is the one that shipped broken',
+    testFile: 'scripts/xlsx/workbook.raw.test.ts',
+  },
+  {
+    assertion: 'every emitted function name is spelled for the file format',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `export const TEXTJOIN = '_xlfn.TEXTJOIN';`,
+    replace: `export const TEXTJOIN = 'TEXTJOIN';`,
+    test: 'prefixes every function that postdates Excel 2007 with _xlfn.',
+    testFile: 'scripts/xlsx/workbook.raw.test.ts',
+  },
+  {
+    // The mis-attribution defect, reverted to the criteria-based `IF` form. Excel applies implicit
+    // intersection to the condition, so the cell silently reads another area's text.
+    assertion: 'text roll-ups join a contiguous range, never an IF over the ID columns',
+    file: 'scripts/xlsx/scoring-spec.ts',
+    find: `  const letter = letterOf(columns, textKey);
+  return \`\${TEXTJOIN}(" | ",TRUE,'\${sheetName}'!$\${letter}$\${block.firstRow}:$\${letter}$\${block.lastRow})\`;`,
+    replace: `  const letter = letterOf(columns, textKey);
+  void block;
+  return \`\${TEXTJOIN}(" | ",TRUE,IF('\${sheetName}'!$A$3:$A$17="x",'\${sheetName}'!$\${letter}$3:$\${letter}$17,""))\`;`,
+    test: 'joins text over a contiguous range, with no IF and a prefixed function name',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
+    // A sheet-wide range instead of the row's own block: every area's text in every cell.
+    assertion: 'each text range is exactly its own group of rows',
+    file: 'scripts/xlsx/rows.ts',
+    find: `  return { firstRow, lastRow };`,
+    replace: `  void lastRow;
+  return { firstRow, lastRow: FIRST_DATA_ROW + rows.length - 1 };`,
+    test: 'ranges each text roll-up to exactly its own group of rows',
+    testFile: 'scripts/xlsx/profile-rows.test.ts',
+  },
+  {
     // Reverts to reusing the mean's criteria, which made the count a constant 50 because every row
     // exists at generation time. Found by a reviewer reading the emitted Notes cell.
     assertion: 'the aggregate note counts scored areas, not rows that exist',

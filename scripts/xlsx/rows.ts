@@ -21,7 +21,7 @@ import {
   ORBIT_DIMENSION_IDS,
   ORGANIZATIONAL_ASSESSMENT_AREA_ID,
 } from './model.ts';
-import { NA_TOKEN } from './constants.ts';
+import { FIRST_DATA_ROW, NA_TOKEN } from './constants.ts';
 
 import type { LevelKey } from '../../src/types/index.ts';
 
@@ -291,4 +291,99 @@ export function buildOrganizationalInputRows(): SheetRow[] {
     sectionId: location.sectionId,
     aspectId: location.aspect.id,
   }));
+}
+
+// =============================================================================
+// Row blocks, for the text roll-ups
+// =============================================================================
+
+/** The contiguous sheet rows one group of input rows occupies. */
+export interface RowBlock {
+  firstRow: number;
+  lastRow: number;
+}
+
+/**
+ * The contiguous row span matching a group of input rows, or a thrown error if it is not
+ * contiguous.
+ *
+ * ## Why the text roll-ups address rows instead of criteria
+ *
+ * Every *score* on the computed sheets uses `AVERAGEIFS`/`COUNTIFS` over the ID columns, which is
+ * criteria-based and robust. The text roll-ups cannot: `TEXTJOIN` has no `IFS` variant, so the
+ * only criteria-based form is `TEXTJOIN(...,IF(ids=x,texts,""))` — and **that does not work as a
+ * normal formula**. Excel applies implicit intersection to the `IF` condition, collapsing it to
+ * the single row matching the formula's own row number. Measured on the real artifact: Health Plan
+ * Administration's notes cell returned `HPA note | CLAIMS note`, having swallowed a note belonging
+ * to a different capability area, while that area's own cell read empty. It is a silent
+ * mis-attribution, not an error.
+ *
+ * Making it a true CSE array formula does fix attribution, but ExcelJS cannot write
+ * `<f t="array">`, so it would mean post-processing the generated archive — and the array form then
+ * needs `&""` guards because an empty input cell coerces to `0` and `TEXTJOIN` does not skip zeros.
+ *
+ * A plain contiguous range needs none of that. `TEXTJOIN(" | ",TRUE,'04'!$J$393:$J$397)` skips
+ * empty cells natively, and there is no array semantics to get wrong.
+ *
+ * ## Why addressing by row is safe here
+ *
+ * Because the rows cannot move. Both input sheets are protected with `sort="0"`, so Excel refuses
+ * to reorder them, and the reference columns are locked as well. Filtering is a different
+ * operation — it hides rows without moving them, and `TEXTJOIN` over a range includes hidden rows,
+ * so a filtered view does not change any computed value.
+ *
+ * This function throws rather than returning a best guess, because the blocks are only contiguous
+ * as a consequence of the loop order in the builders above. If that order ever changes, generation
+ * fails here instead of emitting a formula that quietly reads a neighbouring area's text.
+ */
+export function rowBlockOf(
+  rows: readonly SheetRow[],
+  matches: (row: SheetRow) => boolean,
+  describe: string
+): RowBlock {
+  const matched: number[] = [];
+  for (const [index, row] of rows.entries()) {
+    if (matches(row)) {
+      matched.push(FIRST_DATA_ROW + index);
+    }
+  }
+
+  const firstRow = matched[0];
+  const lastRow = matched[matched.length - 1];
+  if (firstRow === undefined || lastRow === undefined) {
+    throw new Error(`No input rows match ${describe}`);
+  }
+  if (lastRow - firstRow + 1 !== matched.length) {
+    throw new Error(
+      `Input rows for ${describe} are not contiguous: ${matched.length} rows spanning ` +
+        `${firstRow}-${lastRow}. The text roll-ups address rows by position, so a gap here would ` +
+        `make them read a neighbouring group's text.`
+    );
+  }
+  return { firstRow, lastRow };
+}
+
+/** The contiguous block on `04_Assessment_Input` for one area and dimension. */
+export function assessmentRowBlock(
+  areaId: string,
+  dimensionId: string,
+  subDimensionId?: string
+): RowBlock {
+  return rowBlockOf(
+    buildAssessmentInputRows(),
+    (row) =>
+      row.areaId === areaId &&
+      row.dimensionId === dimensionId &&
+      (subDimensionId === undefined || row.subDimensionId === subDimensionId),
+    `${areaId} / ${dimensionId}${subDimensionId === undefined ? '' : ` / ${subDimensionId}`}`
+  );
+}
+
+/** The contiguous block on `05_Organizational_Input` for one section. */
+export function organizationalRowBlock(sectionId: string): RowBlock {
+  return rowBlockOf(
+    buildOrganizationalInputRows(),
+    (row) => row.sectionId === sectionId,
+    `organizational section ${sectionId}`
+  );
 }

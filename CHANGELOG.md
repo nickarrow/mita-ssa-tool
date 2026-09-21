@@ -13,6 +13,21 @@ version bump lands with the final wave.
 
 ### Fixed
 
+- **Notes, Barriers and Advancement Plans on the workbook's maturity profile sheet showed
+  `#NAME?`** instead of your text. Excel requires functions introduced after Excel 2007 to be
+  written into the file with an internal prefix, which the workbook was omitting, so Excel did
+  not recognise the function at all
+- **The same three columns could show text belonging to a different capability area.** Behind
+  the `#NAME?` was a second problem: the formula selected rows by matching capability area and
+  dimension, and Excel evaluates that kind of comparison against only one row unless the
+  formula is entered as an array. One capability area's cell could therefore contain another
+  area's notes while the area that owned them showed nothing. The columns now read a fixed
+  block of rows, which needs no array evaluation. Scores were never affected — they use
+  `AVERAGEIFS`, which matches criteria correctly
+- **The workbook README described sorting and filtering incorrectly.** Filtering the input
+  sheets is supported and safe; scores are always calculated over the whole sheet, not just
+  the visible rows. Rows must not be reordered, which sheet protection already prevents
+
 - **Technology dimension score in PDF and CSV exports** (OBS-25). Both computed it as a
   flat mean over all 11 Technology aspects, which weights the 6-aspect Technical
   Infrastructure Management sub-dimension above the 5-aspect Application Management
@@ -73,8 +88,8 @@ version bump lands with the final wave.
   differ by 0.1; the README explains which is authoritative and where it can occur
 - **The workbook's arithmetic is verified by making Excel compute it**, not by inspecting
   formula text. `npm run verify:workbook-excel` opens a temp copy of the workbook in Excel,
-  enters maturity levels, reads the calculated scores back, and compares them against the
-  tool's scoring rules — 36 checks across 8 scenarios. It found three defects that the test
+  enters maturity levels and notes, reads the calculated cells back, and compares them against
+  the tool's scoring rules — 41 checks across 9 scenarios. It found three defects that the test
   suite could not see, each of which would have put a wrong number in a state's submission:
   completion percentages above 100% on the 21 enterprise-domain capability areas, and
   capability areas that reported a score before anything had been entered for them, which

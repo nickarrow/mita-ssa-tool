@@ -16,7 +16,8 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { SCORE_SOURCES, SHEET_NAMES } from './constants.ts';
+import { FIRST_DATA_ROW, SCORE_SOURCES, SHEET_NAMES } from './constants.ts';
+import { buildAssessmentInputRows, buildOrganizationalInputRows } from './rows.ts';
 import {
   ORBIT_DIMENSION_IDS,
   ORGANIZATIONAL_ASSESSMENT_AREA_ID,
@@ -394,6 +395,87 @@ describe('formula snapshots: 06_Maturity_Profile', () => {
     expect(checked).toBe(195);
   });
 
+  /**
+   * Every text roll-up is a prefixed `TEXTJOIN` over a plain contiguous range, with **no `IF`**.
+   *
+   * Two defects shipped here and neither was visible to a formula-string test, because the
+   * generator emitted exactly the string it intended — the string was right and Excel's reading of
+   * it was wrong:
+   *
+   * - `TEXTJOIN` stored without `_xlfn.` is an unrecognised function: `#NAME?` in all 648 cells.
+   * - the criteria-based form `TEXTJOIN(...,IF(ids=x,texts,""))` is silently mis-attributing.
+   *   Excel applies implicit intersection to the `IF` condition, collapsing it to the row matching
+   *   the formula's own row number. Measured: Health Plan Administration's notes cell returned
+   *   `HPA note | CLAIMS note`, having swallowed a different area's note, while that area's own
+   *   cell read empty.
+   *
+   * So the presence of `IF` in one of these formulas is itself the defect, and is asserted against
+   * directly. `workbook.raw.test.ts` guards the `_xlfn.` prefix at the file-format level.
+   */
+  it('joins text over a contiguous range, with no IF and a prefixed function name', () => {
+    let checked = 0;
+    for (const row of profile().rows) {
+      for (const key of ['notes', 'barriers', 'plans']) {
+        const expression = formulaOf(row, key);
+        if (!expression.includes('TEXTJOIN')) {
+          continue;
+        }
+        checked += 1;
+        const label = `${String(row.areaId)}.${key}`;
+        expect(expression, label).toContain('_xlfn.TEXTJOIN(" | ",TRUE,');
+        // No IF. The criteria-based form cannot be evaluated correctly as a normal formula, so its
+        // presence here is itself the defect.
+        expect(expression, label).not.toContain('IF(');
+      }
+    }
+    // 192 entered rows plus 3 organizational sections, three text columns each. The aggregate rows
+    // carry "Not applicable" rather than a formula.
+    expect(checked).toBe(195 * 3);
+  });
+
+  /**
+   * Each text range covers exactly its own group's rows.
+   *
+   * The complement of the assertion above: a plain range with no `IF` is only correct if the range
+   * is the right one. A sheet-wide range would concatenate every area's text into every cell —
+   * which is the same wrong output the `IF` form produced, by a different route.
+   */
+  it('ranges each text roll-up to exactly its own group of rows', () => {
+    const input = buildAssessmentInputRows();
+    const organizational = buildOrganizationalInputRows();
+    let checked = 0;
+
+    for (const row of profile().rows) {
+      for (const key of ['notes', 'barriers', 'plans']) {
+        const expression = formulaOf(row, key);
+        if (!expression.includes('TEXTJOIN')) {
+          continue;
+        }
+        checked += 1;
+        const label = `${String(row.areaId)}.${key}`;
+
+        const range = /'([^']+)'!\$[A-Z]+\$(\d+):\$[A-Z]+\$(\d+)\)$/.exec(expression);
+        expect(range, `${label}: ${expression}`).not.toBeNull();
+        const [, sheet, firstRow, lastRow] = range as RegExpExecArray;
+
+        const owned = (
+          sheet === SHEET_NAMES.ORGANIZATIONAL_INPUT
+            ? organizational.map((candidate, index) => ({ candidate, row: FIRST_DATA_ROW + index }))
+            : input.map((candidate, index) => ({ candidate, row: FIRST_DATA_ROW + index }))
+        ).filter(({ candidate }) =>
+          sheet === SHEET_NAMES.ORGANIZATIONAL_INPUT
+            ? candidate.sectionId === row.dimensionId
+            : candidate.areaId === row.areaId && candidate.dimensionId === row.dimensionId
+        );
+
+        expect(owned.length, label).toBeGreaterThan(0);
+        expect(Number(firstRow), `${label} first row`).toBe(owned[0]?.row);
+        expect(Number(lastRow), `${label} last row`).toBe(owned[owned.length - 1]?.row);
+      }
+    }
+    expect(checked).toBe(195 * 3);
+  });
+
   it('scores an organizational section against the organizational input sheet', () => {
     const row = profile().rows.find(
       (candidate) => candidate.dimensionId === ORGANIZATIONAL_SECTIONS[0]
@@ -598,21 +680,39 @@ describe('every formula is criteria-based, never offset-based', () => {
     // the next call, so a shared global instance reused across 300-odd formulas would start
     // mid-string and miss offenders — and only once there was an offender to miss, which is
     // precisely when this assertion has to work.
+    //
+    // The trailing `(?![\d:])` has to exclude a digit as well as a colon. With a bare `(?!:)` the
+    // engine backtracks — `\d+` matches `39` of `$J$393:`, the next character is `3` rather than
+    // `:`, and a perfectly good range reports as a single-cell reference.
     const singleInputCell = new RegExp(
-      `'(${SHEET_NAMES.ASSESSMENT_INPUT}|${SHEET_NAMES.ORGANIZATIONAL_INPUT})'!\\$[A-Z]+\\$\\d+(?!:)`
+      `'(${SHEET_NAMES.ASSESSMENT_INPUT}|${SHEET_NAMES.ORGANIZATIONAL_INPUT})'!\\$[A-Z]+\\$\\d+(?![\\d:])`
     );
 
+    // The three text roll-ups are deliberately range-based — see `rowBlockOf`. Their addressing is
+    // checked instead by the contiguity assertion above, which pins each range to exactly the rows
+    // of its own group. Named explicitly so a *score* column cannot quietly join the exemption.
+    const RANGE_BASED_KEYS = new Set(['notes', 'barriers', 'plans']);
+
     const offenders: string[] = [];
+    let scoreFormulasChecked = 0;
     for (const row of everyRow) {
       for (const [key, value] of Object.entries(row)) {
         if (typeof value !== 'object' || value === null || !('formula' in value)) {
           continue;
         }
+        if (RANGE_BASED_KEYS.has(key)) {
+          continue;
+        }
+        scoreFormulasChecked += 1;
         if (singleInputCell.test(value.formula)) {
           offenders.push(`${String(row.areaId ?? row.domainId ?? row.dimensionId)}.${key}`);
         }
       }
     }
+
+    // Guards the exemption: if the filter above ever excluded everything, this test would pass
+    // having examined nothing.
+    expect(scoreFormulasChecked).toBeGreaterThan(1000);
 
     expect(offenders).toEqual([]);
   });

@@ -26,11 +26,14 @@ import {
   ORGANIZATIONAL_ASSESSMENT_AREA_ID,
 } from './model.ts';
 import {
+  assessmentRowBlock,
   buildAssessmentInputRows,
   buildCapabilityReferenceRows,
   buildCriteriaReferenceRows,
   buildMaturityLevelRows,
   buildOrganizationalInputRows,
+  organizationalRowBlock,
+  rowBlockOf,
   type SheetCellValue,
   type SheetRow,
 } from './rows.ts';
@@ -541,5 +544,71 @@ describe('cross-sheet consistency', () => {
       );
       expect(aspectIdsAsked, dimensionId).toEqual(aspectIdsDefined);
     }
+  });
+});
+
+/**
+ * Row blocks, which the text roll-ups on `06_Maturity_Profile` address by position.
+ *
+ * `TEXTJOIN` has no `IFS` variant and its criteria-based form is silently wrong — Excel applies
+ * implicit intersection to the `IF` condition, so a cell reads a neighbouring area's text. The
+ * roll-ups therefore use a contiguous range, which is only safe because the builders happen to emit
+ * each group consecutively. That is an invariant nothing else enforces, so it is enforced here and
+ * at generation time.
+ */
+describe('row blocks for the text roll-ups', () => {
+  it('finds a contiguous block for every area and dimension on sheet 04', () => {
+    const rows = buildAssessmentInputRows();
+    const groups = new Set(rows.map((row) => `${String(row.areaId)}|${String(row.dimensionId)}`));
+    expect(groups.size).toBe(192);
+
+    let checked = 0;
+    for (const group of groups) {
+      const [areaId = '', dimensionId = ''] = group.split('|');
+      const block = assessmentRowBlock(areaId, dimensionId);
+      const owned = rows.filter(
+        (row) => row.areaId === areaId && row.dimensionId === dimensionId
+      ).length;
+      // The span must contain exactly the group's own rows — no more, no fewer.
+      expect(block.lastRow - block.firstRow + 1, group).toBe(owned);
+      checked += 1;
+    }
+    expect(checked).toBe(192);
+  });
+
+  it('finds a contiguous block for each organizational section on sheet 05', () => {
+    const rows = buildOrganizationalInputRows();
+    for (const sectionId of new Set(rows.map((row) => String(row.sectionId)))) {
+      const block = organizationalRowBlock(sectionId);
+      const owned = rows.filter((row) => row.sectionId === sectionId).length;
+      expect(block.lastRow - block.firstRow + 1, sectionId).toBe(owned);
+    }
+  });
+
+  /**
+   * The guard that makes range addressing safe. Without it, a builder reorder would emit a range
+   * spanning a neighbouring group and the mis-attribution would be silent — which is exactly the
+   * defect this whole approach replaced.
+   */
+  it('refuses a non-contiguous block instead of guessing a range', () => {
+    const scattered: SheetRow[] = [
+      { areaId: 'a', dimensionId: 'x' },
+      { areaId: 'b', dimensionId: 'x' },
+      { areaId: 'a', dimensionId: 'x' },
+    ];
+    expect(() => rowBlockOf(scattered, (row) => row.areaId === 'a', 'area a')).toThrow(
+      /not contiguous/
+    );
+
+    // And a contiguous selection from the same data is accepted, so the guard is not simply
+    // rejecting everything.
+    expect(rowBlockOf(scattered, (row) => row.areaId === 'b', 'area b')).toEqual({
+      firstRow: 4,
+      lastRow: 4,
+    });
+  });
+
+  it('throws for a group that does not exist rather than returning an empty range', () => {
+    expect(() => assessmentRowBlock('no-such-area', 'information')).toThrow(/No input rows match/);
   });
 });

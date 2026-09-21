@@ -46,6 +46,8 @@ import {
   type ColumnDefinition,
 } from './constants.ts';
 
+import type { RowBlock } from './rows.ts';
+
 // =============================================================================
 // The JS model
 // =============================================================================
@@ -363,32 +365,44 @@ export function countFormula(criteria: readonly { range: string; value: string }
 }
 
 /**
- * Concatenate the non-empty text entries for one slice of the input sheet.
+ * `TEXTJOIN`, spelled the way the file format requires.
+ *
+ * Every worksheet function added after Excel 2007 has to be **stored** with an `_xlfn.` prefix.
+ * Excel strips it for display, so the user sees `TEXTJOIN(...)` in the formula bar, but a file
+ * containing the bare name produces `#NAME?` in every cell that uses it — Excel does not recognise
+ * the function at all. ExcelJS does no prefixing, so it has to be done here.
+ *
+ * This shipped broken: all 648 notes, barriers and plans cells on `06` read `#NAME?` until a user
+ * opened the workbook and said so. Nothing caught it, because the formula-string tests assert on
+ * what the generator emits and `TEXTJOIN(` is exactly what it emitted — the string was right and
+ * the *dialect* was wrong. The raw-OOXML guard in `workbook.raw.test.ts` now checks every emitted
+ * function name against the set that predates the prefix rule.
+ *
+ * The functions this generator uses that need **no** prefix, because they are 2007 or older:
+ * `AVERAGE`, `AVERAGEIFS`, `COUNT`, `COUNTIFS`, `IFERROR`, `IF`, `ROUND`, `SUM`.
+ */
+export const TEXTJOIN = '_xlfn.TEXTJOIN';
+
+/**
+ * Concatenate the non-empty text entries for one contiguous block of input rows.
  *
  * `TEXTJOIN`'s second argument is `TRUE`, which skips empty cells — without it a state with
  * two notes among 26 aspects would get a cell of mostly separators.
+ *
+ * **A plain range, not a criteria-based filter.** `TEXTJOIN` has no `IFS` variant, and the
+ * criteria-based form `TEXTJOIN(...,IF(ids=x,texts,""))` is broken as a normal formula: Excel
+ * applies implicit intersection to the `IF` condition and silently reads the wrong rows. See
+ * `rowBlockOf` in `rows.ts` for the measurement and the full reasoning, including why addressing
+ * by row position is safe on a sheet that cannot be sorted.
  */
 export function textJoinFormula(
+  sheetName: string,
+  columns: readonly ColumnDefinition[],
   textKey: 'notes' | 'barriers' | 'plans',
-  criteria: readonly Criterion[],
-  extents: InputExtents
+  block: RowBlock
 ): string {
-  const texts = dataRange(
-    SHEET_NAMES.ASSESSMENT_INPUT,
-    letterOf(ASSESSMENT_INPUT_COLUMNS, textKey),
-    extents.assessmentLastRow
-  );
-  // TEXTJOIN has no IFS variant, so the selection is done by IF over the criteria columns and
-  // the result is entered as a normal formula — Excel 365 and 2021 handle the implicit array;
-  // older Excel would need Ctrl+Shift+Enter. Documented on the README rather than worked
-  // around, because the alternative is a helper column per text field per area.
-  const conditions = criteria
-    .map(
-      ({ key, value }) =>
-        `(${dataRange(SHEET_NAMES.ASSESSMENT_INPUT, letterOf(ASSESSMENT_INPUT_COLUMNS, key), extents.assessmentLastRow)}="${value}")`
-    )
-    .join('*');
-  return `TEXTJOIN(" | ",TRUE,IF(${conditions},${texts},""))`;
+  const letter = letterOf(columns, textKey);
+  return `${TEXTJOIN}(" | ",TRUE,'${sheetName}'!$${letter}$${block.firstRow}:$${letter}$${block.lastRow})`;
 }
 
 /**
