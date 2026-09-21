@@ -280,6 +280,15 @@ export function buildReadmeRows(): ReadmeRow[] {
         'will not calculate correctly.'
     ),
     entry(
+      'Excel version',
+      'Everything in this workbook works in Excel 2007 and later, except the Notes, Barriers and ' +
+        `Advancement Plans columns on sheet ${SHEET_NAMES.MATURITY_PROFILE}. Those use a function ` +
+        'that requires Excel 2019, 2021, 2024 or Microsoft 365, and will show #NAME? in Excel 2016 ' +
+        'or earlier. No score is affected. Your entries on sheets ' +
+        `${SHEET_NAMES.ASSESSMENT_INPUT} and ${SHEET_NAMES.ORGANIZATIONAL_INPUT} are unaffected ` +
+        'either way, so nothing is lost — those three columns simply will not summarise your text.'
+    ),
+    entry(
       'Filtering and sorting',
       'Use the filter buttons on the header row freely — filtering only hides rows, and every ' +
         'score is calculated over your whole sheet regardless of what is on screen. ' +

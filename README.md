@@ -164,7 +164,40 @@ npm run audit:code   # Detect unused code (knip)
 npm test             # Run tests once
 npm run test:watch   # Watch mode
 npm run test:coverage # Coverage report
+
+# Offline workbook (see "Offline Excel Workbook" below)
+npm run generate:workbook      # Generate public/mita-4.0-self-assessment-workbook.xlsx
+npm run verify:workbook-excel  # Verify its formulas by driving Excel (macOS + Excel only)
 ```
+
+## Offline Excel Workbook
+
+States that cannot use a browser-based tool can complete the same assessment in an Excel
+workbook generated from the same `capabilities.json` and `orbit-model.json` the app uses, so
+the two artifacts cannot describe different assessments.
+
+The workbook has ten sheets: a README, three reference sheets, two input sheets covering all
+14 capability domains, 72 capability areas and 41 maturity aspects, and four calculated sheets
+that compute dimension, capability area, domain and enterprise-wide scores with Excel formulas
+mirroring the app's own scoring rules. It is built for Section 508 conformance — no merged
+cells, one header row per table, no blank rows, no images, and editable columns labelled in
+text rather than signalled by fill colour alone.
+
+It is generated at build time by a Node script under `scripts/`, so it adds nothing to the
+browser bundle, and it is gitignored as a build output.
+
+### Verifying it
+
+`npm test` covers the generator's output as data and as raw OOXML, but no test can evaluate an
+Excel formula. `npm run verify:workbook-excel` closes that gap by driving Microsoft Excel over
+AppleScript: it copies the workbook, enters maturity levels and notes, reads the calculated
+cells back, and compares them against the app's scoring rules. It needs macOS and a licensed
+Excel, so it is a manual gate before shipping a workbook change rather than part of CI.
+
+`node scripts/xlsx/prove-assertions.ts` is a mutation harness that breaks the generator in
+turn and confirms the relevant test fails, so the accessibility and scoring assertions are
+known to be capable of failing. It rewrites source files in place and restores them, so run it
+on a clean tree.
 
 ## Data Architecture
 

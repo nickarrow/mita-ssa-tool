@@ -27,15 +27,15 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 ### Where things stand
 
-|                |                                                                                                                                                                                                   |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                                                                     |
-| Commits so far | Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c` |
-| Pushed         | Drop 1 is pushed and live. **Waves 6 and 7 are committed locally, not pushed or deployed** — they change nothing a stakeholder can see, since the download links are Wave 8                       |
-| Deployed       | Drop 1 only. Pages dispatched from this branch at `84ec16c` on September 11, so the live build is **all of Drop 1 plus the CMS top/bottom notices**. Waves 6 and 7 are not in it                  |
-| Green at       | 989 tests / 44 files; typecheck, lint, knip, `format:check` and `build` all clean. 89/89 mutations proved failable. Workbook arithmetic verified by driving Excel — 36/36 — see 8l                |
-| Node floor     | **22.18.** The workbook generator is a `.ts` file run directly by Node and needs native type stripping. Declared in `engines`, `.nvmrc`, and both workflows — which were on Node 20               |
-| Next wave      | **Wave 8 — delivery, docs, handoff.** See the pre-brief in Section 8m                                                                                                                             |
+|                |                                                                                                                                                                                                                                                                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                                                                                                                                                                                                      |
+| Commits so far | **Drop 1:** Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c`. **Drop 2:** Wave 6 `6fda84c` + `269ea0a` + `e38f1cc`, Wave 7 `00de4ba` + docs `2786d04` + text-column fix `18d1fb8` |
+| Pushed         | Drop 1 is pushed and live. **Waves 6 and 7 are committed locally, not pushed or deployed** — they change nothing a stakeholder can see, since the download links are Wave 8                                                                                                                                                        |
+| Deployed       | Drop 1 only. Pages dispatched from this branch at `84ec16c` on September 11, so the live build is **all of Drop 1 plus the CMS top/bottom notices**. Waves 6 and 7 are not in it                                                                                                                                                   |
+| Green at       | 998 tests / 44 files; typecheck, lint, knip, `format:check` and `build` all clean. 93/93 mutations proved failable. Workbook arithmetic verified by driving Excel — 41/41, covering every column — see 8l                                                                                                                          |
+| Node floor     | **22.18.** The workbook generator is a `.ts` file run directly by Node and needs native type stripping. Declared in `engines`, `.nvmrc`, and both workflows — which were on Node 20                                                                                                                                                |
+| Next wave      | **Wave 8 — delivery, docs, handoff.** See the pre-brief in Section 8m                                                                                                                                                                                                                                                              |
 
 > **Drop 1 is delivered.** Waves 1-5 are done and deployed, which is the whole of the Friday
 > September 12 scope, plus the CMS-requested top and bottom notices (Decision 15).
@@ -44,11 +44,16 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 > 508 structure from 5.3. Nothing about it is visible in the deployed app yet, so it needed
 > no stakeholder-facing deploy. Section 8j is the record; it contains two defects that only
 > surfaced by inspecting the real artifact.
-> **Wave 7 is complete.** Sheets `06`-`09` compute scores, and the arithmetic is verified by
-> driving Excel rather than by asserting on formula strings — which found three wrong-number
-> defects after 989 tests and 89 mutations were green. Section 8l is the record. One checklist
-> item is still open and needs a human in front of Excel: re-running the Accessibility Checker
-> now that the four new sheets exist.
+> **Wave 7 is complete and its checklist is fully closed**, including the Accessibility Checker
+> re-run, Print Preview, dropdown entry and arithmetic — all verified in Excel. Sheets `06`-`09`
+> compute scores, and the arithmetic is verified by _driving_ Excel rather than by asserting on
+> formula strings. That found three wrong-number defects after 989 tests and 89 mutations were
+> green; a user then found two more in the text columns that the scripted check had not been
+> reading. Section 8l is the record and the most useful thing in this document to read before
+> touching the workbook again.
+>
+> **One decision is open and belongs to Wave 8:** `TEXTJOIN` requires Excel 2019 or later, which
+> narrows the workbook's floor from Excel 2007 for the sake of three convenience columns. See 8m.
 
 > **The deploy target is the fork, not the CMS org repo — and `gh` gets this wrong by
 > default.** `origin` is `naretakis/mita-ssa-tool` (redirecting to `nickarrow/mita-ssa-tool`)
@@ -91,22 +96,24 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 ### How to resume
 
 1. Read this file. Section 4 is the decision record, Section 5 is the specs, Section 6 is
-   progress, and **Section 8g is the pre-brief for the next wave** — read that one carefully,
-   it records traps that have already been paid for once.
+   progress, and **Section 8m is the pre-brief for the next wave** — read that one carefully,
+   it records traps that have already been paid for once, and it opens with the one decision
+   Wave 7 handed forward.
 
    Section 8 has grown organically and its subsections are not in wave order. Where to look:
 
-   | Looking for                                     | Section                                                                   |
-   | ----------------------------------------------- | ------------------------------------------------------------------------- |
-   | Baseline to restore if a wave needs backing out | 8, "Wave 0 baseline"                                                      |
-   | What Waves 2, 3 learned                         | 8, "Wave 2 notes" and "Wave 3 notes"                                      |
-   | Review of the plan itself, before any code      | 8b                                                                        |
-   | Accessibility: the record to point CMS at       | **8d** (method, results, and what it does _not_ establish)                |
-   | Accessibility: lessons and traps                | 8h, 8i                                                                    |
-   | Export scoring and the draft notice             | **8e**                                                                    |
-   | The workbook: what Wave 6 built and learned     | **8j**                                                                    |
-   | The formulas, and how the arithmetic was proved | **8l** (read before touching any score cell)                              |
-   | Pre-briefs                                      | 8c (Wave 4), 8f (Wave 5), 8g (Wave 6), 8k (Wave 7), **8m (Wave 8, next)** |
+   | Looking for                                     | Section                                                                         |
+   | ----------------------------------------------- | ------------------------------------------------------------------------------- |
+   | Baseline to restore if a wave needs backing out | 8, "Wave 0 baseline"                                                            |
+   | What Waves 2, 3 learned                         | 8, "Wave 2 notes" and "Wave 3 notes"                                            |
+   | Review of the plan itself, before any code      | 8b                                                                              |
+   | Accessibility: the record to point CMS at       | **8d** (method, results, and what it does _not_ establish)                      |
+   | Accessibility: lessons and traps                | 8h, 8i                                                                          |
+   | Export scoring and the draft notice             | **8e**                                                                          |
+   | The workbook: what Wave 6 built and learned     | **8j**                                                                          |
+   | The formulas, and how the arithmetic was proved | **8l** (read before touching any score cell or formula)                         |
+   | Why a green test suite proved little here       | **8l**, "Two more defects" and "What this says about the verification strategy" |
+   | Pre-briefs                                      | 8c (Wave 4), 8f (Wave 5), 8g (Wave 6), 8k (Wave 7), **8m (Wave 8, next)**       |
 
 2. Find the first wave with unchecked boxes — that is the current position.
 3. Confirm the repo agrees with the checkboxes before trusting them:
@@ -874,13 +881,14 @@ front of Excel, which are called out as such.
       dialog but is the `fitToWidth` setting Wave 6 removed — Excel honours it at roughly 23%
       scale on `04` and `06`, which is illegible, so it stays off and the header row repeats
       instead. Accepted as-is; printing is not a pilot workflow
-- [ ] **Needs a human, and is the last open item:** confirm that picking a level from the
-      dropdown stores a **number**, not text. The scripted verification writes values
-      programmatically, so it cannot cover manual entry, and the distinction is load-bearing:
-      measured in Excel, a level cell holding the text `"3"` makes the score read blank while
-      completion still counts it. Near-certain to be fine — the cells carry no number format,
-      so General parses `3` as numeric — but the failure mode is "every score is blank" and it
-      costs three minutes to rule out. See 8l, "The one thing the harness cannot reach"
+- [x] Dropdown entry confirmed to store a **number**, not text — verified by the user on
+      September 15, entering levels through the dropdown and checking the whole chain of
+      expected figures. This was the one property the scripted verification structurally cannot
+      reach, because it writes values programmatically and bypasses validation. Had the dropdown
+      stored text, every score would have read blank while completion still counted the entry
+- [x] Text roll-ups fixed and verified — see the 2026-09-16 record in 8l. Two defects a user
+      found by opening the file: `#NAME?` in all 648 cells from a missing `_xlfn.` prefix, and
+      behind it a silent cross-area mis-attribution from Excel's implicit intersection
 - [x] Verify green — 989 tests / 44 files, 89/89 mutations, typecheck / lint / format / knip /
       build all clean
 
@@ -910,8 +918,14 @@ front of Excel, which are called out as such.
 - [ ] `CHANGELOG.md`: fold the `[Unreleased]` section into a version entry. Wave 5 already
       populated it, because that wave changes the Technology figure a state submits to CMS and
       shipping Drop 1 with no record of that would have been wrong
-- [ ] `PROJECT_FOUNDATION_v2.md`: workbook artifact, draft-mode flag, export formats table
-- [ ] `.kiro/steering/development-standards.md`: workbook generator and the `scripts/` convention
+- [ ] `PROJECT_FOUNDATION_v2.md`: **workbook artifact section done in Wave 7** — sheets, module
+      map, scoring parity, accepted divergences, minimum Excel version. Still to do: the
+      draft-mode flag, and the export formats table once the download links exist
+- [x] `.kiro/steering/development-standards.md`: workbook generator, the `scripts/` convention,
+      and the "verifying workbook changes" gate. Done across Waves 6 and 7
+- [ ] `README.md`: **offline workbook section done in Wave 7** (what it is, how to generate and
+      verify it). Revisit once the in-app download links land, since the user-facing story
+      changes from "run a script" to "click a link"
 - [ ] Resolve the `maturity-profile-template.csv` question (Section 4, Noted)
 - [ ] Update `docs/CODEBASE_OBSERVATIONS.md` — most entries are already marked resolved as
       their wave landed; check nothing from Waves 6-8 is left unrecorded
@@ -2429,10 +2443,47 @@ against the fork explicitly.
 - **OBS-37** — `jspdf` has a critical advisory and `react-router` a high one, both in production
   dependencies, both unfixed. Decide whether Drop 2 ships with them.
 
+### Decide first: does `TEXTJOIN` stay?
+
+The only open decision carried out of Wave 7, and it should be settled before the download links
+make the workbook reachable.
+
+`TEXTJOIN` **requires Excel 2019, 2021, 2024 or Microsoft 365. It does not exist in Excel 2016 or
+earlier**, where the three text roll-up columns on `06_Maturity_Profile` show `#NAME?`. Everything
+else in the workbook — `AVERAGEIFS`, `COUNTIFS`, `IFERROR`, `ROUND`, `SUM`, `AVERAGE`, `COUNT` — is
+Excel 2007 or older. So one function, serving three convenience columns, raises the workbook's floor
+by twelve years, for an audience where a 2016 perpetual install is entirely plausible.
+
+Three options:
+
+1. **Keep it, document it.** Already done — `00_README` now carries an "Excel version" entry saying
+   those three columns need Excel 2019+, that no score is affected, and that nothing a state enters
+   is lost. Cheapest, and a state on 2016 sees three broken columns in an otherwise working file.
+2. **Replace it with a universally compatible concatenation.** Because the roll-ups now address a
+   _contiguous block_ rather than filtering, this is mechanical: build
+   `IF(a="","", " | "&a) & IF(b="","", " | "&b) & …` and wrap in `MID(…,4,32767)` to strip the
+   leading separator. Works in Excel 2007, no array semantics, ~500 characters for an 11-aspect
+   block against an 8,192 limit. Verbose to read in the formula bar, invisible in the result.
+3. **Drop the three columns.** Removes 648 cells of risk. The state's text still lives on `04` and
+   `05` where they typed it, and the app's CSV and PDF carry per-dimension text already.
+
+**Recommendation: option 2.** It removes the workbook's only post-2007 dependency for bounded,
+contained work, and `npm run verify:workbook-excel` already has a scenario that reads every text
+column, so the change is provable rather than hoped for. Option 1 is defensible only if Wave 8 is
+tight on time, and option 3 gives up something the plan asked for.
+
 ### Traps specific to this wave
 
 - **The workbook is gitignored**, so `npm run dev` has no file and the three download links
   would 404. A `predev` step or a graceful message, not a link that fails silently.
+- **`npm run verify:workbook-excel` is the gate for any generator change**, and it needs macOS with
+  Excel, so CI cannot run it. If Wave 8 touches anything the generator emits, run it. The Wave 7
+  record is emphatic about why: the scripted check found three defects the 989-test suite could not,
+  and then a user found two more that the scripted check itself was not covering because it read no
+  text cells. **Read at least one cell of every new column.**
+- **Prefer formulas whose correctness does not depend on Excel's array-evaluation rules.** The
+  criteria-based `IF` over a range looks right, passes every string assertion, and silently reads
+  the wrong rows. See 8l, "Two more defects".
 - **CI runs Node 22.18** now (both workflows were moved off 20 in Wave 6, because the generator
   relies on native type stripping). `.nvmrc` and `engines` both pin it. Adding the generator to
   `ci.yml` should be a matter of one step, but the node version is the thing that breaks first.

@@ -414,6 +414,70 @@ interface SubDimensionScore {
 | JSON   | Data backup          | Full assessment data (no blobs)      |
 | ZIP    | Complete backup      | JSON + PDF + all attachments         |
 
+---
+
+## Offline Excel Workbook
+
+An `.xlsx` equivalent of the whole assessment, for states that cannot use a browser-based tool.
+Generated from the same two data files the app reads, so the workbook and the app cannot describe
+different assessments.
+
+### Where it lives
+
+| Path                                  | Role                                                             |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| `scripts/generate-xlsx-workbook.ts`   | Entry point. `npm run generate:workbook`                         |
+| `scripts/xlsx/model.ts`               | Reads `capabilities.json` / `orbit-model.json`                   |
+| `scripts/xlsx/rows.ts`                | Row builders for the reference and input sheets                  |
+| `scripts/xlsx/profile-rows.ts`        | Row builders for the four calculated sheets                      |
+| `scripts/xlsx/scoring-spec.ts`        | The scoring rules, as JS functions **and** as Excel formula text |
+| `scripts/xlsx/workbook.ts`            | Sheet assembly, styling, protection, 508 treatment               |
+| `scripts/verify-workbook-in-excel.ts` | Arithmetic verification by driving Excel (macOS + Excel only)    |
+
+**A build-time Node script, not application code.** It runs directly under Node — which is why
+the project has a Node 22.18 floor, for native TypeScript type stripping — and `exceljs` is a
+devDependency. Nothing here reaches the browser bundle.
+
+### Sheets
+
+| Sheet                         | Rows  | Contents                                                    |
+| ----------------------------- | ----- | ----------------------------------------------------------- |
+| `00_README`                   | —     | Guidance, scoring rules, known differences from the tool    |
+| `01_Maturity_Levels`          | 6     | Level definitions                                           |
+| `02_Capability_Reference`     | 72    | Every capability area                                       |
+| `03_ORBIT_Criteria_Reference` | 205   | Maturity criteria per aspect and level                      |
+| `04_Assessment_Input`         | 1,625 | One row per assessable aspect. **State enters levels here** |
+| `05_Organizational_Input`     | 15    | Enterprise Governance aspects                               |
+| `06_Maturity_Profile`         | 216   | Per area and dimension: score, count, text roll-ups         |
+| `07_Area_Scores`              | 72    | Per capability area, with completion %                      |
+| `08_Domain_Scores`            | 15    | 14 domains plus an overall row                              |
+| `09_Dimension_Scores`         | 3     | Enterprise-wide ORBIT figure                                |
+
+### Scoring parity, and its limits
+
+The Excel formulas mirror `calculateDimensionScore` and the roll-ups above it, including the four
+rounding points that are deliberately not the same (see **Scoring Logic**). `scoring-spec.ts`
+expresses each rule twice — as a JS function tested against the app's canonical scorer, and as the
+generated formula string — so the rule and the formula cannot drift independently.
+
+Two accepted divergences, both documented on `00_README`:
+
+- **Finalized status is unrepresentable.** The app counts only finalized areas toward domain and
+  aggregate figures. The workbook has no status concept, so it counts anything entered. The closest
+  available analogue is applied: an area scores blank until at least one level is entered for it.
+- **Excel rounds halfway values differently.** `Math.round(x * 10) / 10` and Excel's `ROUND`
+  disagree on decimal halfway values, measured and confirmed. The app is authoritative; the gap is
+  always 0.1 and is reachable only in the Enterprise Governance score and a capability area with
+  only two dimensions assessed.
+
+### Minimum Excel version
+
+`AVERAGEIFS`, `COUNTIFS` and `IFERROR` are Excel 2007 or older. **`TEXTJOIN`, used by the three
+text roll-up columns on `06_Maturity_Profile`, requires Excel 2019, 2021, 2024 or Microsoft 365** —
+it does not exist in Excel 2016 or earlier, where those cells will show `#NAME?`. Nothing else in
+the workbook is affected. See the pilot clearance plan for the open question on whether to replace
+it with a universally compatible concatenation.
+
 **CSV Maturity Profile Format (standard capability area):**
 
 ```csv

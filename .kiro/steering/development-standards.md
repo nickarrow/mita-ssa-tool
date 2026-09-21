@@ -881,7 +881,8 @@ npm run test:watch   # Watch mode
 npm run test:coverage # Coverage report
 
 # Build-time artifacts
-npm run generate:workbook  # Regenerate the offline XLSX workbook into public/
+npm run generate:workbook      # Regenerate the offline XLSX workbook into public/
+npm run verify:workbook-excel  # Verify its formulas in Excel (macOS + Excel only, not in CI)
 ```
 
 **Node 22.18 or newer is required** (declared in `engines` and `.nvmrc`). The workbook
@@ -897,15 +898,44 @@ Build-time tooling lives in `scripts/`, written in TypeScript and run directly b
 covered by `typecheck`, `lint`, `knip` and `format:check` exactly like `src/`, and its tests
 run under `npm test`.
 
-| Path                                | Purpose                                                                     |
-| ----------------------------------- | --------------------------------------------------------------------------- |
-| `scripts/generate-xlsx-workbook.ts` | Generates the offline Excel workbook into `public/`                         |
-| `scripts/xlsx/model.ts`             | Node-safe view of the capability and ORBIT models, read from the JSON files |
-| `scripts/xlsx/constants.ts`         | Declarative sheet, column and layout configuration                          |
-| `scripts/xlsx/rows.ts`              | Pure row builders, testable without ExcelJS                                 |
-| `scripts/xlsx/workbook.ts`          | ExcelJS assembly and the Section 508 structure                              |
-| `scripts/xlsx/paths.ts`             | Repository-root path resolution                                             |
-| `scripts/xlsx/prove-assertions.ts`  | Mutation harness proving each 508 assertion can fail                        |
+| Path                                  | Purpose                                                                     |
+| ------------------------------------- | --------------------------------------------------------------------------- |
+| `scripts/generate-xlsx-workbook.ts`   | Generates the offline Excel workbook into `public/`                         |
+| `scripts/xlsx/model.ts`               | Node-safe view of the capability and ORBIT models, read from the JSON files |
+| `scripts/xlsx/constants.ts`           | Declarative sheet, column and layout configuration                          |
+| `scripts/xlsx/rows.ts`                | Pure row builders, testable without ExcelJS                                 |
+| `scripts/xlsx/workbook.ts`            | ExcelJS assembly and the Section 508 structure                              |
+| `scripts/xlsx/paths.ts`               | Repository-root path resolution and the workbook output path                |
+| `scripts/xlsx/scoring-spec.ts`        | The scoring rules, as JS functions **and** as Excel formula generators      |
+| `scripts/xlsx/profile-rows.ts`        | Row builders for the four calculated sheets, `06`-`09`                      |
+| `scripts/xlsx/excel-rounding.ts`      | Model of Excel's `ROUND`, plus the fixtures that check the model            |
+| `scripts/xlsx/prove-assertions.ts`    | Mutation harness proving each assertion can fail                            |
+| `scripts/verify-workbook-in-excel.ts` | Arithmetic verification by driving Excel over AppleScript                   |
+
+### Verifying workbook changes
+
+The generator emits Excel **formulas**, and no test in this repo can evaluate one. A green suite
+therefore proves the generator emitted the string it intended, not that Excel computes the right
+answer from it. Three defects shipped past a fully green suite because of exactly this gap, and two
+more shipped past the scripted Excel check because that check read only score cells.
+
+So, for any change to what the generator emits:
+
+1. `npm run generate:workbook`
+2. `npm run verify:workbook-excel` — drives Excel, seeds input cells, reads computed cells back and
+   compares against the same JS model the unit tests use. **Requires macOS and Excel, so CI cannot
+   run it.** If you add a column, add an expectation that reads it.
+3. `node scripts/xlsx/prove-assertions.ts` — confirms every assertion can still fail. It rewrites
+   source files in place and restores them, so run it on a clean tree and never alongside `npm test`.
+
+Two rules earned the hard way:
+
+- **Prefer formulas whose correctness does not depend on Excel's array-evaluation rules.** A
+  criteria-based `IF` over a range looks right, satisfies every string assertion, and silently reads
+  the wrong rows via implicit intersection.
+- **Functions added after Excel 2007 must be stored with an `_xlfn.` prefix**, which ExcelJS does not
+  add. Without it Excel does not recognise the function and the cell reads `#NAME?`.
+  `workbook.raw.test.ts` enforces this against an allowlist of pre-2007 functions.
 
 Three rules specific to this directory, each learned the hard way:
 

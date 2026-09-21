@@ -27,6 +27,9 @@ version bump lands with the final wave.
 - **The workbook README described sorting and filtering incorrectly.** Filtering the input
   sheets is supported and safe; scores are always calculated over the whole sheet, not just
   the visible rows. Rows must not be reordered, which sheet protection already prevents
+- **The workbook README now states its Excel version requirement.** Everything works in Excel
+  2007 and later except the Notes, Barriers and Advancement Plans columns on the maturity
+  profile sheet, which use a function available only in Excel 2019, 2021, 2024 and Microsoft 365. No score is affected, and nothing a state enters is lost
 
 - **Technology dimension score in PDF and CSV exports** (OBS-25). Both computed it as a
   flat mean over all 11 Technology aspects, which weights the 6-aspect Technical
