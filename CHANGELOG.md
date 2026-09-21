@@ -13,6 +13,18 @@ version bump lands with the final wave.
 
 ### Fixed
 
+- **Security: the critical and high npm advisories in the shipped dependencies are resolved**
+  (OBS-37). `jspdf` carried a critical advisory and `react-router` a high one, and both are in
+  the code that runs in your browser. Fixed by `jspdf` 4.2.0 → 4.2.1, `react-router-dom`
+  7.12.0 → 7.18.4 and `uuid` 11.1.0 → 11.1.1, which also picked up `dompurify` and `fflate`.
+  Every one sat inside the version ranges the project already allowed, so no library changed
+  in a way that alters behaviour. PDF export was re-checked against the upgraded `jspdf`, in
+  the test suite and by generating a report in a browser: the Technology dimension score is
+  still the corrected sub-dimension weighting from earlier in this release, not the old flat
+  mean. **The dependencies that build and test the app were upgraded too**, clearing two
+  further critical advisories. Two moderate advisories remain by choice, in a build-time-only
+  library whose published "fix" is a downgrade that would break workbook generation; neither
+  ships to your browser
 - **Notes, Barriers and Advancement Plans on the workbook's maturity profile sheet showed
   `#NAME?`** instead of your text. Two causes: the function being used had to be written into
   the file with an internal prefix that was missing, and the function itself does not exist in

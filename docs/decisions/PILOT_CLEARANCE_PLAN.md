@@ -1863,10 +1863,16 @@ sheet: notice in `A1`, the single header row on row 2, data from row 3, **no bla
 anywhere in the workbook**. `HEADER_ROW` and `FIRST_DATA_ROW` in `scripts/xlsx/constants.ts`
 are the only definition of that, and Wave 7 must derive its formula ranges from them.
 
-**Decision 12 confirmed by measurement, not assertion.** The vendor chunk is 1,418.43 kB /
-449.92 kB gzipped — byte-identical to the Wave 0 baseline. No `exceljs` string in any
-`dist/assets/*.js`, no `src/` import, and `npm ls exceljs --omit=dev` is empty. The workbook
-feature costs the shipped app nothing.
+**Decision 12 confirmed by measurement, not assertion.** As measured in Wave 6, the vendor chunk
+was 1,418.43 kB / 449.92 kB gzipped — byte-identical to the Wave 0 baseline. No `exceljs` string
+in any `dist/assets/*.js`, no `src/` import, and `npm ls exceljs --omit=dev` is empty. The
+workbook feature costs the shipped app nothing.
+
+> **Superseded as a current figure, not as a finding.** Wave 8's dependency-security work
+> (OBS-37) moved `react-router` 7.12.0 → 7.18.4, so the vendor chunk is now **1,428.10 kB /
+> 453.66 kB gzipped** — plus 9.67 kB, 0.68%. Read the byte-identical claim above as a dated
+> Wave 6 snapshot. What it was there to establish still holds and was re-verified in Wave 8:
+> `exceljs` remains absent from the production tree and from the bundle.
 
 ### Two defects that only the real artifact revealed
 
@@ -2442,7 +2448,12 @@ against the fork explicitly.
   stamps ZIP entry timestamps it does not expose. A CI drift check must unzip and diff the parts,
   or just regenerate and run the suite. Diffing the `.xlsx` will report a change every run.
 - **OBS-37** — `jspdf` has a critical advisory and `react-router` a high one, both in production
-  dependencies, both unfixed. Decide whether Drop 2 ships with them.
+  dependencies, both unfixed. Decide whether Drop 2 ships with them. **Decided and done in Wave
+  8: fixed.** Every fix sat inside the existing caret ranges — the critical was a `jspdf` patch,
+  4.2.0 → 4.2.1, not the major bump OBS-37 predicted. The production tree is now at 0 advisories
+  and the full tree at 2 moderate / 0 critical / 0 high, down from 30. The 2 remaining are
+  `exceljs`'s bundled `uuid`, whose only offered fix is a **downgrade** to `exceljs@3.4.0`, so
+  **never run `npm audit fix --force` in this repo.** See OBS-37 for the full record.
 
 ### Resolved before Wave 8 started: `TEXTJOIN` is gone
 

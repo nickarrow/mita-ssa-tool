@@ -1144,14 +1144,24 @@ applies to all three and only `/results` happened to be checked.
 that wave's work — noticed while confirming the new `exceljs` dependency stays out of the
 production tree, which it does (`npm ls exceljs --omit=dev` returns empty).
 
-Seven advisories affect the **production** tree, of which two matter:
+**Resolved in Wave 8.** The production tree is now at **0 advisories**, and the full tree —
+including devDependencies — is at **2 moderate, 0 critical, 0 high**, down from 30. What the
+fix actually cost is recorded at the bottom of this entry, because it was nothing like what
+this entry originally predicted.
+
+Seven advisories affected the **production** tree — 1 critical, 2 high, 4 moderate — of which
+two mattered:
 
 | Package        | Severity     | Advisories                                                                                                                  |
 | -------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | `jspdf`        | **critical** | `GHSA-7x6v-j9x4-qf24` (PDF object injection via FreeText color), `GHSA-wfv2-pwc8-crg5` (HTML injection in new-window paths) |
 | `react-router` | high         | `GHSA-49rj-9fvp-4h2h` (vendored turbo-stream deserialization → RCE), plus four XSS/DoS/CSRF advisories                      |
 
-Both are reported as having fixes available via `npm audit fix`.
+Note the severity split: `react-router` and `react-router-dom` are filed as **two** separate
+high advisories, not one, so the seven break down as 1 critical / 2 high / 4 moderate. An
+earlier revision of this entry, and the Wave 8 opening analysis, both said 1 / 1 / 5.
+
+Both were reported as having fixes available via `npm audit fix`.
 
 How much of this reaches this app is genuinely unclear and worth establishing rather than
 assuming, in both directions:
@@ -1168,9 +1178,58 @@ not apply" is a weaker position than "we upgraded" when the reviewer is CMS and 
 artifact is a government pilot tool. A `npm audit` output with a critical line in it is
 also the kind of thing that derails a security review on presentation alone.
 
-Not fixed in Wave 6 because upgrading `jspdf` across a major version would change the
-export path in the same drop that already changed exported Technology scores, and
-stakeholders are mid-review. Wants its own change with an export regression pass.
+#### How it was fixed in Wave 8, and why this entry's own reasoning was wrong
+
+The deferral originally recorded here said the fix meant "upgrading `jspdf` across a major
+version," which would change the export path in a drop that had already changed exported
+Technology scores. **That was wrong by the time Wave 8 opened, and it is the reason to
+re-measure an advisory rather than inherit a stale assessment.** The critical was fixed by
+`jspdf` **4.2.0 → 4.2.1** — a patch. Every fix turned out to sit inside the caret ranges
+already in `package.json`:
+
+| Package                        | Floor raised      | Resolved version moved | Kind             |
+| ------------------------------ | ----------------- | ---------------------- | ---------------- |
+| `jspdf`                        | ^4.2.0 → ^4.2.1   | 4.2.0 → 4.2.1          | patch (critical) |
+| `react-router-dom`             | ^7.1.1 → ^7.18.4  | 7.12.0 → 7.18.4        | 6 minors (high)  |
+| `react-router`                 | — (transitive)    | 7.12.0 → 7.18.4        | 6 minors (high)  |
+| `uuid`                         | ^11.0.5 → ^11.1.1 | 11.1.0 → 11.1.1        | patch            |
+| `dompurify`                    | — (via `jspdf`)   | 3.3.1 → 3.4.15         | minor            |
+| `fflate`                       | — (via `jspdf`)   | 0.8.2 → 0.8.3          | patch            |
+| `yaml` (nested, `cosmiconfig`) | — (transitive)    | 1.10.2 → 1.10.3        | patch            |
+
+Two things worth separating, because conflating them overstates the change: the **floor** on
+`react-router-dom` moved 17 minor versions, but the **installed** version moved 6. The floors
+were raised deliberately rather than taking a lockfile-only fix — leaving `^4.2.0` in place
+would let a fresh `npm install` resolve back to the vulnerable `jspdf` 4.2.0, so raising the
+floor is what makes the security property durable.
+
+**The dev tree was fixed too, and the stated reason for not doing so was also false.** Wave 8
+first recorded that clearing the devDependency advisories — 30 of them, including criticals in
+`vitest` and `@vitest/coverage-v8` and a high in `vite` itself — required `npm audit fix
+--force` and therefore a Vite/Vitest major bump. It did not. `vitest` and
+`@vitest/coverage-v8` 4.0.18 → 4.1.11 and `vite` 6.4.1 → 6.4.3 are all inside the existing
+caret ranges. The `--force` prompt came from exactly one package, described below.
+
+**What remains, consciously accepted: 2 moderate, both `exceljs`.** `exceljs >=3.5.0` bundles a
+vulnerable `uuid`, and npm's only offered "fix" is `exceljs@3.4.0` — a **downgrade**, flagged
+`isSemVerMajor: true`. Taking it would break the workbook generator, which is pinned to 4.4.0
+deliberately. So `npm audit fix --force` must never be run in this repo: the one thing it would
+"fix" is the one thing that would regress. `exceljs` is a devDependency and absent from the
+production tree (`npm ls exceljs --omit=dev` → empty), so the bundled `uuid` never ships.
+
+**`npm audit fix` needs two passes.** The first left a high in `brace-expansion` reachable but
+unfixed; a second pass took it. A single pass reporting "to address issues that do not require
+attention, run `npm audit fix`" is npm saying it has not finished, not that the rest needs
+force.
+
+**Export regression pass** (which this entry asked for): `src/services/export/pdfExport.test.ts`
+drives **real jsPDF** rather than a mock — `buildPdfDocument` calls `new jsPDF()` and real
+`autoTable`, and assertions search `doc.output()`. Its `Technology dimension weighting (OBS-25)`
+suite asserts the exported figure `(Avg: 3.0)` and the absence of `(Avg: 3.2)`, so the Wave 5
+weighting fix is covered under 4.2.1 by the suite itself. That was confirmed in a real browser
+as well: a seeded finalized area with Infrastructure all at 5 and Application all at 1 exported
+a valid 5-page PDF whose Domain Maturity Scores table read `Technology | 3.0`, with no `3.2`
+anywhere in the content stream, and with the cover draft band and full PRA statement present.
 
 ### OBS-38 — Vite rewrites `new URL(<literal>, import.meta.url)`, so the idiom breaks only under vitest
 
