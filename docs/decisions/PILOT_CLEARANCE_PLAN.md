@@ -865,11 +865,22 @@ front of Excel, which are called out as such.
       drives Excel over AppleScript, seeds input cells, and reads the computed cells back. 36
       checks across 8 scenarios. This replaced the hand-verification the plan called for and
       found three defects the 989-test suite could not, exactly as budgeted for
-- [ ] **Needs a human:** re-run Excel's Accessibility Checker now that `06`-`09` exist.
-      Wave 6's run was clean in every category, so any finding is attributable to the new
-      sheets. Also glance at Print Preview on `04` and `06` — the natural-pagination setup
-      that replaced `fitToWidth` was fixed _after_ the Wave 6 Excel pass and has not been
-      seen since, and `06` is the widest sheet in the workbook at 19 columns
+- [x] Excel's Accessibility Checker re-run with `06`-`09` present — **clean in every
+      category**, confirmed by the user on September 15. Wave 6's run was also clean, so the
+      four computed sheets introduce no finding
+- [x] Print Preview checked on the computed sheets. Works, and is never going to look good:
+      these are 5-to-19-column tables that spill across pages. Orientation is already
+      `landscape` on every sheet. "Fit all columns on one page" is available in the print
+      dialog but is the `fitToWidth` setting Wave 6 removed — Excel honours it at roughly 23%
+      scale on `04` and `06`, which is illegible, so it stays off and the header row repeats
+      instead. Accepted as-is; printing is not a pilot workflow
+- [ ] **Needs a human, and is the last open item:** confirm that picking a level from the
+      dropdown stores a **number**, not text. The scripted verification writes values
+      programmatically, so it cannot cover manual entry, and the distinction is load-bearing:
+      measured in Excel, a level cell holding the text `"3"` makes the score read blank while
+      completion still counts it. Near-certain to be fine — the cells carry no number format,
+      so General parses `3` as numeric — but the failure mode is "every score is blank" and it
+      costs three minutes to rule out. See 8l, "The one thing the harness cannot reach"
 - [x] Verify green — 989 tests / 44 files, 89/89 mutations, typecheck / lint / format / knip /
       build all clean
 
@@ -2352,10 +2363,37 @@ scores for the overall figure because that reads naturally.
 same test, twice. Both times the right fix was to split the test, because they really were two
 claims.
 
+### The one thing the harness cannot reach
+
+`verify-workbook-in-excel.ts` sets cell values **programmatically**, which bypasses data
+validation entirely. So it proves the formulas are right given numeric input, and says nothing
+about what a state's **dropdown pick** actually stores.
+
+That gap has teeth. Measured in a scratch workbook:
+
+| Level cell holds | Score formula returns | Completion counts it |
+| ---------------- | --------------------- | -------------------- |
+| text `"3"`       | **blank**             | 1                    |
+| number `3`       | 3.0                   | 1                    |
+
+`AVERAGEIFS` with a `">0"` criterion ignores text, while `COUNTIFS(…,"<>")` counts any non-empty
+cell. A workbook whose levels arrived as text would therefore show rising completion percentages
+beside entirely blank scores.
+
+`LEVEL_DROPDOWN_VALUES` is a list of **strings** (`'N/A'`, `'1'`…`'5'`) because an inline Excel
+validation list is a comma-separated string by format. The stored type comes from the cell's
+number format, and no number format is set, so General should parse `3` as numeric. That is an
+inference, not a measurement.
+
+Mitigating factor worth recording: the failure is **loud, not silent**. A blank score column next
+to a non-zero completion percentage is immediately visible, so this cannot quietly corrupt a
+submission the way defects 1-4 could have. It is a go-live check, not a design risk.
+
 ### Limitations — what this wave's verification does not establish
 
 - **36 checks are 36 checks.** The scenarios cover the rules 5.4 identifies as risky, not the
   cross product of 72 areas × 3 dimensions × every partial-fill state.
+- **Manual entry through the dropdown is unverified.** See the section immediately above.
 - **The divergence enumeration is still modelled.** Five confirmed points make the model
   credible; 313 of 50,225 comes from the model, not from 50,225 trips through Excel.
 - **One version of one spreadsheet program.** Excel 16 on macOS. Nothing has opened the file in
