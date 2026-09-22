@@ -27,22 +27,22 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 ### Where things stand
 
-|                |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Commits so far | **Drop 1:** Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c`. **Drop 2:** Wave 6 `6fda84c` + `269ea0a` + `e38f1cc`, Wave 7 `00de4ba` + docs `2786d04` + text-column fix `18d1fb8` + TEXTJOIN removal `7adf873`, docs `0f67d07`. **Wave 8:** deps `c7c93fa`, build wiring `95a0fa9`, PWA + icons `75a113b`, download links `feb9c76` |
-| Pushed         | Drop 1 is pushed and live. **Waves 6, 7 and 8 are committed locally and not yet pushed.** Waves 6-7 changed nothing a stakeholder could see; Wave 8 changes a great deal, so it goes out as one deliberate deploy                                                                                                                                                                                                                                                                    |
-| Deployed       | Drop 1 only. Pages dispatched from this branch at `84ec16c` on September 11, so the live build is **all of Drop 1 plus the CMS top/bottom notices**. Waves 6, 7 and 8 are not in it                                                                                                                                                                                                                                                                                                  |
-| Green at       | 1022 tests / 46 files; typecheck, lint, knip, `format:check` and `build` all clean, plus `verify:workbook-artifact`. 93/93 mutations proved failable, and the Wave 8 additions were mutation-proved individually. Workbook arithmetic verified by driving Excel — 41/41, covering every column — see 8l                                                                                                                                                                              |
-| Node floor     | **22.18.** The workbook generator is a `.ts` file run directly by Node and needs native type stripping. Declared in `engines`, `.nvmrc`, and both workflows — which were on Node 20                                                                                                                                                                                                                                                                                                  |
-| Next wave      | **None — Wave 8 is the last.** What remains inside it is the final gate, the deploy (dispatched by the user) and the handoff email. See Section 8n for the record                                                                                                                                                                                                                                                                                                                    |
+|                |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Commits so far | **Drop 1:** Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c`. **Drop 2:** Wave 6 `6fda84c` + `269ea0a` + `e38f1cc`, Wave 7 `00de4ba` + docs `2786d04` + text-column fix `18d1fb8` + TEXTJOIN removal `7adf873`, docs `0f67d07`. **Wave 8:** deps `c7c93fa`, build wiring `95a0fa9`, PWA + icons `75a113b`, download links `feb9c76`, release `5e344e7`, wave record `cf27c56`. **Post-deploy:** link repositioning `d68cbf3`, deploy record `61b4db3`, email rewrite `ba53516`, accessibility-claim correction `604c413` |
+| Pushed         | **Everything, through `604c413`.** `origin/feature/pilot-clearance` matches local                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Deployed       | **v4.1.1 is live**, dispatched from this branch. Verified on the site: service worker active at scope `/mita-ssa-tool/`, both CMS notices on all five pages, three working workbook download links, footer reads 4.1.1                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Tagged         | **`v4.1.0` at `cf27c56` and `v4.1.1` at `d68cbf3`**, both annotated and pushed — the repository's first tags. v4.0.0 and earlier shipped untagged                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Green at       | **1025 tests / 47 files**; typecheck, lint, knip, `format:check` and `build` clean, plus `verify:workbook-artifact`. **94/94** mutations proved failable. Workbook arithmetic verified by driving Excel — **41/41**, re-run at 4.1.1 because the version bump moves a generator-emitted cell — see 8l                                                                                                                                                                                                                                                                                                                                                                     |
+| Node floor     | **22.18.** The workbook generator is a `.ts` file run directly by Node and needs native type stripping. Declared in `engines`, `.nvmrc`, and both workflows — which were on Node 20                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Next wave      | **None. The plan is complete** — 96 of 96 boxes across Waves 0-8, no open decision, both drops shipped. **Read 8p for what remains outside it**, which is where any new work starts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 > **Drop 1 is delivered.** Waves 1-5 are done and deployed, which is the whole of the Friday
 > September 12 scope, plus the CMS-requested top and bottom notices (Decision 15).
 
 > **Wave 6 opened Drop 2 and is complete.** The generator produces sheets `00`-`05` with the
-> 508 structure from 5.3. Nothing about it is visible in the deployed app yet, so it needed
-> no stakeholder-facing deploy. Section 8j is the record; it contains two defects that only
+> 508 structure from 5.3. Section 8j is the record; it contains two defects that only
 > surfaced by inspecting the real artifact.
 > **Wave 7 is complete and its checklist is fully closed**, including the Accessibility Checker
 > re-run, Print Preview, dropdown entry and arithmetic — all verified in Excel. Sheets `06`-`09`
@@ -55,6 +55,12 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 > **No decisions are open.** The one Wave 7 handed forward — `TEXTJOIN` requiring Excel 2019 — was
 > settled before Wave 8 began: it is gone, replaced by explicit concatenation, and the workbook's
 > Excel 2007 floor is now enforced by a test over the emitted file. See 8m.
+
+> **Wave 8 closed Drop 2, and the deploy produced one more round of work.** The workbook became
+> reachable in the app, the PWA made the offline claim true, and v4.1.0 shipped. Looking at the
+> deployed site then showed the download links sat 80-92% of the way down their pages, which no
+> local check has an opinion about — so v4.1.1 repositioned them. **8n** is the wave record, **8o**
+> the post-deploy record, and **8p** is what remains outside the plan.
 
 > **The deploy target is the fork, not the CMS org repo — and `gh` gets this wrong by
 > default.** `origin` is `naretakis/mita-ssa-tool` (redirecting to `nickarrow/mita-ssa-tool`)
@@ -117,7 +123,10 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    | Pre-briefs                                                | 8c (Wave 4), 8f (Wave 5), 8g (Wave 6), 8k (Wave 7), 8m (Wave 8)                 |
    | **What Wave 8 built, and why a green gate proved little** | **8n** — read before trusting any suite in this repo                            |
 
-2. Find the first wave with unchecked boxes — that is the current position.
+2. **There are no unchecked boxes left** — 96 of 96 across Waves 0-8. That instruction used to read
+   "find the first wave with unchecked boxes"; it now dead-ends, which is the correct answer. Go to
+   **8p, "What remains after this plan"**, which is the current position and lists everything still
+   open with its reasoning.
 3. Confirm the repo agrees with the checkboxes before trusting them:
    ```
    git branch --show-current && git status --short && git log --oneline -4
@@ -135,7 +144,7 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    | ------ | ------------------------------------------------------------------------------------------------------------------- |
    | OBS-41 | **WCAG 2.5.3 is unenforced** — axe reports zero violations while three controls failed it                           |
    | OBS-42 | A static `role="alert"` on Landing is a live region that never fires, and breaks any "count the live regions" check |
-   | OBS-43 | An unknown assessment id renders a blank page: no heading, no error. Pairs with OBS-36                              |
+   | OBS-43 | An unknown assessment id shows a permanent "Loading assessment…" spinner — no heading, no error                     |
    | OBS-44 | Every deploy makes offline clients re-download the workbook, because its bytes shift per build                      |
    | OBS-45 | Stat-card numbers styled as headings — hidden by the **same** missing axe tag as OBS-41                             |
    | OBS-46 | At 375px the `AppBar`, notices and footer take 57% of the viewport, leaving `<main>` 287px                          |
@@ -365,6 +374,10 @@ colour alone. Excel's own Accessibility Checker is the manual complement (Wave 7
 
 ### Noted, not decided
 
+Two of the four below have since been settled and are struck or marked as such, rather than deleted,
+because the reasoning is the useful part. **The two that genuinely remain open are OBS-5 and OBS-35**,
+and both want deciding before real state data exists — see 8p.
+
 - **OBS-5 (stale enterprise-domain scores).** A finalized Data Management score does not
   change when other domains are later finalized, but the results table recomputes the
   aggregate live, so the two can disagree. During a pilot, states finalize over weeks —
@@ -372,8 +385,9 @@ colour alone. Excel's own Accessibility Checker is the manual complement (Wave 7
   point-in-time snapshot) before the pilot, but is not code work in this plan.
 - **OBS-18 (placeholder descriptions).** 14 areas still carry
   `[Placeholder — pending updated Capability Reference Model]`. Deliberate, pending
-  NextGen's document. Should be called out to Shelley and Chris so they do not report it
-  as a defect.
+  NextGen's document. **Handled:** called out to Shelley in the sent handoff email, with an
+  explicit request not to spend review time on them. Still open as an `OBS-*` item, since the
+  placeholders remain until NextGen's document lands — but it no longer needs a decision.
 - **OBS-35 (duplicate ratings from arrow-key level selection).** Native radio groups select
   as focus moves, so arrowing from Level 1 to Level 5 fires four saves in as many
   milliseconds over a read-then-write upsert, and the compound index in `db.ts` is not
@@ -383,9 +397,13 @@ colour alone. Excel's own Accessibility Checker is the manual complement (Wave 7
   exists.** The durable fix is a unique index, which means a Dexie version bump, and every
   bump in this project has been a clean break that clears all tables — so it wants to ride
   along with a migration that is happening anyway.
-- **`src/data/templates/maturity-profile-template.csv`** may be retirable — Shelley said
-  the manual blank CSV profile could be "negated" if the workbook produces a profile
-  (`[14:38]`–`[15:30]`). Confirm before deleting.
+- ~~**`src/data/templates/maturity-profile-template.csv`** may be retirable~~ — **resolved in Wave
+  8: deleted.** Shelley asked whether the manual blank CSV profile could be "negated" now that the
+  workbook produces one (`[14:38]`–`[15:30]`). Checking before deleting produced something better
+  than an answer: the file had zero code references and lived in `src/data/templates/` rather than
+  `public/`, so it was never bundled and no user could ever have downloaded it — the premise that
+  states were using it was never true of the deployed tool. Flagged in the sent email so she can
+  object; git retains it either way.
 
 ---
 
@@ -1073,9 +1091,14 @@ front of Excel, which are called out as such.
       second version rather than an edit to the 4.1.0 entry because 4.1.0 was already deployed and
       being looked at. Two builds sharing one version number is precisely the traceability problem
       the 4.1.0 notes complain about for the September 11 fixes, which arrived stamped `4.0.0`
-- [x] Draft the follow-up email to Shelley (Section 7). **Drafted in 7.1**, covering every bullet
-      above plus the four Wave 8 additions she has not seen, and flagging the deleted CSV template so
-      she can object. Not sent
+- [x] Draft the follow-up email to Shelley, then send it. **Sent.** It covered the pilot scoping
+      answer, the changed Technology export figure, the deliberate placeholders, the deleted CSV
+      template (with an invitation to object), the offer to fold her workbook edits back into the
+      generator, and the deferred XLSX import and live-data export. Rewritten once after the v4.1.1
+      deploy to lead with the live URL rather than describing software she had no link to.
+      **The drafts are no longer carried here** — a sent email is correspondence, not a plan
+      artifact, and Section 7 held two full revisions of it. Recoverable from git history if ever
+      needed; the requirements it had to satisfy are what mattered and they are recorded above
 - [x] **Tag the releases — steering §13 step 5, deliberately deferred to last. Done.** Two annotated
       tags, both pushed: **`v4.1.0` at `cf27c56`** and **`v4.1.1` at `d68cbf3`**, each pointing at the
       commit that was actually deployed and verified rather than at a commit that might need a
@@ -1091,110 +1114,17 @@ front of Excel, which are called out as such.
 
 ---
 
-## 7. Handoff Email Contents
+## 7. Out of Scope
 
-Nick owes Shelley a scoping reply (`[18:36]`, `[26:06]`). It should state:
-
-- Delivery date for the reviewable build
-- **That CMS internal 508 review is a separate gate on their clock** — the date is
-  "ready for review," not "cleared"
-- **That exported Technology scores changed in Drop 1, and why.** Anyone who exported a CSV or
-  PDF before Wave 5 has a Technology figure computed as a flat mean over all 11 aspects rather
-  than the mean of the two sub-dimension means; it can differ by a couple of tenths, and it
-  read higher whenever Technical Infrastructure Management scored above Application
-  Management. The tool's own Results screen was already correct, so the export was the outlier.
-  Worth saying plainly and unprompted — a reviewer who spots a score move and is not told why
-  will reasonably assume the new number is the broken one. The `[4.1.0]` CHANGELOG section
-  has the detail
-- That the PDF's "ORBIT Dimension Summary" changed meaning in the same drop: it is now the
-  mean of per-area dimension scores over finalized areas, where it previously averaged every
-  rating and quietly included in-progress work
-- The specific ask: reviewers must validate the workbook's **arithmetic**, not only its
-  look and feel, because automated tests cannot evaluate Excel formulas (5.4)
-- That placeholder descriptions on 14 areas are intentional and pending NextGen's
-  document, so they are not reported as defects (OBS-18)
-- Offer: send back an edited workbook and the changes get folded into the generator
-- Note that XLSX import and live-data XLSX export are deferred, not dropped (Decision 6)
-
-### 7.1 Draft — updated after the v4.1.1 deploy
-
-Not sent. Still covers every bullet in Section 7, at **505 words against the Wave 8 draft's 698**.
-
-**What the deploy changed.** The Wave 8 draft was written before the site was live, so it described
-software rather than pointing at it. It now leads with the URL, and the workbook needs no directions
-because it is a button in the hero — which is the whole point of the v4.1.1 repositioning. One line
-is new and only makes sense post-deploy: if Shelley has opened the site before, the service worker
-will offer her a reload, and without it she would review the older build without knowing.
-
-**What the tightening cut, so it is not re-added by reflex.**
-
-| Cut                                     | Why                                                                    |
-| --------------------------------------- | ---------------------------------------------------------------------- |
-| "Excel 2007 and later, no add-ins"      | The workbook's `00_README` says it, and the build enforces it          |
-| "The tool now genuinely works offline"  | The site says it, and there is nothing for her to do about it          |
-| Predecisional marking as its own point  | CMS supplied the wording; she is not going to be surprised by it       |
-| The Technology worked example           | Three clauses down to one — direction and size, not the arithmetic     |
-| The PDF summary change, as its own item | Demoted to a trailing sentence; real, but second-order next to a score |
-
-Versions and tags are absent on purpose: she reviews a site, not a release history.
-
-**What must not be cut is the arithmetic ask.** It is the only part of the workbook our own testing
-cannot protect — no test in this repo can evaluate an Excel formula — and it is the reason to have a
-human in the loop at all. Also keep the explicit invitation to object to the deleted CSV template: a
-question was answered by deleting something of hers, and she should be able to push back on that
-cheaply.
-
-Numbers in the draft were re-derived rather than copied forward. The Technology divergence is **0.2
-at its maximum** (6 infrastructure aspects at 5 against 5 application aspects at 1: 3.2 exported,
-3.0 correct), not the vaguer "a couple of tenths" an earlier revision carried; and "41 figures across
-9 scenarios" matches `verify-workbook-in-excel.ts` — 9 scenario blocks, with the 5 rounding fixtures
-reported separately and not counted among the 41.
-
-> **Subject:** MITA 4.0 self-assessment tool and workbook — ready for your review
->
-> Hi Shelley,
->
-> Following up on scoping. Both pieces are live and ready for you to look at:
->
-> **https://nickarrow.github.io/mita-ssa-tool/**
->
-> The offline Excel workbook is a button on the home page next to "Get Started", so you don't need me
-> to send you a copy. If you've opened the site before today it may offer you a reload — take it, or
-> you'll be reviewing an older build.
->
-> Ready for _your_ review, not cleared: CMS internal 508 review is a separate gate on your clock and I
-> can't see the queue. If there's one I should be in, tell me and I'll get in it.
->
-> **The ask that matters most: please check the workbook's arithmetic, not just its look and feel.**
-> It calculates scores with Excel formulas that mirror the tool's rules, and no automated test can
-> evaluate an Excel formula — so the numbers are the part our testing protects least. I drive Excel
-> from a script to check 41 figures across 9 scenarios and they agree, but that's 41 figures, not
-> every combination. If you enter real levels for a domain you know well and a total looks wrong,
-> that's the finding I need.
->
-> **One number to know about.** CSVs and PDFs exported before mid-September averaged Technology flat
-> across all 11 aspects instead of averaging its two sub-dimensions. It moves by up to 0.2 and read
-> _high_ where infrastructure outscored applications; at the extreme, 3.2 became 3.0. The tool's own
-> Results screen was always right — only the export was wrong, so re-export rather than compare
-> against an old one. The PDF's "ORBIT Dimension Summary" also changed meaning in the same batch: it
-> now averages per-area scores across finalized areas only, with a visible "Areas" column showing the
-> denominator.
->
-> **Don't spend review time on the placeholder descriptions** on 14 capability areas — they're
-> deliberate, pending NextGen's document, and they say so in the text.
->
-> **On the manual CSV profile you asked about:** `maturity-profile-template.csv` is gone, and checking
-> before removing it turned up something better than an answer — the file was never included in the
-> deployed site, so nobody could ever have downloaded it. The workbook's Maturity Profile sheet covers
-> what it was for. **If you were relying on it, say so and I'll put it back.**
->
-> Two last things. If you edit the workbook at all — wording, column order, anything — send it back
-> and I'll fold it into the generator, so the next build carries your changes instead of you
-> re-editing. And reading an XLSX back into the tool, plus exporting a workbook pre-filled with a
-> state's live data, are deferred rather than dropped: both are real requests, both out of scope this
-> round.
->
-> [Nick]
+| Item                                                        | Disposition                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| XLSX import (fill in the spreadsheet, continue in the tool) | Deferred (Decision 6). Sean raised it `[11:30]`; Shelley agreed it is not the priority `[12:52]`. The reference implementation has a working `xlsxImport.ts` to revisit. Hidden ID columns keep it feasible                                                                                                                                                    |
+| Live-data XLSX export                                       | Deferred (Decision 6). The reference implementation's `includeCurrentData` path covers it                                                                                                                                                                                                                                                                      |
+| Capability model or maturity criteria changes               | None. Content is unchanged; workstream C only reads it                                                                                                                                                                                                                                                                                                         |
+| Reviewing the v4 model against the source deck              | Shelley and Chris, this week `[13:52]`                                                                                                                                                                                                                                                                                                                         |
+| PRA submission                                              | Shelley; going in under the approved APD template PRA `[15:45]`                                                                                                                                                                                                                                                                                                |
+| Formal ACR/VPAT                                             | **Settled by P2: none published.** An ACR asserts per-criterion conformance, and with no assistive-technology testing several criteria could only honestly be marked "Not Evaluated". What is published instead is the Accessibility section of `README.md` and the audit record in 8d                                                                         |
+| Remaining `OBS-*` items                                     | **26 of 46 stay in the backlog** (was 22 of 36 when this plan opened; Waves 1-8 closed 20 and added 10). Still open: OBS-4, 5, 8, 9, 10, 11, 12, 13, 14, 15, **16 (partially)**, 18, 19, 20, 23, 26, 27, 33, 35, 36, 41, 42, 43, 44, 45, 46. OBS-22 (PWA) and OBS-28 (favicon) were scheduled for Wave 8 and are **done**. See 8p for what to do with the rest |
 
 ---
 
@@ -2070,18 +2000,6 @@ panels stay mounted. The OBS-6 notes test started missing its 4s gate on about o
 in three. Shortening the typed string restored stability across four consecutive runs, but the
 underlying cost is real and is logged as OBS-33 — the one-prop fix removes the element
 `aria-controls` points at, so it needs its own accessibility pass rather than a rushed landing.
-
-## 9. Out of Scope
-
-| Item                                                        | Disposition                                                                                                                                                                                                                                                                                                                                                   |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| XLSX import (fill in the spreadsheet, continue in the tool) | Deferred (Decision 6). Sean raised it `[11:30]`; Shelley agreed it is not the priority `[12:52]`. The reference implementation has a working `xlsxImport.ts` to revisit. Hidden ID columns keep it feasible                                                                                                                                                   |
-| Live-data XLSX export                                       | Deferred (Decision 6). The reference implementation's `includeCurrentData` path covers it                                                                                                                                                                                                                                                                     |
-| Capability model or maturity criteria changes               | None. Content is unchanged; workstream C only reads it                                                                                                                                                                                                                                                                                                        |
-| Reviewing the v4 model against the source deck              | Shelley and Chris, this week `[13:52]`                                                                                                                                                                                                                                                                                                                        |
-| PRA submission                                              | Shelley; going in under the approved APD template PRA `[15:45]`                                                                                                                                                                                                                                                                                               |
-| Formal ACR/VPAT                                             | Pending P2                                                                                                                                                                                                                                                                                                                                                    |
-| Remaining `OBS-*` items                                     | 22 of 36 stay in the backlog: OBS-4, 5, 8, 9, 10, 11, 12, 13, 14, 15, **16 (partially)**, 18, 19, 20, 22, 23, 26, 27, 28, 33, 35, 36. OBS-22 (PWA, via P4) and OBS-28 (favicon) are scheduled for Wave 8. OBS-5, OBS-18 and OBS-35 are carried in Section 4 as needing a decision rather than code. OBS-36 wants pairing with a re-audit of data-empty states |
 
 ## 8j. Wave 6 Notes — 2026-09-14
 
@@ -2983,21 +2901,18 @@ evidence, and three of these came from _this project's own_ documentation.
 
 Three things, all requiring a human rather than more code: the push, the deploy — which the user
 dispatches by `workflow_dispatch` from this branch, against the fork explicitly — and sending the
-email drafted in Section 7.1. The `v4.1.0` tag is deliberately held until the deploy is verified, so
-it points at what actually shipped; the repository has **no tags at all** today, so it will be the
-first.
+email to Shelley. The `v4.1.0` tag is deliberately held until the deploy is verified, so it points at
+what actually shipped; the repository has **no tags at all** today, so it will be the first.
 
-**Two of the three have since happened.** The push and the deploy landed, the deploy was verified,
-and that verification produced the follow-up recorded in 8o — which is why **two** tags were owed
-rather than one. Both are now cut and pushed (`v4.1.0` at `cf27c56`, `v4.1.1` at `d68cbf3`); see the
-Section 6 tag checklist.
-
-**The email is still unsent**, but it is no longer stale: Section 7.1 has been rewritten for the
-post-deploy state, leading with the live URL and cut to 505 words from 698. It is ready to send as-is.
+**All three have since happened, and the order mattered.** The push and deploy landed and the deploy
+was verified — which produced the follow-up recorded in 8o, and is why **two** tags were owed rather
+than one (`v4.1.0` at `cf27c56` and `v4.1.1` at `d68cbf3`, both pushed; see the Section 6 checklist).
+The email went last, and deliberately so: sent at the Wave 8 draft it would have described download
+links in positions they no longer occupy, and it would have had no URL to point at.
 
 ---
 
-### 8o. Post-deploy — the workbook link was in the wrong place (v4.1.1)
+## 8o. Post-deploy — the workbook link was in the wrong place (v4.1.1)
 
 Recorded separately from 8n because it happened **after** Wave 8 closed and after the deploy, and
 because the way it was found is the transferable part.
@@ -3044,11 +2959,82 @@ establish came with it:
    what let the history record a release, a real finding from it, and a follow-up release. Both tags
    are now pushed — the repository's first.
 
-**Still open after all this:** sending the email to Shelley. The draft in Section 7.1 has since been
-rewritten for the post-deploy state — it leads with the live URL, drops the directions to the
-workbook now that it is a button in the hero, and is 505 words against the original 698. Ready to
-send; nobody has sent it.
+3. **The email had to be rewritten before it could go.** Drafted at the end of Wave 8, it described
+   software rather than pointing at it — no URL, and directions to a workbook download that v4.1.1
+   turned into a button in the hero. Rewritten post-deploy and cut from 698 words to 505, then sent.
+   Worth noting because the draft was "finished" for two days while being wrong.
 
-Plus OBS-45 and OBS-46, both deliberately logged rather than fixed, and both wanting a decision
-rather than a patch — OBS-41/45 share a one-word fix to the axe tag set that will surface judgement
-calls, and OBS-46 needs a responsive nav, which touches every page.
+**This closes the plan.** Every checklist box in Sections 1-6 is ticked, no decision remains open, and
+both drops are deployed and tagged. What is left is not plan work, and is listed in full under
+"What remains after this plan" at the end of Section 8.
+
+---
+
+## 8p. What remains after this plan
+
+**The plan is complete.** 96 of 96 checklist boxes across Waves 0-8, no open decision, both drops
+deployed, `v4.1.0` and `v4.1.1` tagged and pushed, the handoff email sent. There is no Drop 3 — Drops
+1 and 2 were the entire scope.
+
+Everything below is outside this plan. It is recorded here because it is what a session opening this
+document next will want, and re-deriving it costs an hour.
+
+#### Decided by a human, not by code — and both wanted before real state data exists
+
+| Item                                      | The decision                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **OBS-5** — stale enterprise-domain score | A finalized Data Management score does not move when other domains are later finalized, but the results table recomputes the aggregate live, so the two disagree. States finalize over weeks, so a pilot will see it. Recompute on read, or label it a point-in-time snapshot?                                                                                         |
+| **OBS-35** — duplicate ratings            | Arrow-keying Level 1 → 5 fires four saves over a non-atomic upsert and the compound index is not unique, so duplicates would double-count in a score submitted to CMS. Not reproduced. The durable fix is a unique index → a Dexie bump → a clean break that wipes tables, so it wants to ride along with a migration that is happening anyway rather than trigger one |
+
+Both are carried in Section 4 under "Noted, not decided". Neither is code work in this plan, and
+that is why they are still here.
+
+#### Accessibility, in priority order
+
+1. **One screen-reader pass on the assessment flow.** This is 8d's own first recommendation and the
+   single largest gap in the whole effort — every screen-reader claim in this repo is inferred from
+   the accessibility tree, not heard. It matters more since the v4.1.1 docs commit, which published a
+   README section stating plainly that no assistive-technology testing exists. That is the right
+   disclosure, and it is also the first question a 508 reviewer will ask.
+2. **OBS-41 and OBS-45** — add `experimental` to the axe tag set. One word, and it turns on two rules
+   covering two Level A criteria that have each had real failures behind that omission. Do it as its
+   own piece of work: it will surface judgement calls (the hero tagline) rather than patches.
+3. **OBS-43** — an unknown assessment id shows a permanent "Loading assessment…" spinner. The most
+   likely of these to hit a real pilot user, via a stale bookmark or a copied area id. Pairs with
+   **OBS-36** as one pass over empty and error states.
+4. **OBS-46** — responsive nav. At 375px the chrome leaves `<main>` 287px, which defeats any
+   above-the-fold intent on a phone. Touches every page.
+5. **OBS-33** and clickable-`Chip` focus indicators, both from 8d's recommendations.
+
+#### One thing never in this plan, and the highest-consequence item here
+
+The live pilot site is deployed from `feature/pilot-clearance`, which is **37 commits ahead of
+`origin/main`**, and `deploy.yml` still auto-triggers on push to `main`. Anything landing on `main`
+deploys the pre-v4 capability model over the site states are reviewing.
+
+Two things make this cheaper to fix than it sounds, and one makes it less alarming than earlier
+revisions of this document implied:
+
+- **`main` has zero commits the branch does not have**, so merging is a clean fast-forward.
+- There is **no `dependabot.yml`**, so no automated PR can trigger it. An earlier note here warned
+  that a merged dependabot PR would silently revert the site; that vector does not exist. It needs a
+  human to push or merge to `main`.
+
+Merging the branch to `main` removes the hazard and makes the deploy configuration describe what
+actually happens, instead of pointing at a branch nobody deploys.
+
+#### Smaller, and genuinely optional
+
+- `.kiro/steering/development-standards.md:19` still reads "WCAG 2.1 AA compliant for government
+  use", the flat claim removed from README, PROJECT_FOUNDATION and SECURITY. Line 696 of the same
+  file already frames AA correctly as required rather than achieved. Steering is user-authored, so
+  it was left alone deliberately — but it is what the next contributor, and the next agent session,
+  reads as established fact. The same file's "Full functionality after initial load, even without
+  network" is stale for the reason Wave 8 softened that copy in the app.
+- **OBS-44** — every deploy makes offline clients re-download the workbook, because ExcelJS stamps
+  ZIP timestamps it does not expose. ~217 KB, no correctness impact. Read the entry before attempting
+  it; `SOURCE_DATE_EPOCH` alone does not fix it and the obvious verification manufactures a false
+  success.
+- **OBS-42** — a static `role="alert"` on Landing. A latent trap rather than a live defect.
+- The remaining pre-existing backlog: OBS-4, 8, 9, 10, 11, 12, 13, 14, 15, 16 (partially), 18, 19,
+  20, 23, 26, 27. None was in scope here and none blocks the pilot.
