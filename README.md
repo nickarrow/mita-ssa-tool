@@ -178,8 +178,10 @@ npm run verify:workbook-excel     # Verify its formulas by driving Excel (macOS 
 ## Offline Excel Workbook
 
 States that cannot use a browser-based tool can complete the same assessment in an Excel
-workbook generated from the same `capabilities.json` and `orbit-model.json` the app uses, so
-the two artifacts cannot describe different assessments.
+workbook generated from the same `capabilities.json` and `orbit-model.json` the app uses, so both
+artifacts are built from one model. Whether they always _compute_ identically is a narrower claim —
+the workbook's scoring is a second implementation in Excel formulas, and no test here can evaluate a
+formula. See "Verifying it" below.
 
 The workbook has ten sheets: a README, three reference sheets, two input sheets covering all
 14 capability domains, 72 capability areas and 41 maturity aspects, and four calculated sheets

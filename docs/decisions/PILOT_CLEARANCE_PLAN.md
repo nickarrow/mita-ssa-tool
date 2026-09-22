@@ -27,15 +27,15 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
 ### Where things stand
 
-|                |                                                                                                                                                                                                                                                                                                                                    |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                                                                                                                                                                                                      |
-| Commits so far | **Drop 1:** Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c`. **Drop 2:** Wave 6 `6fda84c` + `269ea0a` + `e38f1cc`, Wave 7 `00de4ba` + docs `2786d04` + text-column fix `18d1fb8` |
-| Pushed         | Drop 1 is pushed and live. **Waves 6 and 7 are committed locally, not pushed or deployed** — they change nothing a stakeholder can see, since the download links are Wave 8                                                                                                                                                        |
-| Deployed       | Drop 1 only. Pages dispatched from this branch at `84ec16c` on September 11, so the live build is **all of Drop 1 plus the CMS top/bottom notices**. Waves 6 and 7 are not in it                                                                                                                                                   |
-| Green at       | 998 tests / 44 files; typecheck, lint, knip, `format:check` and `build` all clean. 93/93 mutations proved failable. Workbook arithmetic verified by driving Excel — 41/41, covering every column — see 8l                                                                                                                          |
-| Node floor     | **22.18.** The workbook generator is a `.ts` file run directly by Node and needs native type stripping. Declared in `engines`, `.nvmrc`, and both workflows — which were on Node 20                                                                                                                                                |
-| Next wave      | **Wave 8 — delivery, docs, handoff.** See the pre-brief in Section 8m                                                                                                                                                                                                                                                              |
+|                |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Working branch | `feature/pilot-clearance`, cut from `feature/capability-model-v4` @ `33e7963`                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Commits so far | **Drop 1:** Waves 1-3 `a0b53c2` / `e25d665` / `81f076f`, docs `ef141e8` + `7710921`, accessibility `5580191` + `bdf1871` + `198c300`, docs `dbd54c7`, Wave 5 `1efdc9f`, docs `37a646c`, CMS notices `84ec16c`. **Drop 2:** Wave 6 `6fda84c` + `269ea0a` + `e38f1cc`, Wave 7 `00de4ba` + docs `2786d04` + text-column fix `18d1fb8` + TEXTJOIN removal `7adf873`, docs `0f67d07`. **Wave 8:** deps `c7c93fa`, build wiring `95a0fa9`, PWA + icons `75a113b`, download links `feb9c76` |
+| Pushed         | Drop 1 is pushed and live. **Waves 6, 7 and 8 are committed locally and not yet pushed.** Waves 6-7 changed nothing a stakeholder could see; Wave 8 changes a great deal, so it goes out as one deliberate deploy                                                                                                                                                                                                                                                                    |
+| Deployed       | Drop 1 only. Pages dispatched from this branch at `84ec16c` on September 11, so the live build is **all of Drop 1 plus the CMS top/bottom notices**. Waves 6, 7 and 8 are not in it                                                                                                                                                                                                                                                                                                  |
+| Green at       | 1022 tests / 46 files; typecheck, lint, knip, `format:check` and `build` all clean, plus `verify:workbook-artifact`. 93/93 mutations proved failable, and the Wave 8 additions were mutation-proved individually. Workbook arithmetic verified by driving Excel — 41/41, covering every column — see 8l                                                                                                                                                                              |
+| Node floor     | **22.18.** The workbook generator is a `.ts` file run directly by Node and needs native type stripping. Declared in `engines`, `.nvmrc`, and both workflows — which were on Node 20                                                                                                                                                                                                                                                                                                  |
+| Next wave      | **None — Wave 8 is the last.** What remains inside it is the final gate, the deploy (dispatched by the user) and the handoff email. See Section 8n for the record                                                                                                                                                                                                                                                                                                                    |
 
 > **Drop 1 is delivered.** Waves 1-5 are done and deployed, which is the whole of the Friday
 > September 12 scope, plus the CMS-requested top and bottom notices (Decision 15).
@@ -122,14 +122,24 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    git branch --show-current && git status --short && git log --oneline -4
    npm run typecheck && npm run lint && npm test && npm run audit:code
    ```
-4. Also read `docs/CODEBASE_OBSERVATIONS.md` — 35 `OBS-*` entries, referenced throughout
-   this plan. 36 entries; **14 resolved** — OBS-1, 2, 3, 6, 7, 17, 21, 24, 25, 29, 30, 31, 32,
-   34 — each carrying a `**Resolved` marker naming the wave, so the file can be scanned rather
-   than cross-referenced against this one. **OBS-16 is only _partially_ resolved** (one of its
-   four bullets); earlier revisions of this plan listed it as closed, which was wrong. Newest is
-   OBS-36 (`/results` has no headings at all in its empty-data state).
-   Newest and unresolved: OBS-33 (collapsed panels stay mounted), OBS-35 (duplicate-rating
-   path — decide before real state data exists).
+4. Also read `docs/CODEBASE_OBSERVATIONS.md` — **44 `OBS-*` entries, 20 resolved**, referenced
+   throughout this plan. Resolved: OBS-1, 2, 3, 6, 7, 17, 21, 22, 24, 25, 28, 29, 30, 31, 32, 34,
+   37, 38, 39, 40 — each carrying a `**Resolved` marker naming the wave, so the file can be
+   scanned rather than cross-referenced against this one. **OBS-16 is only _partially_ resolved**
+   (one of its four bullets); earlier revisions of this plan listed it as closed, which was wrong.
+
+   Wave 8 added four, all unresolved and all worth reading before touching the relevant area:
+
+   | New    | What                                                                                                                |
+   | ------ | ------------------------------------------------------------------------------------------------------------------- |
+   | OBS-41 | **WCAG 2.5.3 is unenforced** — axe reports zero violations while three controls failed it                           |
+   | OBS-42 | A static `role="alert"` on Landing is a live region that never fires, and breaks any "count the live regions" check |
+   | OBS-43 | An unknown assessment id renders a blank page: no heading, no error. Pairs with OBS-36                              |
+   | OBS-44 | Every deploy makes offline clients re-download the workbook, because its bytes shift per build                      |
+
+   Also still open and worth a decision before real state data exists: OBS-33 (collapsed panels
+   stay mounted) and OBS-35 (the duplicate-rating path).
+
 5. Append what you learn to Section 8 so the next session inherits it.
 
 ### Working agreements established with the user
@@ -887,8 +897,8 @@ front of Excel, which are called out as such.
       `calculateDimensionScore` on shared fixtures (5.4 step 1)
 - [x] Snapshot tests on generated formula strings (5.4 step 2)
 - [x] Arithmetic verified in Excel — **scripted, not by hand.** `npm run verify:workbook-excel`
-      drives Excel over AppleScript, seeds input cells, and reads the computed cells back. 36
-      checks across 8 scenarios. This replaced the hand-verification the plan called for and
+      drives Excel over AppleScript, seeds input cells, and reads the computed cells back. 41
+      checks across 9 scenarios. This replaced the hand-verification the plan called for and
       found three defects the 989-test suite could not, exactly as budgeted for
 - [x] Excel's Accessibility Checker re-run with `06`-`09` present — **clean in every
       category**, confirmed by the user on September 15. Wave 6's run was also clean, so the
@@ -912,19 +922,26 @@ front of Excel, which are called out as such.
 
 ### Wave 8 — Delivery, docs, handoff
 
-- [ ] Wire the generator into `npm run build`; confirm the file lands in `dist/`
-- [ ] Document the go-live switch: setting `VITE_DRAFT_MODE=false` in `deploy.yml` removes
+- [x] Wire the generator into `npm run build`; confirm the file lands in `dist/`
+- [x] Document the go-live switch: setting `VITE_DRAFT_MODE=false` in `deploy.yml` removes
       the disclaimer from the app and all exports in one change (Decision 13)
-- [ ] Add the generator plus validation tests to `ci.yml`
-- [ ] Download links: Import/Export (primary), Landing (Decision 10), Guide
-- [ ] Handle dev mode: the workbook is a gitignored build output, so `npm run dev` has no
-      file and the three links would 404. Add a `predev` generation step or a graceful message
-- [ ] Resolve **P4** (PWA) and align the offline claims in Landing, About, README,
+- [x] Add the generator plus validation tests to `ci.yml`
+- [x] Download links: Import/Export (primary), Landing (Decision 10), Guide
+- [x] Handle dev mode: the workbook is a gitignored build output, so `npm run dev` has no
+      file and the three links would 404. Add a `predev` generation step or a graceful message.
+      **Both, and the premise was wrong in a way that mattered.** It does not 404 — Vite's SPA
+      fallback answers the workbook URL with **HTTP 200, `Content-Type: text/html` and 1,922 bytes
+      of `index.html`**, which the `download` attribute then saves to disk _as_ the `.xlsx`. Silent
+      file corruption, no error anywhere, and Excel blames itself. So: `predev` generates the file,
+      **and** a dev/preview middleware returns a real 404 when it is absent. Exactly the failure
+      `workbox.navigateFallbackDenylist` already guarded for the service worker and nobody had
+      guarded here
+- [x] Resolve **P4** (PWA) and align the offline claims in Landing, About, README,
       PROJECT_FOUNDATION, and the steering file with reality
-- [ ] **OBS-28** — add `public/favicon.svg` and reference it as `%BASE_URL%favicon.svg`. No
+- [x] **OBS-28** — add `public/favicon.svg` and reference it as `%BASE_URL%favicon.svg`. No
       favicon exists today and the root-absolute path would not respect the base path anyway.
       Natural pairing with the PWA manifest, which needs an icon set
-- [ ] Mark the draft in `index.html`'s `<title>` and `<meta name="description">`. Those are
+- [x] Mark the draft in `index.html`'s `<title>` and `<meta name="description">`. Those are
       what render as the link preview when the pilot URL is pasted into Teams or Slack, and
       they are currently unmarked — the runtime title suffix does not reach a crawler. Needs
       a Vite HTML transform so `VITE_DRAFT_MODE=false` still removes it; deferred here rather
@@ -933,22 +950,41 @@ front of Excel, which are called out as such.
 - [ ] Full check: `npm run typecheck && npm run lint && npm test && npm run build`
 - [ ] Manual smoke on a `workflow_dispatch` deploy: banner on every page, workbook
       downloads and opens cleanly, exports carry the notice
-- [ ] `CHANGELOG.md`: fold the `[Unreleased]` section into a version entry. Wave 5 already
+- [x] `CHANGELOG.md`: fold the `[Unreleased]` section into a version entry. Wave 5 already
       populated it, because that wave changes the Technology figure a state submits to CMS and
       shipping Drop 1 with no record of that would have been wrong
-- [ ] `PROJECT_FOUNDATION_v2.md`: **workbook artifact section done in Wave 7** — sheets, module
+- [x] `PROJECT_FOUNDATION_v2.md`: **workbook artifact section done in Wave 7** — sheets, module
       map, scoring parity, accepted divergences, minimum Excel version. Still to do: the
       draft-mode flag, and the export formats table once the download links exist
 - [x] `.kiro/steering/development-standards.md`: workbook generator, the `scripts/` convention,
       and the "verifying workbook changes" gate. Done across Waves 6 and 7
-- [ ] `README.md`: **offline workbook section done in Wave 7** (what it is, how to generate and
+- [x] `README.md`: **offline workbook section done in Wave 7** (what it is, how to generate and
       verify it). Revisit once the in-app download links land, since the user-facing story
       changes from "run a script" to "click a link"
-- [ ] Resolve the `maturity-profile-template.csv` question (Section 4, Noted)
-- [ ] Update `docs/CODEBASE_OBSERVATIONS.md` — most entries are already marked resolved as
-      their wave landed; check nothing from Waves 6-8 is left unrecorded
-- [ ] Version bump and `npm install --package-lock-only`
+- [x] Resolve the `maturity-profile-template.csv` question (Section 4, Noted). **Deleted.** The
+      confirmation Shelley's question needed turned out to be checkable rather than a judgement
+      call: the file had **zero code references**, lived in `src/data/templates/` rather than
+      `public/`, and was therefore never bundled — so no user could ever download it, and the
+      premise that states were using it as a manual blank was never true of the deployed tool. The
+      workbook's `06_Maturity_Profile` supersedes what it was for. Flagged in the handoff email so
+      she can object; git retains it either way
+- [x] Update `docs/CODEBASE_OBSERVATIONS.md` — most entries are already marked resolved as
+      their wave landed; check nothing from Waves 6-8 is left unrecorded. **Now 44 entries, 20
+      resolved.** Wave 8 closed OBS-22, OBS-28 and OBS-37, and added four: OBS-41 (WCAG 2.5.3 is
+      unenforced and three controls were failing it), OBS-42 (a static `role="alert"` on Landing),
+      OBS-43 (unknown assessment id renders a blank page), OBS-44 (every deploy re-downloads the
+      workbook to offline clients)
+- [x] Version bump and `npm install --package-lock-only`. **4.0.0 → 4.1.0**, MINOR: user-facing
+      features were added and no data format changed, so nothing migrates and existing assessments
+      are untouched
 - [ ] Draft the follow-up email to Shelley (Section 7)
+- [ ] **Tag the release — steering §13 step 5, deliberately deferred to last.** Steps 1-3 (version,
+      lockfile, CHANGELOG) are done, and this wave's docs commit serves as step 4's release commit.
+      The tag is held back until the deploy is verified, so `v4.1.0` points at what actually shipped
+      rather than at a commit that might need a follow-up fix. Worth knowing while doing it:
+      **`git tag -l` currently returns nothing** — v4.0.0 shipped untagged, so there is no prior tag
+      to pattern-match against, and `v4.1.0` will be the repository's first. Pushing a tag is a
+      publish action, so it goes out with the push rather than ahead of it
 
 ---
 
@@ -965,7 +1001,7 @@ Nick owes Shelley a scoping reply (`[18:36]`, `[26:06]`). It should state:
   read higher whenever Technical Infrastructure Management scored above Application
   Management. The tool's own Results screen was already correct, so the export was the outlier.
   Worth saying plainly and unprompted — a reviewer who spots a score move and is not told why
-  will reasonably assume the new number is the broken one. The `[Unreleased]` CHANGELOG section
+  will reasonably assume the new number is the broken one. The `[4.1.0]` CHANGELOG section
   has the detail
 - That the PDF's "ORBIT Dimension Summary" changed meaning in the same drop: it is now the
   mean of per-area dimension scores over finalized areas, where it previously averaged every
@@ -2347,7 +2383,7 @@ float error to absorb.
 The plan called for opening the file and hand-verifying three areas. That was replaced with
 `scripts/verify-workbook-in-excel.ts`, which drives Excel over AppleScript: copy the workbook to
 a temp file, seed input cells, `calculate full`, read the computed cells, close without saving,
-compare against the same JS model the unit tests use. 36 checks across 8 scenarios, plus the 5
+compare against the same JS model the unit tests use. 41 checks across 9 scenarios, plus the 5
 rounding fixtures in a scratch workbook.
 
 Better than hand-verification in three ways: it is repeatable, it derives every cell address from
@@ -2429,7 +2465,7 @@ submission the way defects 1-4 could have. It is a go-live check, not a design r
 
 ### Limitations — what this wave's verification does not establish
 
-- **36 checks are 36 checks.** The scenarios cover the rules 5.4 identifies as risky, not the
+- **41 checks are 41 checks.** The scenarios cover the rules 5.4 identifies as risky, not the
   cross product of 72 areas × 3 dimensions × every partial-fill state.
 - **Manual entry through the dropdown is unverified.** See the section immediately above.
 - **The divergence enumeration is still modelled.** Five confirmed points make the model
@@ -2437,7 +2473,9 @@ submission the way defects 1-4 could have. It is a go-live check, not a design r
 - **One version of one spreadsheet program.** Excel 16 on macOS. Nothing has opened the file in
   Excel for Windows, Excel on the web, LibreOffice, or Google Sheets, and `TEXTJOIN` over an
   implicit array is the most likely thing to behave differently.
-- **No screen reader has touched the computed sheets.** Excel's Accessibility Checker has not run
+- **No screen reader has touched the computed sheets.** (Excel's own Accessibility Checker _has_
+  now run with `06`-`09` present and was clean in every category — see the Wave 7 checklist. The
+  sentence below predates that and is kept only for the screen-reader half.) It has not run
   since `06`-`09` landed either; that is the one Wave 7 checklist item still open.
 - **Print Preview on `06`** is unseen. It is the widest sheet in the workbook at 19 columns, and
   the natural-pagination setup that replaced `fitToWidth` was fixed after the last Excel pass.

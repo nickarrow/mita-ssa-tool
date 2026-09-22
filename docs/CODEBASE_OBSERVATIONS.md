@@ -1443,3 +1443,163 @@ assertion is mutation-proved, and `assertFooterFits`'s own boundary is unit-test
 sides in `scripts/xlsx/footer.test.ts`. What the build-time throw in `workbook.ts` adds is
 failing at generation rather than at a reviewer's desk. If Wave 7 or a later change wants
 more in the footer, that guard is the thing to read first.
+
+### OBS-41 — WCAG 2.5.3 Label in Name is unenforced, and was failing in three places
+
+**Confirmed** in Wave 8 by computing accessible names in a real browser and applying the
+success criterion's literal substring test. **Two instances introduced and fixed within that
+wave; a third was pre-existing and fixed alongside them.**
+
+SC 2.5.3 (Level A) requires a control's accessible name to **contain** the text presented
+visually. An `aria-label` that adds words _in the middle_ of the visible label breaks it:
+
+| Control                                            | Visible label             | Accessible name                                          |
+| -------------------------------------------------- | ------------------------- | -------------------------------------------------------- |
+| Guide workbook link (new, fixed)                   | `Download the workbook`   | `Download the blank offline workbook, Excel workbook, …` |
+| Landing workbook link (new, fixed)                 | `Prefer Excel? Download…` | `Download the blank offline workbook, Excel workbook, …` |
+| `About.tsx` "View on GitHub" (pre-existing, fixed) | `View on GitHub`          | `View the project on GitHub (opens in new window)`       |
+
+`"download the blank offline workbook, …".includes("download the workbook")` is `false` — the
+interposed "blank offline" is enough to fail it.
+
+**What makes this worth an entry is that this project's axe configuration cannot see it — and the
+reason is a single tag.** axe-core 4.11.1 ships `label-content-name-mismatch`, tagged `wcag21a`,
+`wcag253` **and `experimental`**. Experimental rules are excluded from tag-based runs unless
+`experimental` is among the requested tags, so the repo's ruleset — `wcag2a`, `wcag2aa`, `wcag21a`,
+`wcag21aa`, `best-practice` — silently omits the one rule that covers this criterion.
+
+Measured against the failing markup, three configurations:
+
+| `runOnly` tags                                              | Rule evaluated? | Result                   |
+| ----------------------------------------------------------- | --------------- | ------------------------ |
+| The repo's current set                                      | **no**          | zero violations          |
+| The same set plus `experimental`                            | yes             | reported as `incomplete` |
+| `{ type: 'rule', values: ['label-content-name-mismatch'] }` | yes             | reported as `incomplete` |
+
+So this **is** a tag-filtering gap, and one tag closes it. An earlier draft of this entry claimed
+the rule "never evaluates the anchors at all" and that the gap was outside automated coverage at any
+configuration; both were wrong, and wrong in the direction that discourages the cheap fix.
+
+Two caveats before adding the tag:
+
+- **Under jsdom the result lands in `incomplete`, not `violations`**, so `toHaveNoViolations()` would
+  still pass. The rule's comparison path needs a canvas that jsdom does not provide — the same
+  limitation that makes `color-contrast` unreportable in this suite. Real coverage means running it
+  in a browser.
+- Enabling `experimental` enables _every_ experimental rule, so expect unrelated new findings and
+  budget for triaging them rather than suppressing them wholesale.
+
+**The pattern to use instead**, now applied: put supplementary information (file type, size,
+"opens in new window") in `aria-describedby` pointing at visible text, or in the visible label
+itself — not in an `aria-label` that paraphrases. Where an `aria-label` is genuinely needed, it
+must start with or contain the visible string verbatim. `EngagementItem` in `About.tsx` is the
+good precedent: its accessible name is the visible title plus a suffix.
+
+**Still unguarded.** No test asserts the property. Two options, in order of preference: add
+`experimental` to the axe tag list and run the rule in a real browser where it can actually report a
+violation, or — cheaper and jsdom-safe — assert directly that each control's `aria-label`, where
+present, contains its visible text. The second is a few lines and would have caught all three
+instances; the first is the better long-term answer because it also covers controls nobody thought
+to write an assertion for.
+
+### OBS-42 — A static `role="alert"` on the landing page is a live region that never fires
+
+**Confirmed** in Wave 8 while counting live regions on the page, by enumerating every
+`[role]` in the rendered DOM. Not introduced by that wave and **not fixed** — recorded because
+it is a latent trap rather than a current defect.
+
+`src/pages/Landing.tsx` renders the privacy notice as `<Alert severity="info">`, and MUI's
+`Alert` defaults to `role="alert"` — an **assertive** live region. The content is static and
+present at mount, so no announcement ever fires: live regions announce on _mutation_, and a
+region that is populated before it is observed produces nothing. OBS-22's Wave 8 notes record the
+same mechanism for the update prompt, where it had to be worked around deliberately. (An earlier
+draft of this entry credited the Wave 4 audit for that reasoning; the passage is in OBS-22 and was
+written in Wave 8.)
+
+Why it matters anyway, in two directions:
+
+1. **It is a loaded gun.** Any future change that makes that copy dynamic turns a quiet element
+   into an assertive interruption, which is the most disruptive announcement available and the
+   thing WCAG reserves for genuine emergencies.
+2. **It makes "count the live regions" an unreliable check.** This is how it was found: a test
+   asserting the update prompt is the only live region passed while a second one existed,
+   because the assertion queried `role="status"` and missed `role="alert"`. Anything reasoning
+   about live regions on a page that includes the landing page has to know this one is there.
+
+Same shape exists wherever an MUI `Alert` carries static text. `ImportExport.tsx` now has one
+too, in the workbook section added in Wave 8. Neither is announced; both would be if the copy
+became dynamic.
+
+Cheap fix if it is ever worth doing: pass `role="presentation"` to any `Alert` whose content is
+static, as `PwaUpdatePrompt` does — there for a different reason, to avoid nesting a second live
+region inside a deliberate one.
+
+### OBS-43 — An unknown assessment id renders a blank page with no headings and no error
+
+**Confirmed** in Wave 8 by navigating to `/assessment/health-plan-administration` — a plausible
+mistake, since that is a capability **area** id and the route takes an **assessment** id
+(`/assessment/:assessmentId` in `App.tsx`).
+
+Measured on that URL: `h1` is `null`, the page contains **zero** `h1`/`h2`/`h3` elements, zero form
+controls, and no error message. With the correct id the same route renders an `h1`, 12 headings, 55
+radios and 30 text fields, so this is specific to the lookup failing.
+
+**It is not a blank page — it is a permanent "Loading assessment…" spinner**, which is worse. The
+guard at `Assessment.tsx:706` is `if (!assessment || !capabilityInfo || !currentNav)` and its
+fallback renders a `CircularProgress` with that label. So the tool actively tells the user to wait
+for something that is never going to arrive. An earlier draft of this entry described it as blank and
+as an empty content area; both were wrong, and they point at a different fix.
+
+**Root cause.** `useLiveQuery(() => db.capabilityAssessments.get(id))` at `Assessment.tsx:182`
+returns `undefined` **both** while the query is in flight **and** when no such record exists. The
+component therefore cannot distinguish "still loading" from "does not exist", so any fix has to
+resolve that ambiguity first — for example by tracking the query's settled state separately, rather
+than by adding a second guard on the same `undefined`.
+
+Three consequences:
+
+1. **The feedback is actively misleading.** A stale bookmark or a mistyped URL presents as a hang.
+2. **No heading at all**, which is a worse version of OBS-36 (`/results` has no headings in its
+   empty-data state). A screen-reader user navigating by heading finds nothing to orient on, and
+   `document.title` is unchanged, so there is no announcement either.
+3. **It is reachable by accident**, not just by URL tampering: area ids and assessment ids are both
+   slugs in the same URL shape, and the area id is the one that appears in the Results routes.
+
+Wants pairing with OBS-36 as a single "empty and error states across the app" pass rather than a
+one-route patch — `/results`, `/results/:domainId`, `/history/:historyId` and this route all have
+the same class of question, and only `/results` has been looked at.
+
+### OBS-44 — Every deploy makes offline clients re-download the workbook
+
+**Confirmed** in Wave 8 by measurement, and a direct consequence of two things that are each
+correct on their own.
+
+ExcelJS stamps ZIP entry timestamps it does not expose, so the generated `.xlsx` differs on
+every run even when the model is byte-identical — observed at 222,655 / 222,656 / 222,658 bytes
+for unchanged content, with the length varying because the timestamp encoding does. Workbox
+computes a precache revision hash from file contents. So the workbook's revision changes on
+every deploy, and every client with the service worker installed re-downloads ~217 KB whether
+or not the workbook actually changed.
+
+Not a correctness problem, and small in absolute terms. Recorded because the obvious fix does not
+work, and someone will otherwise spend an afternoon discovering that.
+
+**`SOURCE_DATE_EPOCH` alone is not sufficient.** It is the reproducible-builds convention,
+`scripts/xlsx/paths.ts` already reads it, and nothing sets it in CI — so it looks like the answer.
+Measured with the epoch pinned and two generator runs three seconds apart:
+
+| Compared                        | Result                                                  |
+| ------------------------------- | ------------------------------------------------------- |
+| Unzipped parts                  | **Byte-identical** — `diff -rq` clean across every part |
+| Entry CRCs                      | Identical                                               |
+| `.xlsx` bytes                   | **Differ**                                              |
+| md5, hence the Workbox revision | **Differs**                                             |
+
+The residue is ZIP entry metadata, which ExcelJS stamps from the clock and does not expose. So
+fixing this needs the archive's entry timestamps normalised after generation, not just the epoch
+pinned.
+
+**A trap worth naming, because it will manufacture a false success.** DOS ZIP timestamps have
+two-second granularity. Two runs less than two seconds apart produce byte-identical archives
+whether or not `SOURCE_DATE_EPOCH` is set. Any verification of this that runs the generator twice in
+quick succession will appear to prove the fix works.

@@ -60,8 +60,7 @@ mita-4.0/
 │   ├── constants/            # Application constants
 │   ├── data/
 │   │   ├── capabilities.json # Capability domains and areas (72 areas)
-│   │   ├── orbit-model.json  # ORBIT maturity criteria (41 aspects)
-│   │   └── templates/        # Export templates (CSV)
+│   │   └── orbit-model.json  # ORBIT maturity criteria (41 aspects)
 │   ├── hooks/                # Custom React hooks
 │   ├── pages/                # Route page components
 │   ├── services/
@@ -411,20 +410,52 @@ interface SubDimensionScore {
 
 ## Export Formats
 
-| Format | Purpose              | Contents                             |
-| ------ | -------------------- | ------------------------------------ |
-| PDF    | Stakeholder reports  | Scores, charts, dimension breakdowns |
-| CSV    | CMS Maturity Profile | Standard format for MESH upload      |
-| JSON   | Data backup          | Full assessment data (no blobs)      |
-| ZIP    | Complete backup      | JSON + PDF + all attachments         |
+Five artifacts leave the tool. The first four are generated in the browser from the state's own
+data; the fifth is a static build output and is the odd one out in every respect.
+
+| Format | Purpose              | Contents                                  | Generated      | Carries the draft notice                                                        |
+| ------ | -------------------- | ----------------------------------------- | -------------- | ------------------------------------------------------------------------------- |
+| PDF    | Stakeholder reports  | Scores, charts, dimension breakdowns      | In the browser | Cover band + page footer                                                        |
+| CSV    | CMS Maturity Profile | Standard format for MESH upload           | In the browser | A notice row                                                                    |
+| JSON   | Data backup          | Full assessment data (no blobs)           | In the browser | A `draftNotice` field                                                           |
+| ZIP    | Complete backup      | JSON + PDF + all attachments              | In the browser | In `manifest.json`                                                              |
+| XLSX   | Offline assessment   | **Blank** — the whole model, no user data | At build time  | `A1` on every sheet, the print footer, the document properties, and `00_README` |
+
+The XLSX row is worth reading twice: it contains **no assessment data**, so it is not an export of
+anything. It is downloaded, not generated on demand, from three links — Import & Export, the landing
+page and the Guide — all pointing at one static file under the deployment base path.
+
+### The draft-mode flag
+
+Every notice above, in the app and in all five artifacts, derives from a single build variable.
+Setting `VITE_DRAFT_MODE=false` removes all of them in one change (Decision 13); the procedure and
+what exactly disappears are documented in `.github/workflows/deploy.yml`, where the line sits
+commented out ready to enable.
+
+Three properties make it safe to rely on:
+
+- **Default-on.** Only the literal string `'false'` disables it, so a typo, an empty value or a
+  forgotten variable all fail toward _showing_ the notice.
+- **One copy of the wording.** `src/constants/draftNotice.ts` holds the CMS-supplied text and is
+  deliberately free of `import.meta`, so build-time tooling can import the same strings. Browser
+  code reads `IS_DRAFT` from `src/constants/index.ts` (`import.meta.env`); the workbook generator
+  reads `isDraft()` from `scripts/xlsx/env.ts` (`process.env`). Both are set by the same `env:`
+  block in the deploy workflow, so the app and the workbook cannot disagree.
+- **Build-time, not runtime.** Because the value resolves during the build, disabling it
+  tree-shakes the banner and its copy out of the bundle rather than merely hiding them.
+
+The static `<title>` and `<meta name="description">` in `index.html` are marked by a Vite transform
+rather than hardcoded, for the same reason — hardcoding would survive go-live. Those two are what a
+crawler and a link unfurler read, which the runtime title suffix never reaches.
 
 ---
 
 ## Offline Excel Workbook
 
 An `.xlsx` equivalent of the whole assessment, for states that cannot use a browser-based tool.
-Generated from the same two data files the app reads, so the workbook and the app cannot describe
-different assessments.
+Generated from the same two data files the app reads, so the workbook and the app are built from one
+model. Whether they always _compute_ identically is a narrower claim — see "Scoring parity, and its
+limits" below.
 
 ### Where it lives
 

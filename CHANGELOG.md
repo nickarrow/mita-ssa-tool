@@ -5,11 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.1.0] - 2026-09-22
 
-Pilot clearance work on `feature/pilot-clearance`. See
-`docs/decisions/PILOT_CLEARANCE_PLAN.md` for the scope record and decision log. The
-version bump lands with the final wave.
+Pilot clearance release. Everything in it exists to get the tool and the offline workbook
+through CMS internal clearance so the MITA 4.0 pilot can begin: the predecisional notices CMS
+asked for, an accessibility pass against WCAG 2.1 AA, several scoring corrections, the offline
+Excel workbook and its in-app download links, and a service worker that makes the long-standing
+"works offline" claim true.
+
+A MINOR release, and the two halves of that are worth separating. **No stored data format changed**
+— the database schema is untouched, no migration runs, and existing assessments are unaffected.
+**Export contents did change**, in four ways detailed under Changed and Fixed: the CSV maturity
+profile gains a notice row, JSON and the ZIP manifest gain a `draftNotice` field, the PDF executive
+summary gains an "Areas" column and its ORBIT Dimension Summary changes meaning, and **the exported
+Technology figure changes value for identical stored data**. Anyone holding an export taken before
+this release should re-export rather than compare the two.
+
+One traceability note for anyone reconciling exports against versions: roughly half the Fixed
+section — the Technology weighting, the To-Be figure, aggregate dimensions in PDFs, the N/A
+labelling — went live on the pilot site on September 11, ahead of this release being numbered. So
+exports produced since then are stamped `appVersion: 4.0.0` while already containing the corrected
+figures.
+
+Scope record and decision log: `docs/decisions/PILOT_CLEARANCE_PLAN.md`.
 
 ### Added
 
@@ -27,6 +45,63 @@ version bump lands with the final wave.
   so an assessment in progress is never replaced by a new build mid-edit
 - **A tab icon**, which was referenced but missing (OBS-28), plus the icon set needed to install
   the tool as an app on a desktop or phone
+- Draft notice in every export format (PDF cover band and page footers, CSV, JSON, ZIP
+  manifest), matching the in-app banner. Setting `VITE_DRAFT_MODE=false` removes it
+  from the app and all exports in one build variable
+- **Second disclaimer notice at the foot of every page**, carrying the Paperwork Reduction
+  Act statement. CMS requires a notice at both the top and the bottom, with different
+  wording in each
+- **Offline Excel workbook, generated from the same data model as the tool.** A blank
+  self-assessment workbook covering all 14 capability domains, 72 capability areas and 41
+  maturity aspects, built for Section 508 conformance: no merged cells, one header row per
+  table, no blank rows, no images, editable columns labelled "(enter value)" in text rather
+  than signalled by fill colour alone, and reference cells locked but still selectable so
+  assistive technology can read them. Editable cells are ruled on all four sides, because a
+  solid fill covers Excel's gridlines and the input area would otherwise have no visible row
+  or column boundaries. Excel's own Accessibility Checker reports no issues in any category.
+  It is generated at build time by a Node script, so it adds nothing to the browser bundle
+- **Score sheets in the workbook, calculating live as you type.** Four sheets of Excel
+  formulas mirroring the tool's own scoring: a maturity profile with one row per capability
+  area and dimension, per-area scores with completion percentages, domain scores with an
+  overall figure, and an enterprise-wide ORBIT dimension summary. The formulas find your data
+  by capability area and dimension rather than by row position, so the input sheets can be
+  sorted and filtered freely. Aggregate dimensions, the Technology sub-dimension rule, the
+  Enterprise Governance rollup and the treatment of N/A all follow the same rules as the
+  online tool. Where Excel and the tool round a halfway value differently the workbook can
+  differ by 0.1; the README explains which is authoritative and where it can occur
+- **The workbook's arithmetic is verified by making Excel compute it**, not by inspecting
+  formula text. `npm run verify:workbook-excel` opens a temp copy of the workbook in Excel,
+  enters maturity levels and notes, reads the calculated cells back, and compares them against
+  the tool's scoring rules — 41 checks across 9 scenarios. It found three defects that the test
+  suite could not see, each of which would have put a wrong number in a state's submission:
+  completion percentages above 100% on the 21 enterprise-domain capability areas, and
+  capability areas that reported a score before anything had been entered for them, which
+  inflated domain and overall figures. macOS with Excel only, so it is a manual gate rather
+  than part of CI
+
+### Changed
+
+- **The PDF executive summary's "ORBIT Dimension Summary" is now the mean of per-area
+  dimension scores, counting finalized assessments only.** It previously averaged every
+  rating across all areas, so it was weighted by aspect count _and_ by how many areas
+  had been assessed, and it silently included in-progress assessments while the domain
+  table immediately above it counted finalized ones. A new "Areas" column shows the
+  denominator
+- **Disclaimer wording replaced with CMS-supplied text.** Both notices now open
+  "Predecisional Pilot Materials:". The top notice states the materials are preliminary
+  and being made available for limited review and testing in support of MITA 4.0 pilot
+  activities; the bottom notice adds that they do not represent final agency policy or
+  requirements and may not be used for an information collection subject to the PRA until
+  applicable PRA requirements, including OMB approval where required, have been satisfied.
+  Exports carry the full statement, since an artifact circulating without the PRA language
+  is the specific risk the disclaimer covers. The wording is reproduced verbatim and the
+  two bodies differ, so neither is derived from the other
+- **Node 22.18 or newer is now required for development.** The workbook generator is a
+  TypeScript file executed directly by Node, which needs Node's native type stripping. On an
+  older Node the generator fails with an unknown-file-extension error, while `npm test` still
+  passes because vitest transforms through Vite — so too-old Node fails in a confusing place.
+  Declared in `engines` and `.nvmrc`; CI and deploy were moved from Node 20 to 22.18. Nothing
+  about the shipped application changed
 
 ### Fixed
 
@@ -63,7 +138,6 @@ version bump lands with the final wave.
 - **The whole workbook now works in Excel 2007 and later**, with no add-ins, macros or internet
   connection. The build fails if a formula uses anything newer, so this holds rather than
   relying on review
-
 - **Technology dimension score in PDF and CSV exports** (OBS-25). Both computed it as a
   flat mean over all 11 Technology aspects, which weights the 6-aspect Technical
   Infrastructure Management sub-dimension above the 5-aspect Application Management
@@ -85,70 +159,6 @@ version bump lands with the final wave.
   now covered by tests at the export boundary). Unassessed (`0`) reports as "Not Rated";
   only a genuine N/A determination (`-1`) reports as "N/A"
 - `(Aggregate from 1 assessments)` now reads `(Aggregate from 1 assessment)`
-
-### Changed
-
-- **The PDF executive summary's "ORBIT Dimension Summary" is now the mean of per-area
-  dimension scores, counting finalized assessments only.** It previously averaged every
-  rating across all areas, so it was weighted by aspect count _and_ by how many areas
-  had been assessed, and it silently included in-progress assessments while the domain
-  table immediately above it counted finalized ones. A new "Areas" column shows the
-  denominator
-
-### Added
-
-- Draft notice in every export format (PDF cover band and page footers, CSV, JSON, ZIP
-  manifest), matching the in-app banner. Setting `VITE_DRAFT_MODE=false` removes it
-  from the app and all exports in one build variable
-- **Second disclaimer notice at the foot of every page**, carrying the Paperwork Reduction
-  Act statement. CMS requires a notice at both the top and the bottom, with different
-  wording in each
-- **Offline Excel workbook, generated from the same data model as the tool.** A blank
-  self-assessment workbook covering all 14 capability domains, 72 capability areas and 41
-  maturity aspects, built for Section 508 conformance: no merged cells, one header row per
-  table, no blank rows, no images, editable columns labelled "(enter value)" in text rather
-  than signalled by fill colour alone, and reference cells locked but still selectable so
-  assistive technology can read them. Editable cells are ruled on all four sides, because a
-  solid fill covers Excel's gridlines and the input area would otherwise have no visible row
-  or column boundaries. Excel's own Accessibility Checker reports no issues in any category.
-  It is generated at build time by a Node script, so it adds nothing to the browser bundle.
-  No download link in the app yet
-- **Score sheets in the workbook, calculating live as you type.** Four sheets of Excel
-  formulas mirroring the tool's own scoring: a maturity profile with one row per capability
-  area and dimension, per-area scores with completion percentages, domain scores with an
-  overall figure, and an enterprise-wide ORBIT dimension summary. The formulas find your data
-  by capability area and dimension rather than by row position, so the input sheets can be
-  sorted and filtered freely. Aggregate dimensions, the Technology sub-dimension rule, the
-  Enterprise Governance rollup and the treatment of N/A all follow the same rules as the
-  online tool. Where Excel and the tool round a halfway value differently the workbook can
-  differ by 0.1; the README explains which is authoritative and where it can occur
-- **The workbook's arithmetic is verified by making Excel compute it**, not by inspecting
-  formula text. `npm run verify:workbook-excel` opens a temp copy of the workbook in Excel,
-  enters maturity levels and notes, reads the calculated cells back, and compares them against
-  the tool's scoring rules — 41 checks across 9 scenarios. It found three defects that the test
-  suite could not see, each of which would have put a wrong number in a state's submission:
-  completion percentages above 100% on the 21 enterprise-domain capability areas, and
-  capability areas that reported a score before anything had been entered for them, which
-  inflated domain and overall figures. macOS with Excel only, so it is a manual gate rather
-  than part of CI
-
-### Changed
-
-- **Disclaimer wording replaced with CMS-supplied text.** Both notices now open
-  "Predecisional Pilot Materials:". The top notice states the materials are preliminary
-  and being made available for limited review and testing in support of MITA 4.0 pilot
-  activities; the bottom notice adds that they do not represent final agency policy or
-  requirements and may not be used for an information collection subject to the PRA until
-  applicable PRA requirements, including OMB approval where required, have been satisfied.
-  Exports carry the full statement, since an artifact circulating without the PRA language
-  is the specific risk the disclaimer covers. The wording is reproduced verbatim and the
-  two bodies differ, so neither is derived from the other
-- **Node 22.18 or newer is now required for development.** The workbook generator is a
-  TypeScript file executed directly by Node, which needs Node's native type stripping. On an
-  older Node the generator fails with an unknown-file-extension error, while `npm test` still
-  passes because vitest transforms through Vite — so too-old Node fails in a confusing place.
-  Declared in `engines` and `.nvmrc`; CI and deploy were moved from Node 20 to 22.18. Nothing
-  about the shipped application changed
 
 ## [4.0.0] - 2026-07-30
 

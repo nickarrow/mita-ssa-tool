@@ -194,8 +194,7 @@ src/
 │   └── index.ts
 ├── data/
 │   ├── capabilities.json     # Capability Reference Model
-│   ├── orbit-model.json      # ORBIT Maturity Criteria
-│   └── templates/            # Export templates
+│   └── orbit-model.json      # ORBIT Maturity Criteria
 ├── hooks/
 │   ├── useCapabilityAssessments.ts
 │   ├── useCapabilityAssessments.test.ts
