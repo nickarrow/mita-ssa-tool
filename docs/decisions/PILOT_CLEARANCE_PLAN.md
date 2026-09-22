@@ -1076,15 +1076,18 @@ front of Excel, which are called out as such.
 - [x] Draft the follow-up email to Shelley (Section 7). **Drafted in 7.1**, covering every bullet
       above plus the four Wave 8 additions she has not seen, and flagging the deleted CSV template so
       she can object. Not sent
-- [ ] **Tag the releases — steering §13 step 5, deliberately deferred to last.** Steps 1-3 (version,
-      lockfile, CHANGELOG) are done for both versions, and each version's docs commit serves as step
-      4's release commit. Holding the tags until each deploy is verified is what made the deferral
-      worth it: the 4.1.0 deploy produced a follow-up, so **two** tags are now owed rather than one —
-      `v4.1.0` at `cf27c56`, which is exactly the commit that was deployed and verified, and `v4.1.1`
-      at the repositioning commit once that is deployed. Worth knowing while doing it:
-      **`git tag -l` currently returns nothing** — v4.0.0 shipped untagged, so there is no prior tag
-      to pattern-match against, and `v4.1.0` will be the repository's first. Pushing a tag is a
-      publish action, so tags go out with the push rather than ahead of it
+- [x] **Tag the releases — steering §13 step 5, deliberately deferred to last. Done.** Two annotated
+      tags, both pushed: **`v4.1.0` at `cf27c56`** and **`v4.1.1` at `d68cbf3`**, each pointing at the
+      commit that was actually deployed and verified rather than at a commit that might need a
+      follow-up. These are the repository's **first tags** — v4.0.0 and everything before it shipped
+      untagged, so there was no prior convention to match.
+
+      **Deferring was the right call, and for a reason worth keeping.** Had `v4.1.0` been tagged at
+      the same time as the version bump, it would have named a build whose workbook links nobody
+      could find, and the repositioning would have had to become `v4.1.0` retroactively or hide
+      inside it. Because the tag waited for the deploy to be *looked at*, the history now records
+      what it should: a release, a real finding from it, and a follow-up release — which is also why
+      there are two tags here instead of one
 
 ---
 
@@ -2961,8 +2964,9 @@ it points at what actually shipped; the repository has **no tags at all** today,
 first.
 
 **Two of the three have since happened.** The push and the deploy landed, the deploy was verified,
-and that verification produced the follow-up recorded in 8o — which is why two tags are now owed
-rather than one. See the Section 6 tag checklist for the current position.
+and that verification produced the follow-up recorded in 8o — which is why **two** tags were owed
+rather than one. Both are now cut and pushed (`v4.1.0` at `cf27c56`, `v4.1.1` at `d68cbf3`); see the
+Section 6 tag checklist.
 
 **The email is still unsent** (Sections 7.1 and the Wave 8 checklist both say so), and it now needs a
 4.1.1 paragraph before it goes: Shelley's copy of the story ends at the 4.1.0 deploy, so the draft
@@ -3003,3 +3007,22 @@ and to assert a canary value in the same evaluate — so a stale read fails loud
 **What shipped:** the hero link on Landing (secondary to "Get Started"), the old lower-Landing link
 removed, a fragment link at the top of Import/Export plus the effect that makes that URL work, a
 responsive hero, and v4.1.1. Plus OBS-45 and OBS-46, neither fixed.
+
+**Deployed and confirmed, and the second deploy paid for itself twice.** `v4.1.1` went out by
+`workflow_dispatch` from this branch and the hero link is live. Two things that no local check could
+establish came with it:
+
+1. **The update prompt fired for real.** Two builds of this app have now existed on Pages in sequence
+   with a worker installed between them, and a human with the old build got the reload offer rather
+   than being moved silently. Every prior observation was a local `dist/` rebuild driven by
+   Playwright, which reproduces the mechanism but not the deployment. OBS-22 is updated.
+2. **The deferred tags were worth deferring.** Tagging `v4.1.0` at the version bump would have named a
+   build whose workbook links nobody could find. Waiting until the deploy had been _looked at_ is
+   what let the history record a release, a real finding from it, and a follow-up release. Both tags
+   are now pushed — the repository's first.
+
+**Still open after all this:** the email to Shelley, which needs a 4.1.1 paragraph because her copy of
+the story ends at the 4.1.0 deploy and describes links in positions they are no longer in. Plus
+OBS-45 and OBS-46, both deliberately logged rather than fixed, and both wanting a decision rather
+than a patch — OBS-41/45 share a one-word fix to the axe tag set that will surface judgement calls,
+and OBS-46 needs a responsive nav, which touches every page.

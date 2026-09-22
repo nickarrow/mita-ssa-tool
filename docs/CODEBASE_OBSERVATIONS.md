@@ -657,7 +657,14 @@ live region: the notice stayed at 629–667 and the footer at 667–720, both un
 because the space comes out of the scrollable `main` instead. Idle, the region is `position: static`
 with **zero height** and no children, so it costs no layout on any page.
 
-What remains genuinely unestablished: one browser (Chromium via Playwright) on macOS, and no test
+**Then it happened for real, on the deployed site, in a human's own browser.** The v4.1.1 deploy was
+the first time two builds of this app existed on GitHub Pages in sequence with a worker installed
+between them, and the prompt appeared and offered the reload as designed. That closes the gap this
+entry had been carrying: every earlier observation was a local `dist/` rebuild driven by Playwright,
+which reproduces the mechanism but not the deployment — different origin, different scope, a real
+cache lifetime, and a browser nobody instrumented.
+
+What remains genuinely unestablished: still only Chromium-family browsers on macOS, and no test
 against a corporate proxy or a policy that blocks service worker registration.
 
 ### OBS-23 — Every per-level `questions` array is empty, and `questionResponses` is dead weight
