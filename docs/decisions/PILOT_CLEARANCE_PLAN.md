@@ -103,18 +103,19 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
 
    Section 8 has grown organically and its subsections are not in wave order. Where to look:
 
-   | Looking for                                     | Section                                                                         |
-   | ----------------------------------------------- | ------------------------------------------------------------------------------- |
-   | Baseline to restore if a wave needs backing out | 8, "Wave 0 baseline"                                                            |
-   | What Waves 2, 3 learned                         | 8, "Wave 2 notes" and "Wave 3 notes"                                            |
-   | Review of the plan itself, before any code      | 8b                                                                              |
-   | Accessibility: the record to point CMS at       | **8d** (method, results, and what it does _not_ establish)                      |
-   | Accessibility: lessons and traps                | 8h, 8i                                                                          |
-   | Export scoring and the draft notice             | **8e**                                                                          |
-   | The workbook: what Wave 6 built and learned     | **8j**                                                                          |
-   | The formulas, and how the arithmetic was proved | **8l** (read before touching any score cell or formula)                         |
-   | Why a green test suite proved little here       | **8l**, "Two more defects" and "What this says about the verification strategy" |
-   | Pre-briefs                                      | 8c (Wave 4), 8f (Wave 5), 8g (Wave 6), 8k (Wave 7), **8m (Wave 8, next)**       |
+   | Looking for                                               | Section                                                                         |
+   | --------------------------------------------------------- | ------------------------------------------------------------------------------- |
+   | Baseline to restore if a wave needs backing out           | 8, "Wave 0 baseline"                                                            |
+   | What Waves 2, 3 learned                                   | 8, "Wave 2 notes" and "Wave 3 notes"                                            |
+   | Review of the plan itself, before any code                | 8b                                                                              |
+   | Accessibility: the record to point CMS at                 | **8d** (method, results, and what it does _not_ establish)                      |
+   | Accessibility: lessons and traps                          | 8h, 8i                                                                          |
+   | Export scoring and the draft notice                       | **8e**                                                                          |
+   | The workbook: what Wave 6 built and learned               | **8j**                                                                          |
+   | The formulas, and how the arithmetic was proved           | **8l** (read before touching any score cell or formula)                         |
+   | Why a green test suite proved little here                 | **8l**, "Two more defects" and "What this says about the verification strategy" |
+   | Pre-briefs                                                | 8c (Wave 4), 8f (Wave 5), 8g (Wave 6), 8k (Wave 7), 8m (Wave 8)                 |
+   | **What Wave 8 built, and why a green gate proved little** | **8n** — read before trusting any suite in this repo                            |
 
 2. Find the first wave with unchecked boxes — that is the current position.
 3. Confirm the repo agrees with the checkboxes before trusting them:
@@ -947,7 +948,13 @@ front of Excel, which are called out as such.
       a Vite HTML transform so `VITE_DRAFT_MODE=false` still removes it; deferred here rather
       than hardcoding "(Draft)" into static HTML, which would survive go-live. Pair with the
       PWA manifest name, which has the same problem
-- [ ] Full check: `npm run typecheck && npm run lint && npm test && npm run build`
+- [x] Full check: `npm run typecheck && npm run lint && npm test && npm run build`. **Green, plus
+      everything else the repo can run:** 1022 tests / 46 files, knip, `format:check`,
+      `verify:workbook-artifact`, a second build at the real Pages base path, `npm audit --omit=dev`
+      clean at 0, **94/94 mutations** proved failable via `prove-assertions.ts` on a clean tree, and
+      **41/41** arithmetic checks in Excel. The Excel gate was run even though the only
+      generator-emitted change this wave was `00_README`'s version cell, so the shipped workbook is
+      verified at the version actually going out
 - [ ] Manual smoke on a `workflow_dispatch` deploy: banner on every page, workbook
       downloads and opens cleanly, exports carry the notice
 - [x] `CHANGELOG.md`: fold the `[Unreleased]` section into a version entry. Wave 5 already
@@ -977,7 +984,9 @@ front of Excel, which are called out as such.
 - [x] Version bump and `npm install --package-lock-only`. **4.0.0 → 4.1.0**, MINOR: user-facing
       features were added and no data format changed, so nothing migrates and existing assessments
       are untouched
-- [ ] Draft the follow-up email to Shelley (Section 7)
+- [x] Draft the follow-up email to Shelley (Section 7). **Drafted in 7.1**, covering every bullet
+      above plus the four Wave 8 additions she has not seen, and flagging the deleted CSV template so
+      she can object. Not sent
 - [ ] **Tag the release — steering §13 step 5, deliberately deferred to last.** Steps 1-3 (version,
       lockfile, CHANGELOG) are done, and this wave's docs commit serves as step 4's release commit.
       The tag is held back until the deploy is verified, so `v4.1.0` points at what actually shipped
@@ -1012,6 +1021,71 @@ Nick owes Shelley a scoping reply (`[18:36]`, `[26:06]`). It should state:
   document, so they are not reported as defects (OBS-18)
 - Offer: send back an edited workbook and the changes get folded into the generator
 - Note that XLSX import and live-data XLSX export are deferred, not dropped (Decision 6)
+
+### 7.1 Draft — written at the end of Wave 8
+
+Not sent. Covers every bullet above plus four things Wave 8 added that Shelley needs to know
+independently. Trim freely; the content that should not be cut is marked.
+
+> **Subject:** MITA 4.0 self-assessment tool and workbook — ready for your review
+>
+> Hi Shelley,
+>
+> Following up on scoping. Both pieces are ready for you to look at: the browser tool and the
+> offline Excel workbook.
+>
+> **What "ready" means here.** This is ready for _your_ review, not cleared. CMS internal 508 review
+> is a separate gate on your clock, and I have no visibility into how long it takes — so if there is
+> a queue I should be in, tell me and I will get in it.
+>
+> **The one ask that matters most: please check the workbook's arithmetic, not just its
+> look and feel.** The workbook calculates scores with Excel formulas that mirror the tool's own
+> rules, and no automated test can evaluate an Excel formula — so the numbers are the part least
+> protected by our own testing. I drive Excel from a script to check 41 figures across 9 scenarios
+> and they all agree, but that is 41 figures, not every combination. If you enter real levels for a
+> domain you know well and the totals look wrong, that is exactly the finding I need.
+>
+> **Two numbers changed, and I would rather tell you than have you find them.**
+>
+> 1. **Exported Technology scores.** Any CSV or PDF exported before mid-September computed
+>    Technology as a flat average over all 11 aspects. The correct rule is the average of its two
+>    sub-dimension averages. The figure can move by a couple of tenths, and it read _higher_
+>    whenever Technical Infrastructure Management scored above Application Management — for example
+>    an area with Infrastructure all at 5 and Application all at 1 exported 3.2 and now exports 3.0.
+>    The tool's own Results screen was always correct; the export was the outlier. If you have an
+>    older export, re-export rather than compare the two.
+> 2. **The PDF's "ORBIT Dimension Summary" changed meaning.** It is now the average of per-area
+>    dimension scores across finalized areas. It previously averaged every individual rating, which
+>    weighted it by how many aspects each dimension has _and_ silently included in-progress work.
+>    There is now a visible "Areas" column showing the denominator.
+>
+> **Placeholder text on 14 capability areas is deliberate**, pending NextGen's document — the
+> descriptions read `[Placeholder — pending updated Capability Reference Model]`. Not a defect,
+> please don't spend review time on them.
+>
+> **Every page and every export is marked predecisional**, using the wording CMS supplied, top and
+> bottom. Removing it at go-live is one setting, not a code change.
+>
+> **Four things worth knowing that are new since we last spoke:**
+>
+> - The workbook is now downloadable from inside the tool — Import & Export, the home page and the
+>   Guide. You no longer need me to send you a copy.
+> - It works in Excel 2007 and later, with no add-ins, macros or internet connection. The build
+>   fails if a formula uses anything newer, so that holds rather than relying on review.
+> - The tool now genuinely works offline after the first visit. It claimed to before and did not.
+> - **`maturity-profile-template.csv` is gone.** You asked whether the manual blank CSV profile
+>   could be negated now the workbook produces a profile. It turned out the file was never reachable
+>   from the deployed tool in the first place — it was never included in the site — so nobody was
+>   using it. I have removed it. **If you were relying on it, say so and I will put it back.**
+>
+> **An offer:** if you edit the workbook — wording, column order, anything — send it back and I will
+> fold the changes into the generator, so the next build carries them rather than you re-editing.
+>
+> **Deferred, not dropped:** reading an XLSX back into the tool, and exporting a workbook
+> pre-filled with a state's live data. Both are real requests and both are out of scope for this
+> round.
+>
+> [Nick]
 
 ---
 
@@ -2671,3 +2745,125 @@ number of assertions.** 41 checks that touch every column beat 36 that touch onl
 Concretely, for anything added to the workbook from here: read at least one cell of every new column
 in `verify-workbook-in-excel.ts`, and prefer a formula whose correctness does not depend on Excel's
 array-evaluation rules.
+
+## 8n. Wave 8 Notes — 2026-09-21
+
+The last wave. Five commits, all of Drop 2's stakeholder-visible surface, and the wave where the
+review discipline paid for itself most obviously — 39 findings across five reviews, of which **14
+were real defects in code I had just written and called done**.
+
+### What shipped
+
+| Commit    | What                                                                      |
+| --------- | ------------------------------------------------------------------------- |
+| `c7c93fa` | Dependency advisories: production tree 7 → **0**                          |
+| `95a0fa9` | Generator wired into `build` and `dev`; artifact check in both workflows  |
+| `75a113b` | Service worker, icons, `index.html` draft marking, offline claims aligned |
+| `feb9c76` | The three in-app download links                                           |
+| `5e344e7` | v4.1.0, CHANGELOG fold, four new observations, docs sweep                 |
+
+Green at 1022 tests / 46 files, 94/94 mutations, 41/41 in Excel, production `npm audit` clean.
+
+### The thing to carry forward: a green gate proved almost nothing here
+
+Wave 7's lesson was that a green suite does not prove Excel computes correctly. Wave 8's is broader
+and worse: **the entire gate — typecheck, lint, 1022 tests, knip, `format:check`, build, and the
+artifact check — was green for every one of these defects.**
+
+| Defect                                                             | What would have shipped                                     |
+| ------------------------------------------------------------------ | ----------------------------------------------------------- |
+| MUI `Alert` drops its close button when `action` is supplied       | An update prompt with **no way to dismiss it**              |
+| MUI `Alert` defaults to `role="alert"`, an assertive live region   | Every update announced **twice**, once interrupting         |
+| The prompt was a fixed-position toast                              | It **covered the CMS-required PRA notice** and the footer   |
+| `aria-label` carrying size did not contain the visible label       | **WCAG 2.5.3 failures** on two new links and one old one    |
+| Vite's SPA fallback answers `.xlsx` with `index.html` and HTTP 200 | The download link **silently saving HTML to disk as .xlsx** |
+| `offlineReady` never fires                                         | A dead code path presented as a feature                     |
+
+Not one of those is reachable by reading the code and thinking carefully. Each was found by
+rendering the thing, measuring it, and comparing against what it was supposed to do. Two were found
+only because a _mutation_ was applied to an assertion that was already passing.
+
+**The strongest single technique, repeatedly:** stop the server and see what still works. That is
+how the offline claim was actually verified (deep link to `/dashboard`, `transferSize` 0), and it is
+a stronger test than the browser's offline toggle because there is nothing to fall back to.
+
+### Assertions that passed while the thing they covered was broken
+
+Worth a section of its own, because this happened three times in one wave.
+
+1. **"Only one live region"** queried `role="status"` and passed while the message was announced
+   twice — the second region was `role="alert"`.
+2. **`expect(url.startsWith(import.meta.env.BASE_URL))`** passes for a root-absolute URL, because
+   `BASE_URL` is `'/'` under vitest. Setting `base` in `vitest.config.ts` does **not** change that;
+   measured. The test now asserts against the _source expression_ instead, following
+   `footer.test.ts`'s precedent.
+3. **A size floor on the artifact** turned out to be redundant with the open check at every
+   truncation point, because a ZIP's central directory is at the end of the file.
+
+The pattern: an assertion is vacuous when the thing it reads is _also_ the thing that would be wrong.
+Mutate it, or it is decoration.
+
+### Claims I inherited or wrote that turned out to be false
+
+Six, all corrected in place. Listed because the lesson is that a confident sentence in a doc is not
+evidence, and three of these came from _this project's own_ documentation.
+
+- **OBS-37 said fixing the critical advisory meant a major `jspdf` bump.** It was a patch —
+  4.2.0 → 4.2.1. The deferral had outlived its reason.
+- **Clearing the dev-tree advisories "needs `npm audit fix --force`".** It did not; every fix was
+  in-range. The `--force` prompt came from exactly one package, `exceljs`, whose only offered fix is
+  a **downgrade** that would break the generator. So: **never run `npm audit fix --force` here**, and
+  note `npm audit fix` needs two passes.
+- **Workbox's default `globPatterns`** are `js,wasm,css,html` — not the `js,css,html,ico,png,svg` a
+  plugin README suggests. The precache gap was wider than OBS-22 described.
+- **`maximumFileSizeToCacheInBytes` does not create a fail-loud tripwire**; the plugin throws by
+  default at any limit. Raising it to 3 MiB makes the build _less_ likely to fail, not more.
+- **`paths.ts`'s "byte-identical unzipped content"** holds only with `SOURCE_DATE_EPOCH` fixed. With
+  it unset the build timestamp is in the content itself (`docProps/core.xml`).
+- **`SOURCE_DATE_EPOCH` does not fix OBS-44 either.** With it pinned, unzipped parts and CRCs match
+  but archive bytes still differ via ZIP entry metadata, so the Workbox revision still changes. And
+  the trap that manufactures a false success: DOS ZIP timestamps have 2-second granularity, so two
+  runs less than 2s apart look identical regardless.
+
+### Decisions taken, with reasons that will not be obvious later
+
+- **`registerType: 'prompt'`, never `autoUpdate`.** An auto-updating worker can replace a state's
+  assessment page mid-edit. Dismissing the prompt defers **indefinitely** — a waiting worker needs
+  `skipWaiting` or every tab closed, so "it'll pick it up on the next reload" is false.
+- **A kill switch is documented and left off.** If a build without `sw.js` ever reaches the site, the
+  update check 404s and an installed worker serves its cached build **forever, with no prompt**.
+  `cleanupOutdatedCaches` does not help. `selfDestroying: true` is the recovery; the procedure is
+  written out in `vite.config.ts` so it is known before it is needed. This is not theoretical —
+  `deploy.yml` fires on push to `main`, and `origin/main` predates the PWA entirely.
+- **The update prompt sits in normal flow, not floating.** Measured: as a toast it overlapped the
+  CMS notice and the footer, and a hardcoded offset would be fragile because the footer is
+  suppressed on the assessment page.
+- **The workbook download is its own section on Import/Export, not a third export card.** Every card
+  there serialises the user's data and is gated on `hasData`; this is a blank template.
+- **`maturity-profile-template.csv` deleted.** The question needed confirmation and turned out to be
+  checkable: zero code references, outside `public/`, never bundled — so no user could ever download
+  it, and the premise that states used it was never true of the deployed tool.
+
+### What Wave 8 does not establish
+
+- **One browser.** Chromium via Playwright on macOS. Nothing tested against a corporate proxy or a
+  policy that blocks service worker registration, which is plausible in a state agency.
+- **The 508 review is still theirs.** Our own axe runs are clean and the workbook's Accessibility
+  Checker is clean, but see OBS-41: axe's WCAG 2.5.3 rule is `experimental` and excluded from the
+  tag set this project runs, and it was silent while three controls failed that criterion. Assume
+  other gaps of the same shape.
+- **41 checks are 41 checks.** Not the cross product of 72 areas × 3 dimensions × every partial-fill
+  state.
+- **No screen reader has touched any of this.**
+- **Four observations were logged, not fixed** — OBS-41 through OBS-44. OBS-43 (an unknown assessment
+  id shows a permanent "Loading assessment…" spinner) is the one most likely to be hit by a real
+  pilot user with a stale bookmark, and it wants pairing with OBS-36 as a single empty-and-error-state
+  pass.
+
+### Still open when this wave closed
+
+Three things, all requiring a human rather than more code: the push, the deploy — which the user
+dispatches by `workflow_dispatch` from this branch, against the fork explicitly — and sending the
+email drafted in Section 7.1. The `v4.1.0` tag is deliberately held until the deploy is verified, so
+it points at what actually shipped; the repository has **no tags at all** today, so it will be the
+first.
