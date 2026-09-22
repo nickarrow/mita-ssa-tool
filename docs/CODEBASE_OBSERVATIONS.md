@@ -1665,7 +1665,8 @@ all. The card's meaning lives entirely in the pairing, and nothing in the markup
 **Why this never surfaced before, and why it is filed next to OBS-41:** `p-as-heading` is tagged
 `cat.semantics`, `wcag2a`, `wcag131` **and `experimental`**. It is the same mechanism recorded in
 OBS-41 — experimental rules are excluded from tag-based runs unless `experimental` is requested, and
-the repo's ruleset does not request it. So the Wave 3 sweep of 12 routes, which reported zero
+the repo's ruleset does not request it. So the **Wave 4** sweep of 12 routes (September 10, 2026 —
+an earlier draft of this entry said Wave 3, which is the draft-banner wave), which reported zero
 violations, never evaluated this rule either.
 
 That makes two Level-A criteria with real failures behind a single missing tag, found five waves

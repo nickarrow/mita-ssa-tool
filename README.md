@@ -11,7 +11,9 @@ The MITA 4.0 State Self-Assessment Tool helps State Medicaid Agencies evaluate t
   network afterwards — including the offline Excel workbook, which is precached too. Updates are
   offered by prompt rather than applied silently, so a pilot user is never moved to a new build
   mid-assessment.
-- **Accessible**: WCAG 2.1 AA compliant for government use.
+- **Accessible**: Built and tested against WCAG 2.1 AA. No known open AA failure, and no
+  assistive-technology testing to confirm it — see [Accessibility](#accessibility) for what that
+  means and what it does not.
 
 ### What is ORBIT?
 
@@ -253,6 +255,57 @@ All user data is stored locally:
 - File attachments (stored as Blobs)
 - Assessment history (snapshots)
 - Tags for organization
+
+## Accessibility
+
+**The honest statement: no known open AA failure, and no assistive-technology testing to confirm
+it.** That is deliberately narrower than "WCAG 2.1 AA compliant", which earlier versions of this
+README claimed. The two are not the same thing, and the difference is the point of this section.
+
+The target is **WCAG 2.1 Level AA**. That is a superset of the WCAG 2.0 Level AA that the
+[Revised Section 508 Standards incorporate by reference](https://www.section508.gov/develop/applicability-conformance/),
+which they apply to non-web electronic content as well as web — so the offline Excel workbook is in
+scope too, not just the app.
+
+What has been done:
+
+- **axe-core 4.11.1 in real Chromium**, driven by Playwright over 12 routes and 9 interaction
+  states, with IndexedDB seeded so data-dependent pages actually render. Zero violations under
+  `wcag2a`, `wcag2aa`, `wcag21a` and `wcag21aa`. The sweep also runs `best-practice`, where one
+  finding is open: `/results` renders no heading at all in its empty state (OBS-36). That rule is
+  not WCAG-tagged, so it is not an AA failure, but it is the state a new user sees first.
+- **Manual keyboard-only testing**, focus-indicator measurement and dialog focus-trap checks. This
+  found the most serious defect in the project's history — WCAG 2.4.7 Focus Visible was failing
+  across essentially the whole application, and axe never reported it.
+- **Contrast pinned by unit tests that compute WCAG ratios in JS**, because axe cannot evaluate
+  contrast under jsdom: it samples rendered pixels and needs a canvas.
+- For the workbook, the Section 508 structural requirements are **assertions in the test suite**
+  (there is no axe for XLSX), each one proved capable of failing by a mutation harness, plus
+  Excel's own Accessibility Checker reporting no issues in any category.
+
+What has **not** been done, and matters most:
+
+- **No screen reader has been used**, on the app or the workbook. Every screen-reader claim is
+  inferred from the accessibility tree, not heard. Automated tooling cannot close this gap.
+- Automated rules cover a minority of WCAG, so a clean axe run is a floor, not a pass.
+- **axe's `experimental` rules are not in the tag set, and two Level A criteria have had real
+  failures behind that.** `label-content-name-mismatch` (2.5.3 Label in Name) and `p-as-heading`
+  (1.3.1) are both tagged `experimental`, which excludes them from a tag-filtered run. The 2.5.3
+  failures were found and fixed (OBS-41); nine `p-as-heading` nodes across three routes are open
+  (OBS-45). Assume other gaps of the same shape.
+- Chromium only. No Firefox or Safari pass, and `:focus-visible` heuristics differ between engines.
+- Zoom and reflow (1.4.10), text spacing (1.4.12) and viewports below 768px are untested. At 375px
+  wide the app chrome leaves only ~287px of content (OBS-46).
+- The workbook has been opened only in Excel 16 on macOS — never on Windows, which is where the
+  screen readers a federal reviewer is most likely to use (JAWS, NVDA) actually run.
+
+**No Accessibility Conformance Report (ACR/VPAT) is published for this tool**, deliberately: an ACR
+asserts per-criterion conformance, and the gaps above mean several criteria could only honestly be
+marked "Not Evaluated". The full record — method, every finding and its disposition, and nine
+numbered limitations — is the **Wave 4 Accessibility Audit Record** in
+[docs/decisions/PILOT_CLEARANCE_PLAN.md](docs/decisions/PILOT_CLEARANCE_PLAN.md), and open
+accessibility items are tracked as `OBS-*` entries in
+[docs/CODEBASE_OBSERVATIONS.md](docs/CODEBASE_OBSERVATIONS.md).
 
 ## Browser Support
 

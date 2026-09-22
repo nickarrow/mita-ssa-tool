@@ -1594,7 +1594,16 @@ what stakeholders see mid-review. The instruction was to fix them properly rathe
 them, so both were completed in two further commits, each independently reviewed.
 
 **The automated result is now zero violations across 12 routes and 9 interaction states**, under
-`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` **and** `best-practice`.
+`wcag2a`, `wcag2aa`, `wcag21a` and `wcag21aa`.
+
+**Two corrections to that sentence, both dated after this audit, because it is the sentence most
+likely to be quoted.** It originally ended "**and** `best-practice`", and that no longer holds:
+OBS-36 was found the next day and is open — `/results` renders no heading at all in its empty state,
+reported by `page-has-heading-one`, which is a `best-practice` rule. The sweep had seeded data, so it
+never saw that state. Not an AA failure, but "zero under best-practice" is now false. Separately,
+the ruleset omits axe's `experimental` rules, and OBS-41 and OBS-45 are two Level A criteria that had
+real failures behind exactly that omission — so read the sentence as scoped to the rules that were
+run, which is all it ever meant.
 
 - **OBS-30 — contrast.** Fixing root causes rather than reported instances showed the audit had
   under-counted: **all five** `SCORE_COLORS` failed in every role at 2.16-3.68:1, not the two axe

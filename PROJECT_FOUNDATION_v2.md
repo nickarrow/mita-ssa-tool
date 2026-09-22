@@ -21,7 +21,14 @@ A Progressive Web App (PWA) enabling State Medicaid Agencies (SMAs) to self-asse
    offline workbook, so a reload with no network succeeds. The service worker landed in Wave 8;
    before that the app claimed offline support and a reload without network failed.
 3. **Maintainability**: Capability and ORBIT data in separate, easily-editable JSON files.
-4. **Accessibility**: Government-appropriate, WCAG 2.1 AA compliant UI.
+4. **Accessibility**: Built and tested against WCAG 2.1 AA — a superset of the WCAG 2.0 AA that the
+   Revised Section 508 Standards incorporate by reference, and which they apply to non-web content
+   too, so the Excel workbook is in scope alongside the app. **Stated as a target and a test result,
+   not as compliance:** the position is "no known open AA failure, and no assistive-technology
+   testing to confirm it." Earlier revisions of this line claimed "WCAG 2.1 AA compliant UI", which
+   the project's own audit record contradicts. Method, findings and nine limitations are in the Wave
+   4 Accessibility Audit Record in `docs/decisions/PILOT_CLEARANCE_PLAN.md`; no ACR/VPAT is
+   published, by decision (P2).
 5. **Simplicity**: Clean architecture, minimal dependencies, clear code.
 
 ---

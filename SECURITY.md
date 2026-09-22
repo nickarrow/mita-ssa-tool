@@ -64,7 +64,13 @@ Security updates will be released as patch versions and announced through:
 
 This tool is designed to support:
 
-- **WCAG 2.1 AA**: Accessibility compliance
+- **Accessibility**: built and tested against WCAG 2.1 AA, which is a superset of the WCAG 2.0 AA
+  incorporated by reference in the Revised Section 508 Standards. **Not a conformance claim** — the
+  supportable statement is "no known open AA failure, and no assistive-technology testing to confirm
+  it", and no ACR/VPAT is published. See the Accessibility section of [README.md](README.md) for what
+  was and was not tested. This item previously read "WCAG 2.1 AA: Accessibility compliance", which
+  claimed more than the evidence supports and sat in a list that invites comparison with the
+  frameworks named below
 - **Privacy by Design**: No data collection or transmission
 
 For specific compliance requirements (HIPAA, FedRAMP, etc.), please consult with your organization's compliance team regarding the appropriateness of client-side-only tools for your use case.
