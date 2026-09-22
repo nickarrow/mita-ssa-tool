@@ -5,11 +5,14 @@ import { fileURLToPath, URL } from 'node:url';
 import process from 'node:process';
 
 // Read version from package.json for injection into app
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Draft-notice copy, shared with the app and the workbook generator. This module is deliberately
 // free of `import.meta` so Node-side tooling — including this config — can import it.
 import { DRAFT_NOTICE_LABEL, DRAFT_TITLE_MARKER } from './src/constants/draftNotice';
+// Same single source the generator's output path and the in-app download URL are built from.
+import { WORKBOOK_FILENAME } from './src/constants/workbook';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
@@ -46,9 +49,78 @@ const APP_DESCRIPTION =
 const HTML_TITLE = IS_DRAFT ? `${APP_NAME} (${DRAFT_TITLE_MARKER})` : APP_NAME;
 const HTML_DESCRIPTION = IS_DRAFT ? `${DRAFT_NOTICE_LABEL}. ${APP_DESCRIPTION}` : APP_DESCRIPTION;
 
+/**
+ * Connect middleware that 404s the workbook URL when the file is not on disk.
+ *
+ * Shared by the dev and preview servers, which look in different directories — `public/` and
+ * `dist/` respectively — hence the parameter.
+ *
+ * @param serveDir - Directory the server serves static files from.
+ */
+function workbookGuard(serveDir: string) {
+  return (
+    req: { url?: string | undefined },
+    res: {
+      statusCode: number;
+      setHeader: (name: string, value: string) => void;
+      end: (body: string) => void;
+    },
+    next: () => void
+  ): void => {
+    const path = (req.url ?? '').split('?')[0] ?? '';
+    if (!path.endsWith(`/${WORKBOOK_FILENAME}`)) {
+      next();
+      return;
+    }
+    if (existsSync(join(serveDir, WORKBOOK_FILENAME))) {
+      next();
+      return;
+    }
+    res.statusCode = 404;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.end(
+      `${WORKBOOK_FILENAME} has not been generated.\n\n` +
+        'Run `npm run generate:workbook`, or start the server with `npm run dev` rather than a ' +
+        'bare `vite` — generation is wired to the `predev` script.\n\n' +
+        'This is a 404 on purpose. Without it Vite would answer with index.html and HTTP 200, and ' +
+        'the download link would silently save that HTML to disk as an .xlsx file.\n'
+    );
+  };
+}
+
 export default defineConfig({
   plugins: [
     react(),
+
+    /**
+     * Returns a real 404 for the workbook when it has not been generated.
+     *
+     * Without this, requesting the workbook while it is absent gets **HTTP 200 with
+     * `Content-Type: text/html` and the contents of `index.html`** — Vite's SPA fallback catching a
+     * path it should not. Measured: 1,922 bytes beginning `<!DOCTYPE html>`. Because the in-app
+     * links carry a `download` attribute, the browser then writes that HTML to disk *as*
+     * `mita-4.0-self-assessment-workbook.xlsx`, with no error, no console warning and nothing on
+     * screen. The person holding it sees Excel report a corrupt file and has no reason to suspect
+     * the tool.
+     *
+     * This is the same failure `workbox.navigateFallbackDenylist` guards against for the service
+     * worker — an `.xlsx` that is silently HTML. It was guarded there and left open here, which is
+     * the gap this closes.
+     *
+     * Dev and preview only. In a deployed build the artifact is always present: `prebuild`
+     * generates it and `verify:workbook-artifact` fails the pipeline if it did not reach `dist/`.
+     * Reachable in development via a bare `vite` (which skips `predev`), or by deleting the file
+     * while a server is already running.
+     */
+    {
+      name: 'mita-workbook-missing-404',
+      configureServer(server) {
+        server.middlewares.use(workbookGuard(server.config.publicDir));
+      },
+      configurePreviewServer(server) {
+        server.middlewares.use(workbookGuard(server.config.build.outDir));
+      },
+    },
 
     /**
      * Marks the static HTML as predecisional (Decision 13).

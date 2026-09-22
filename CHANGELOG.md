@@ -13,6 +13,10 @@ version bump lands with the final wave.
 
 ### Added
 
+- **The offline Excel workbook can now be downloaded from inside the tool**, on Import & Export,
+  the home page, and the Guide. It is a blank workbook covering the whole assessment for anyone who
+  cannot use a browser-based tool, and each link says what it is and roughly how large it is before
+  you click. Previously the workbook existed but nothing in the app linked to it
 - **The tool now genuinely works offline.** It always said it did, and it did not — there was no
   service worker, so a reload without a connection failed (OBS-22). Open it once with a
   connection and it now loads and runs with no network at all, including the offline Excel

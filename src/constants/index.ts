@@ -6,6 +6,7 @@
  */
 
 import type { OrbitDimensionId, OrganizationalAssessmentId } from '../types';
+import { WORKBOOK_FILENAME } from './workbook';
 
 // =============================================================================
 // External Links
@@ -51,6 +52,29 @@ export {
   DRAFT_NOTICE_SHORT_LINE,
   DRAFT_TITLE_MARKER,
 } from './draftNotice';
+
+// =============================================================================
+// Offline Excel workbook
+// =============================================================================
+
+// Same split as the draft notice above, and for the same reason: the filename lives in
+// ./workbook, which stays free of `import.meta` so `scripts/xlsx/paths.ts` can import it and build
+// the generator's output path from the same string the download link uses.
+export { WORKBOOK_APPROX_SIZE, WORKBOOK_FILE_TYPE, WORKBOOK_FILENAME } from './workbook';
+
+/**
+ * URL the in-app download links point at.
+ *
+ * Built from `import.meta.env.BASE_URL`, which Vite sets from `base` and which always ends in a
+ * slash. A root-absolute `/mita-4.0-...xlsx` would resolve to the Pages *origin* rather than the
+ * repository subpath and 404 — the same defect OBS-28 recorded for the favicon.
+ *
+ * The workbook is a static file in `public/`, not generated in the browser, so this is a plain
+ * anchor `href`. It deliberately does not use `downloadBlob` from the export service: that helper
+ * builds an object URL from a `Blob`, which is the wrong tool for a file that already exists on
+ * the server and would mean fetching 217 KB into memory to hand it straight back.
+ */
+export const WORKBOOK_DOWNLOAD_URL = `${import.meta.env.BASE_URL}${WORKBOOK_FILENAME}`;
 
 // =============================================================================
 // Enterprise Domain Configuration

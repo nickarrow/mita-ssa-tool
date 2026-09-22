@@ -29,6 +29,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import FolderZipIcon from '@mui/icons-material/FolderZip';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import TableChartIcon from '@mui/icons-material/TableChart';
+import TableViewIcon from '@mui/icons-material/TableView';
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import RestoreIcon from '@mui/icons-material/Restore';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -50,6 +51,13 @@ import {
   downloadText,
   generateFilename,
 } from '../services/export';
+
+import {
+  WORKBOOK_APPROX_SIZE,
+  WORKBOOK_DOWNLOAD_URL,
+  WORKBOOK_FILE_TYPE,
+  WORKBOOK_FILENAME,
+} from '../constants';
 
 type PendingExport =
   | { type: 'zip' }
@@ -567,6 +575,68 @@ export default function ImportExport(): JSX.Element {
           </Paper>
         </Grid>
       </Grid>
+
+      {/*
+       * Offline workbook — the primary download link (plan Section 5.5).
+       *
+       * Its own full-width section rather than a third card in "Other Export Formats", because it
+       * is not an export. Every card up there serialises the state's own data and is gated on
+       * `hasData`; this is a blank template, identical for everyone and always available. Filing it
+       * among the exports would imply it contained their assessment.
+       */}
+      <Paper sx={{ p: 3, mt: 4 }} component="section" aria-labelledby="offline-workbook-h">
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <TableViewIcon aria-hidden="true" sx={{ mr: 1, color: 'primary.main', fontSize: 28 }} />
+          <Typography variant="h5" component="h2" id="offline-workbook-h">
+            Offline Excel workbook
+          </Typography>
+        </Box>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+          A blank Excel version of this entire assessment, for anyone who cannot use a browser-based
+          tool. It covers all 14 capability domains, 72 capability areas and 41 maturity aspects,
+          and calculates dimension, capability area, domain and enterprise-wide scores using the
+          same rules as this tool. Built for Section 508 conformance, and it needs no add-ins,
+          macros or internet connection — Excel 2007 or later.
+        </Typography>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            This is a <strong>blank</strong> workbook, not an export of your assessment. Nothing you
+            have entered here is included, and filling it in does not update this tool.
+          </Typography>
+        </Alert>
+        {/*
+         * Type and size reach assistive technology through `aria-describedby` on the caption below,
+         * NOT through `aria-label`.
+         *
+         * An earlier version put them in an `aria-label`, which broke **WCAG 2.5.3 Label in Name**:
+         * the accessible name has to *contain* the visible label, and interleaving extra words
+         * ("blank offline") into the middle of it meant the visible text was no longer a substring.
+         * Measured, not reasoned about — and no automated check in this repo catches it. A full
+         * axe run over all tags reports zero violations here, because `label-content-name-mismatch`
+         * never evaluated these anchors at all.
+         *
+         * `aria-describedby` also removes a duplication: the caption is already visible, so an
+         * `aria-label` repeating it announced the size twice.
+         */}
+        <Button
+          variant="contained"
+          href={WORKBOOK_DOWNLOAD_URL}
+          download={WORKBOOK_FILENAME}
+          startIcon={<TableViewIcon />}
+          aria-describedby="offline-workbook-meta"
+        >
+          Download the blank workbook
+        </Button>
+        <Typography
+          id="offline-workbook-meta"
+          variant="caption"
+          color="text.secondary"
+          component="p"
+          sx={{ mt: 1 }}
+        >
+          {WORKBOOK_FILE_TYPE} · {WORKBOOK_APPROX_SIZE}
+        </Typography>
+      </Paper>
 
       {/* State Name Dialog */}
       <StateNameDialog

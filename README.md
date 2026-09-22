@@ -193,6 +193,14 @@ browser bundle, and it is gitignored as a build output. `npm run build` and `npm
 generate it automatically, so a fresh clone needs no extra step — just `npm install` and either
 command.
 
+Users reach it from three places in the app: the Import & Export page, the home page, and the
+Guide. All three link to the same static file under the deployment base path.
+
+> Use `npm run dev`, not a bare `vite`. Generation is wired to the `predev` script, so invoking
+> Vite directly starts a server with no workbook and the three download links 404. The same is
+> true if the file is deleted while a dev server is already running — regenerate with
+> `npm run generate:workbook`.
+
 ### Verifying it
 
 `npm test` covers the generator's output as data and as raw OOXML, but no test can evaluate an

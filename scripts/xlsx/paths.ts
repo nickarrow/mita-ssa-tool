@@ -25,6 +25,23 @@ import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+/*
+ * The filename is shared with the app rather than declared here, so the generator's output path
+ * and the in-app download URL are built from the same string. A rename touching only one of them
+ * would 404 the link a pilot user clicks while every test and the artifact check stayed green,
+ * since both of those only ever look at the file the generator wrote.
+ *
+ * `src/constants/workbook.ts` is Node-safe by contract — no imports, no `import.meta` — which is
+ * what makes it importable from here. Do NOT switch this to `src/constants/index.ts`: it reads
+ * `import.meta.env`, which is `undefined` under plain Node, so it cannot be loaded by build-time
+ * tooling. (In practice the first error you hit is a module-resolution failure on its own
+ * extensionless imports, which plain Node ESM rejects — so the stack trace will not mention
+ * `import.meta` at all. Both problems are real; the resolution one just surfaces first.)
+ *
+ * The name is still duplicated as a literal in `.gitignore`, which cannot import anything.
+ */
+import { WORKBOOK_FILENAME } from '../../src/constants/workbook.ts';
+
 /**
  * Absolute path of the repository root.
  *
@@ -39,16 +56,6 @@ export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', 
 export function fromRepoRoot(...segments: string[]): string {
   return join(REPO_ROOT, ...segments);
 }
-
-/**
- * The workbook's filename, in one place.
- *
- * Both the generated copy under `public/` and the shipped copy under `dist/` are built from
- * this, so a rename cannot leave the artifact check looking at a path the generator no longer
- * writes. Also duplicated — deliberately, as a literal — in `.gitignore` and in the in-app
- * download link, neither of which can import from here.
- */
-const WORKBOOK_FILENAME = 'mita-4.0-self-assessment-workbook.xlsx';
 
 /**
  * Where the workbook is written.
@@ -67,11 +74,16 @@ export const WORKBOOK_OUTPUT_PATH = fromRepoRoot('public', WORKBOOK_FILENAME);
 /**
  * Where the workbook ends up in the built site.
  *
- * Vite copies `public/` into `dist/` verbatim, so this is the same bytes at a different path —
- * and *that* is the thing worth checking, because it is the only copy a pilot user ever
- * downloads. `npm run verify:workbook-artifact` compares the two byte-for-byte and opens the
- * `dist/` one, which is end-to-end coverage the test suite cannot give: the suite builds a
- * workbook in memory and never touches either file.
+ * Vite copies `public/` into `dist/` verbatim, so this is the same content at a different path —
+ * and *that* is the thing worth checking, because it is the only copy a pilot user ever downloads.
+ * `npm run verify:workbook-artifact` opens the `dist/` one and checks it is a complete, readable
+ * workbook, which is end-to-end coverage the test suite cannot give: the suite builds a workbook in
+ * memory and never touches either file.
+ *
+ * It deliberately does **not** compare the two copies. That was built and removed — the build
+ * timestamp lands in `docProps/core.xml`, so two runs of an unchanged model differ in content as
+ * well as in ZIP bytes, and the check fired on healthy trees while catching nothing the presence,
+ * ZIP, open and sheet checks miss. See that script's docblock before re-adding it.
  *
  * Kept beside `WORKBOOK_OUTPUT_PATH` and built from the same `WORKBOOK_FILENAME` so the two
  * cannot drift into checking different files.

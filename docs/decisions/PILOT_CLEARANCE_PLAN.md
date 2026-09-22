@@ -655,7 +655,14 @@ comparison, and records which primitive is authoritative.
   suite imports the generator's modules through Vite's transform and builds a workbook in
   memory, so it would not catch a failure of Node's native type stripping — the reason 22.18
   is the floor
-- In-app download links: Import/Export page (primary), Landing page (Decision 10), Guide
+- In-app download links: Import/Export page (primary), Landing page (Decision 10), Guide.
+  **Done in Wave 8.** On Import/Export it is a full-width section of its own rather than a third
+  card among "Other Export Formats" — every card there serialises the state's own data and is gated
+  on `hasData`, so filing a blank template among them would imply it contained their assessment. All
+  three links carry the file type and approximate size in the accessible name, since a download is a
+  commitment and the visible label alone says neither. The URL is built from
+  `import.meta.env.BASE_URL`, verified to resolve under the Pages subpath rather than the origin —
+  the same defect class as OBS-28
 - ExcelJS is a `devDependency`. It never enters the browser bundle of an offline-first
   PWA, and its supply-chain exposure is limited to CI. Worth knowing: upstream `exceljs`
   has been dormant since v4.4.0 (October 2023). Still MIT and widely used; acceptable for

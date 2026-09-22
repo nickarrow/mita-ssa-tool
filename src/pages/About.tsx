@@ -34,7 +34,14 @@ import GitHubIcon from '@mui/icons-material/GitHub';
 import BugReportOutlinedIcon from '@mui/icons-material/BugReportOutlined';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { GITHUB_REPO_URL } from '../constants';
+import TableViewIcon from '@mui/icons-material/TableView';
+import {
+  GITHUB_REPO_URL,
+  WORKBOOK_APPROX_SIZE,
+  WORKBOOK_DOWNLOAD_URL,
+  WORKBOOK_FILE_TYPE,
+  WORKBOOK_FILENAME,
+} from '../constants';
 import { SCORE_COLORS } from '../utils/colors';
 
 /** Core differentiators shown as a compact strip near the top. */
@@ -482,6 +489,58 @@ export default function About(): JSX.Element {
         </Button>
       </Paper>
 
+      {/* --- Offline workbook ------------------------------------------------ */}
+      {/*
+       * Between "your data stays with you" and "get involved", so the reading order is: how to use
+       * the tool, what happens to your data, what to do if you cannot use the tool at all, how to
+       * contribute. The Import/Export page carries the primary link; this one exists because the
+       * Guide is where someone goes to find out whether the tool fits their situation.
+       */}
+      <Paper sx={{ p: { xs: 3, md: 4 }, mb: 3 }} component="section" aria-labelledby="workbook-h">
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <TableViewIcon aria-hidden="true" color="primary" />
+          <Typography variant="h5" component="h2" id="workbook-h">
+            If you cannot use a browser tool
+          </Typography>
+        </Stack>
+        <Typography variant="body1" color="text.secondary" paragraph>
+          {/* "cannot describe different assessments" was removed from this sentence deliberately.
+              Both artifacts are generated from the same model files, but the workbook's scoring is a
+              second implementation in Excel formulas, and no test in this repo can evaluate a
+              formula — equivalence is checked by a manual, non-CI step, and has been wrong before.
+              So this claims shared rules, which is verifiable, rather than guaranteed agreement. */}
+          The same assessment is available as an Excel workbook. It covers every capability domain,
+          capability area and maturity aspect, and calculates scores with Excel formulas that mirror
+          the rules this tool uses. It needs no add-ins, macros or internet connection, and works in
+          Excel 2007 or later.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph>
+          The workbook you download is blank. It is not an export of an assessment you have started
+          here, and completing it does not feed anything back into this tool — the two are separate
+          routes to the same result.
+        </Typography>
+        {/* Type and size via aria-describedby, not aria-label — see the note on Import/Export. An
+            aria-label here failed WCAG 2.5.3 because it did not contain the visible label. */}
+        <Button
+          variant="outlined"
+          href={WORKBOOK_DOWNLOAD_URL}
+          download={WORKBOOK_FILENAME}
+          startIcon={<TableViewIcon />}
+          aria-describedby="guide-workbook-meta"
+        >
+          Download the workbook
+        </Button>
+        <Typography
+          id="guide-workbook-meta"
+          variant="caption"
+          color="text.secondary"
+          component="p"
+          sx={{ mt: 1 }}
+        >
+          {WORKBOOK_FILE_TYPE} · {WORKBOOK_APPROX_SIZE}
+        </Typography>
+      </Paper>
+
       {/* --- Get involved ------------------------------------------------ */}
       <Paper sx={{ p: { xs: 3, md: 4 } }} component="section" aria-labelledby="involved-h">
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
@@ -521,7 +580,13 @@ export default function About(): JSX.Element {
             target="_blank"
             rel="noopener noreferrer"
             startIcon={<GitHubIcon />}
-            aria-label="View the project on GitHub (opens in new window)"
+            /*
+             * Must contain the visible label verbatim (WCAG 2.5.3 Label in Name). This previously
+             * read "View the project on GitHub (opens in new window)", which does not contain
+             * "View on GitHub" as a substring — the interposed words break it. Fixed here because
+             * the workbook links above were about to copy the same pattern.
+             */
+            aria-label="View on GitHub (opens in new window)"
           >
             View on GitHub
           </Button>

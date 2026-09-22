@@ -937,7 +937,16 @@ So, for any change to what the generator emits:
 **Generation is automatic.** A `prebuild` script generates the workbook, so `npm run build` always
 produces a current one — locally, in `ci.yml` and in `deploy.yml` alike. `predev` does the same for
 the dev server, because the artifact is gitignored and the in-app download links would otherwise
-404 in development. Step 1 above is therefore rarely needed by hand.
+404 in development. Step 1 above is therefore rarely needed by hand. **Use `npm run dev`, not a bare
+`vite`** — the latter skips `predev` and the download links 404.
+
+**The filename lives in `src/constants/workbook.ts`, not in `scripts/`.** `paths.ts` imports it, so
+the generator's output path and the in-app download URL are built from one string. A rename touching
+only one of them 404s the link a pilot user clicks while every test and the artifact check stay
+green, because both of those only ever look at the file the generator wrote. That module is
+Node-safe by the same contract as `draftNotice.ts` — no imports, no `import.meta` — which is what
+makes it importable from `scripts/`. The name is still a literal in `.gitignore`, which cannot
+import anything.
 
 **`npm run verify:workbook-artifact` covers the file that ships**, which is a different object from
 the ones above: `npm test` builds a workbook in memory and never reads a file, and

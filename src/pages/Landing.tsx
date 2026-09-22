@@ -11,6 +11,13 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import DownloadIcon from '@mui/icons-material/Download';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
+import {
+  WORKBOOK_APPROX_SIZE,
+  WORKBOOK_DOWNLOAD_URL,
+  WORKBOOK_FILE_TYPE,
+  WORKBOOK_FILENAME,
+} from '../constants';
+
 export default function Landing(): JSX.Element {
   const navigate = useNavigate();
 
@@ -156,6 +163,20 @@ export default function Landing(): JSX.Element {
           <Box sx={{ mt: 4, textAlign: 'center' }}>
             <Link component={RouterLink} to="/guide" sx={{ mr: 3 }}>
               Learn more about using this tool
+            </Link>
+            {/*
+             * Workbook link on the landing page (Decision 10). Here rather than in the hero,
+             * because a state arriving for the first time should meet the tool itself first; this
+             * is the alternative for those who cannot use it, which is a second question.
+             *
+             * Type and size are in the **visible** text, with no `aria-label`. This link has no
+             * caption beside it, so an `aria-label` carrying them would expose that information to
+             * screen-reader users and hide it from sighted ones — backwards — and it also broke
+             * WCAG 2.5.3, because the accessible name did not contain the visible label.
+             */}
+            <Link href={WORKBOOK_DOWNLOAD_URL} download={WORKBOOK_FILENAME}>
+              Prefer Excel? Download the offline workbook ({WORKBOOK_FILE_TYPE},{' '}
+              {WORKBOOK_APPROX_SIZE})
             </Link>
           </Box>
         </Container>
