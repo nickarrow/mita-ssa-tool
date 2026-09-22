@@ -1116,67 +1116,82 @@ Nick owes Shelley a scoping reply (`[18:36]`, `[26:06]`). It should state:
 - Offer: send back an edited workbook and the changes get folded into the generator
 - Note that XLSX import and live-data XLSX export are deferred, not dropped (Decision 6)
 
-### 7.1 Draft — written at the end of Wave 8
+### 7.1 Draft — updated after the v4.1.1 deploy
 
-Not sent. Covers every bullet above plus four things Wave 8 added that Shelley needs to know
-independently. Trim freely; the content that should not be cut is marked.
+Not sent. Still covers every bullet in Section 7, at **505 words against the Wave 8 draft's 698**.
+
+**What the deploy changed.** The Wave 8 draft was written before the site was live, so it described
+software rather than pointing at it. It now leads with the URL, and the workbook needs no directions
+because it is a button in the hero — which is the whole point of the v4.1.1 repositioning. One line
+is new and only makes sense post-deploy: if Shelley has opened the site before, the service worker
+will offer her a reload, and without it she would review the older build without knowing.
+
+**What the tightening cut, so it is not re-added by reflex.**
+
+| Cut                                     | Why                                                                    |
+| --------------------------------------- | ---------------------------------------------------------------------- |
+| "Excel 2007 and later, no add-ins"      | The workbook's `00_README` says it, and the build enforces it          |
+| "The tool now genuinely works offline"  | The site says it, and there is nothing for her to do about it          |
+| Predecisional marking as its own point  | CMS supplied the wording; she is not going to be surprised by it       |
+| The Technology worked example           | Three clauses down to one — direction and size, not the arithmetic     |
+| The PDF summary change, as its own item | Demoted to a trailing sentence; real, but second-order next to a score |
+
+Versions and tags are absent on purpose: she reviews a site, not a release history.
+
+**What must not be cut is the arithmetic ask.** It is the only part of the workbook our own testing
+cannot protect — no test in this repo can evaluate an Excel formula — and it is the reason to have a
+human in the loop at all. Also keep the explicit invitation to object to the deleted CSV template: a
+question was answered by deleting something of hers, and she should be able to push back on that
+cheaply.
+
+Numbers in the draft were re-derived rather than copied forward. The Technology divergence is **0.2
+at its maximum** (6 infrastructure aspects at 5 against 5 application aspects at 1: 3.2 exported,
+3.0 correct), not the vaguer "a couple of tenths" an earlier revision carried; and "41 figures across
+9 scenarios" matches `verify-workbook-in-excel.ts` — 9 scenario blocks, with the 5 rounding fixtures
+reported separately and not counted among the 41.
 
 > **Subject:** MITA 4.0 self-assessment tool and workbook — ready for your review
 >
 > Hi Shelley,
 >
-> Following up on scoping. Both pieces are ready for you to look at: the browser tool and the
-> offline Excel workbook.
+> Following up on scoping. Both pieces are live and ready for you to look at:
 >
-> **What "ready" means here.** This is ready for _your_ review, not cleared. CMS internal 508 review
-> is a separate gate on your clock, and I have no visibility into how long it takes — so if there is
-> a queue I should be in, tell me and I will get in it.
+> **https://nickarrow.github.io/mita-ssa-tool/**
 >
-> **The one ask that matters most: please check the workbook's arithmetic, not just its
-> look and feel.** The workbook calculates scores with Excel formulas that mirror the tool's own
-> rules, and no automated test can evaluate an Excel formula — so the numbers are the part least
-> protected by our own testing. I drive Excel from a script to check 41 figures across 9 scenarios
-> and they all agree, but that is 41 figures, not every combination. If you enter real levels for a
-> domain you know well and the totals look wrong, that is exactly the finding I need.
+> The offline Excel workbook is a button on the home page next to "Get Started", so you don't need me
+> to send you a copy. If you've opened the site before today it may offer you a reload — take it, or
+> you'll be reviewing an older build.
 >
-> **Two numbers changed, and I would rather tell you than have you find them.**
+> Ready for _your_ review, not cleared: CMS internal 508 review is a separate gate on your clock and I
+> can't see the queue. If there's one I should be in, tell me and I'll get in it.
 >
-> 1. **Exported Technology scores.** Any CSV or PDF exported before mid-September computed
->    Technology as a flat average over all 11 aspects. The correct rule is the average of its two
->    sub-dimension averages. The figure can move by a couple of tenths, and it read _higher_
->    whenever Technical Infrastructure Management scored above Application Management — for example
->    an area with Infrastructure all at 5 and Application all at 1 exported 3.2 and now exports 3.0.
->    The tool's own Results screen was always correct; the export was the outlier. If you have an
->    older export, re-export rather than compare the two.
-> 2. **The PDF's "ORBIT Dimension Summary" changed meaning.** It is now the average of per-area
->    dimension scores across finalized areas. It previously averaged every individual rating, which
->    weighted it by how many aspects each dimension has _and_ silently included in-progress work.
->    There is now a visible "Areas" column showing the denominator.
+> **The ask that matters most: please check the workbook's arithmetic, not just its look and feel.**
+> It calculates scores with Excel formulas that mirror the tool's rules, and no automated test can
+> evaluate an Excel formula — so the numbers are the part our testing protects least. I drive Excel
+> from a script to check 41 figures across 9 scenarios and they agree, but that's 41 figures, not
+> every combination. If you enter real levels for a domain you know well and a total looks wrong,
+> that's the finding I need.
 >
-> **Placeholder text on 14 capability areas is deliberate**, pending NextGen's document — the
-> descriptions read `[Placeholder — pending updated Capability Reference Model]`. Not a defect,
-> please don't spend review time on them.
+> **One number to know about.** CSVs and PDFs exported before mid-September averaged Technology flat
+> across all 11 aspects instead of averaging its two sub-dimensions. It moves by up to 0.2 and read
+> _high_ where infrastructure outscored applications; at the extreme, 3.2 became 3.0. The tool's own
+> Results screen was always right — only the export was wrong, so re-export rather than compare
+> against an old one. The PDF's "ORBIT Dimension Summary" also changed meaning in the same batch: it
+> now averages per-area scores across finalized areas only, with a visible "Areas" column showing the
+> denominator.
 >
-> **Every page and every export is marked predecisional**, using the wording CMS supplied, top and
-> bottom. Removing it at go-live is one setting, not a code change.
+> **Don't spend review time on the placeholder descriptions** on 14 capability areas — they're
+> deliberate, pending NextGen's document, and they say so in the text.
 >
-> **Four things worth knowing that are new since we last spoke:**
+> **On the manual CSV profile you asked about:** `maturity-profile-template.csv` is gone, and checking
+> before removing it turned up something better than an answer — the file was never included in the
+> deployed site, so nobody could ever have downloaded it. The workbook's Maturity Profile sheet covers
+> what it was for. **If you were relying on it, say so and I'll put it back.**
 >
-> - The workbook is now downloadable from inside the tool — Import & Export, the home page and the
->   Guide. You no longer need me to send you a copy.
-> - It works in Excel 2007 and later, with no add-ins, macros or internet connection. The build
->   fails if a formula uses anything newer, so that holds rather than relying on review.
-> - The tool now genuinely works offline after the first visit. It claimed to before and did not.
-> - **`maturity-profile-template.csv` is gone.** You asked whether the manual blank CSV profile
->   could be negated now the workbook produces a profile. It turned out the file was never reachable
->   from the deployed tool in the first place — it was never included in the site — so nobody was
->   using it. I have removed it. **If you were relying on it, say so and I will put it back.**
->
-> **An offer:** if you edit the workbook — wording, column order, anything — send it back and I will
-> fold the changes into the generator, so the next build carries them rather than you re-editing.
->
-> **Deferred, not dropped:** reading an XLSX back into the tool, and exporting a workbook
-> pre-filled with a state's live data. Both are real requests and both are out of scope for this
+> Two last things. If you edit the workbook at all — wording, column order, anything — send it back
+> and I'll fold it into the generator, so the next build carries your changes instead of you
+> re-editing. And reading an XLSX back into the tool, plus exporting a workbook pre-filled with a
+> state's live data, are deferred rather than dropped: both are real requests, both out of scope this
 > round.
 >
 > [Nick]
@@ -2968,9 +2983,8 @@ and that verification produced the follow-up recorded in 8o — which is why **t
 rather than one. Both are now cut and pushed (`v4.1.0` at `cf27c56`, `v4.1.1` at `d68cbf3`); see the
 Section 6 tag checklist.
 
-**The email is still unsent** (Sections 7.1 and the Wave 8 checklist both say so), and it now needs a
-4.1.1 paragraph before it goes: Shelley's copy of the story ends at the 4.1.0 deploy, so the draft
-describes download links in positions they are no longer in.
+**The email is still unsent**, but it is no longer stale: Section 7.1 has been rewritten for the
+post-deploy state, leading with the live URL and cut to 505 words from 698. It is ready to send as-is.
 
 ---
 
@@ -3021,8 +3035,11 @@ establish came with it:
    what let the history record a release, a real finding from it, and a follow-up release. Both tags
    are now pushed — the repository's first.
 
-**Still open after all this:** the email to Shelley, which needs a 4.1.1 paragraph because her copy of
-the story ends at the 4.1.0 deploy and describes links in positions they are no longer in. Plus
-OBS-45 and OBS-46, both deliberately logged rather than fixed, and both wanting a decision rather
-than a patch — OBS-41/45 share a one-word fix to the axe tag set that will surface judgement calls,
-and OBS-46 needs a responsive nav, which touches every page.
+**Still open after all this:** sending the email to Shelley. The draft in Section 7.1 has since been
+rewritten for the post-deploy state — it leads with the live URL, drops the directions to the
+workbook now that it is a button in the hero, and is 505 words against the original 698. Ready to
+send; nobody has sent it.
+
+Plus OBS-45 and OBS-46, both deliberately logged rather than fixed, and both wanting a decision
+rather than a patch — OBS-41/45 share a one-word fix to the axe tag set that will surface judgement
+calls, and OBS-46 needs a responsive nav, which touches every page.
