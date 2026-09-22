@@ -1462,6 +1462,13 @@ visually. An `aria-label` that adds words _in the middle_ of the visible label b
 `"download the blank offline workbook, …".includes("download the workbook")` is `false` — the
 interposed "blank offline" is enough to fail it.
 
+**One row has since been superseded.** The Landing link in that table was the one low on the page,
+and its remedy was to carry the type and size in the _visible_ label. Later in Wave 8 that link was
+replaced by one in the hero, which uses `aria-describedby` pointing at a visible caption — the same
+pattern as the other two. So all three now carry type and size as a description, and the
+visible-label remedy recorded here no longer exists anywhere in the app. The criterion still holds
+in all three places; only the mechanism changed.
+
 **What makes this worth an entry is that this project's axe configuration cannot see it — and the
 reason is a single tag.** axe-core 4.11.1 ships `label-content-name-mismatch`, tagged `wcag21a`,
 `wcag253` **and `experimental`**. Experimental rules are excluded from tag-based runs unless
@@ -1603,3 +1610,114 @@ pinned.
 two-second granularity. Two runs less than two seconds apart produce byte-identical archives
 whether or not `SOURCE_DATE_EPOCH` is set. Any verification of this that runs the generator twice in
 quick succession will appear to prove the fix works.
+
+---
+
+### OBS-45 — Stat-card numbers and the hero tagline are styled as headings, and the same missing tag hides them as OBS-41
+
+**Confirmed** in Wave 8 by running axe-core 4.11.1 in real Chromium against the built site, on
+every route reachable without seeded data.
+
+axe's `p-as-heading` rule reports `<p>` elements styled to look like headings, as a WCAG 1.3.1
+(Level A) concern: sighted users perceive a structural heading, assistive technology is given a
+paragraph, and the two views of the page disagree.
+
+| Route            | Nodes | Element                                            | What it is                                            |
+| ---------------- | ----- | -------------------------------------------------- | ----------------------------------------------------- |
+| `/`              | 1     | `<Typography variant="h5" component="p">`          | The hero tagline, "Assess your Medicaid Enterprise …" |
+| `/dashboard`     | 4     | `<Typography variant="h3">` × 4 (`DashboardStats`) | The big stat numbers — `—`, `0`, `0`, `72`            |
+| `/import-export` | 4     | the same `DashboardStats`                          | same                                                  |
+| `/guide`         | 0     | rule evaluated, nothing found                      |                                                       |
+| `/results`       | 0     | short-circuits to the empty state                  |                                                       |
+
+**Nine nodes across three routes**, `impact: serious` on each. All are **pre-existing** — none was
+introduced by the download-link work; they were found while verifying it. A first draft of this
+entry said "five across two", because axe had only been run on the two pages being edited; the count
+is recorded here as a reminder that a rule newly turned on has to be swept across all routes, not
+just the diff.
+
+**Two more places carry the identical pattern behind a data gate and are unmeasured.**
+`Results.tsx` and `ResultsMasterDetail.tsx` render `variant="h3"`/`"h4"` as `component="p"` with a
+sibling `<p>` label, reachable only once `statusCounts.finalized > 0`. Structurally identical, so
+expect the count to grow once a state has real data. Inferred, not measured — it needs seeded
+IndexedDB.
+
+**They differ in kind, and only one is arguably a real defect.**
+
+The hero tagline is a deliberate call: it is a tagline, not a section heading, and promoting it to
+`<h2>` would insert a heading above the feature cards that describes nothing and disturbs the
+document outline. Restyling it smaller is the alternative, and that is a design question.
+
+`DashboardStats` is the substantive one, and more so than the first draft credited: it is on
+`/dashboard`, the app's main working surface, not only on an export page. Each card renders a 48px
+number as a `<p>` above a small `<p>` label, so visually the number reads as the card's heading and
+the label as its caption — while the accessible tree has two sibling paragraphs and no heading at
+all. The card's meaning lives entirely in the pairing, and nothing in the markup expresses it.
+`role="figure"` with the label as its accessible name, or a definition list, would.
+
+**Why this never surfaced before, and why it is filed next to OBS-41:** `p-as-heading` is tagged
+`cat.semantics`, `wcag2a`, `wcag131` **and `experimental`**. It is the same mechanism recorded in
+OBS-41 — experimental rules are excluded from tag-based runs unless `experimental` is requested, and
+the repo's ruleset does not request it. So the Wave 3 sweep of 12 routes, which reported zero
+violations, never evaluated this rule either.
+
+That makes two Level-A criteria with real failures behind a single missing tag, found five waves
+apart. The fix is one word in the axe configuration, and the reason to do it deliberately rather
+than quietly is that adding `experimental` will surface findings like the hero tagline, which need a
+judgement call rather than a patch — better made as its own piece of work than discovered mid-wave.
+
+The mechanism was read out of the library rather than assumed: `axe.js` sets
+`tagExclude = ['experimental', 'deprecated']`, and `matchTags` keeps a rule only when
+`exclude.every((tag) => rule.tags.indexOf(tag) === -1)`, where `exclude` is `tagExclude` minus
+whatever the caller included. Neither rule sets `enabled: false`. So both a `wcag2a`-style tag run
+and a bare `axe(container)` exclude them, and naming `experimental` turns both on.
+
+---
+
+### OBS-46 — At phone widths the app chrome takes 57% of the viewport, leaving 287px of content
+
+**Confirmed** in Wave 8 by measuring the built site in Chromium at 375×667, while checking whether
+the repositioned workbook link cleared the fold.
+
+The layout is a `height: 100vh` flex column: `AppBar`, top notice, `<main>` (the only scroller),
+bottom PRA notice, footer. At 375×667 those siblings consume **380px of 667**, so `<main>` gets 287.
+
+| Band                   | Height at 375×667 |
+| ---------------------- | ----------------- |
+| `AppBar`               | **128.0px**       |
+| Top predecisional band | 65.6px            |
+| `<main>`               | **286.6px**       |
+| Bottom PRA band        | 113.8px           |
+| Footer                 | 73.0px            |
+| Total                  | 667.0px           |
+
+The skip link is absolutely positioned and the live-region `<div>` is 0px, so neither takes space.
+A first draft of this table published the three non-`AppBar` bands as ~59 / 73 / 48, which with the
+correct 128px `AppBar` totals 308 against the 380 asserted two lines above it — the total and the
+`<main>` figure were measured, the split was not. Recorded because a band table is exactly the kind
+of thing later work will trust without re-measuring.
+
+**The `AppBar` is the dominant term and the only accidental one.** It is 128px, 2.3× a normal 56px
+`Toolbar`, and the mechanism is not what it looks like. The `Toolbar` does **not** wrap —
+`flex-wrap` computes to `nowrap`, and all four nav buttons sit on one row at `y: 43.8`. What happens
+is that the brand button gets squeezed to **57.5px wide**, so its _text_ wraps to four lines and the
+button becomes 128px tall, which sets the row height. The nav buttons are beside the brand, not
+below it; the overlap visible in a screenshot is each button's label and icon overflowing its own
+shrunk box — 64px for three of them, 69.5px for Import/Export. The two notice bands are CMS
+requirements and the footer is
+small — the `AppBar` is oversized purely because the responsive nav was never built.
+
+Consequences beyond the cosmetic: a phone user gets a 287px reading window on every page except the
+assessment page, which suppresses the footer and so gets ~360px. That is enough for a heading and a
+paragraph or two — the Import/Export pointer link sits at 161-203px inside it, comfortably above the
+fold — but not for anything taller. The Landing hero is the measured casualty: made responsive in
+Wave 8 and still unable to fit its second call to action into the band, because a title, a tagline
+and a sentence of explanation already exceed it. So the rule is about height, not about pages:
+content in the first ~287px is reachable, and anything that needs more than that is not, on any page.
+An earlier draft of this paragraph said any above-the-fold claim about any page was false on a phone,
+which is both wrong and the version that would stop someone from trying.
+
+Fix is a responsive nav: a menu button below `sm` that collapses the four routes into a drawer. With
+the nav buttons gone the brand takes the full width on one 32px line, so the `Toolbar` falls back to
+its 56px `minHeight` — 72px recovered, giving `<main>` ~359px. Not attempted in Wave 8: it is a
+layout change touching every page, and the wave was closing a deploy, not opening a redesign.

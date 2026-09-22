@@ -493,8 +493,10 @@ export default function About(): JSX.Element {
       {/*
        * Between "your data stays with you" and "get involved", so the reading order is: how to use
        * the tool, what happens to your data, what to do if you cannot use the tool at all, how to
-       * contribute. The Import/Export page carries the primary link; this one exists because the
-       * Guide is where someone goes to find out whether the tool fits their situation.
+       * contribute. The **Landing hero** carries the primary link — an earlier revision of this
+       * comment said Import/Export did, which stopped being true when the link was repositioned
+       * after the 4.1.0 deploy. This one exists because the Guide is where someone goes to find out
+       * whether the tool fits their situation at all.
        */}
       <Paper sx={{ p: { xs: 3, md: 4 }, mb: 3 }} component="section" aria-labelledby="workbook-h">
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>

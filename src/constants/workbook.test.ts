@@ -3,8 +3,11 @@
  *
  * Both exist because the whole gate — typecheck, lint, 1017 tests, knip, build, and the artifact
  * check — stayed green through a version of this feature where either could have been wrong. The
- * artifact check only ever looks at the file the generator wrote, and no page test renders these
- * links, so nothing else in the repo can see a broken URL or a broken `.gitignore` pairing.
+ * artifact check only ever looks at the file the generator wrote, so nothing else in the repo can
+ * see a broken URL or a broken `.gitignore` pairing.
+ *
+ * `src/pages/ImportExport.test.tsx` now renders one of the links, but it asserts the *fragment*
+ * wiring, not the download URL — so these two guards are still the only cover for what they cover.
  */
 
 import { describe, it, expect } from 'vitest';

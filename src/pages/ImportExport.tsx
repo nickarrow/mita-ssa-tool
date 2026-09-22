@@ -2,7 +2,8 @@
  * Import/Export page - Manage assessment data import, export, and backup
  */
 
-import { JSX, useState } from 'react';
+import { JSX, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -14,6 +15,7 @@ import {
   CardContent,
   CardActions,
   Chip,
+  Link,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -53,6 +55,7 @@ import {
 } from '../services/export';
 
 import {
+  OFFLINE_WORKBOOK_SECTION_ID,
   WORKBOOK_APPROX_SIZE,
   WORKBOOK_DOWNLOAD_URL,
   WORKBOOK_FILE_TYPE,
@@ -73,6 +76,38 @@ export default function ImportExport(): JSX.Element {
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportProgress, setExportProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  /*
+   * Make `…/import-export#offline-workbook-section` work as a URL, not just as a click.
+   *
+   * The browser resolves a fragment before React has rendered anything, so on a fresh load or a
+   * reload the target does not exist yet and the jump is lost. `ScrollToTop` then sets `<main>`
+   * back to 0 on mount. Result without this: the hash is in the address bar, the page is at the
+   * top, and the section is ~1,350px below the viewport — so the link a user copies and sends to
+   * a colleague silently does nothing.
+   *
+   * This covers the load-time case. A same-page anchor click does not need it — the browser scrolls
+   * natively, and because the target carries `tabIndex={-1}` it focuses it too, which is where the
+   * keyboard behaviour comes from on that path. Verified separately: plain click, Cmd+click into a
+   * background tab, and a cold load of the hash URL all end with the section scrolled to and focused.
+   *
+   * `requestAnimationFrame` because `ScrollToTop` is a sibling of this page inside `Layout` and
+   * also scrolls on mount. Sibling effect order happens to favour this one today; deferring a
+   * frame means not depending on that.
+   */
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash !== `#${OFFLINE_WORKBOOK_SECTION_ID}`) return undefined;
+    const frame = requestAnimationFrame(() => {
+      const section = document.getElementById(OFFLINE_WORKBOOK_SECTION_ID);
+      if (!section) return;
+      section.scrollIntoView({ block: 'start' });
+      // Focus as well as scroll, or a keyboard user resumes tabbing from the top of the document
+      // and walks the whole export list to reach what the URL pointed them at.
+      section.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [hash]);
 
   const { getStatusCounts, getDomainScore, getOverallScore } = useScores();
   const statusCounts = getStatusCounts();
@@ -208,7 +243,26 @@ export default function ImportExport(): JSX.Element {
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Export your assessment data for CMS submission, stakeholder review, or backup. Import
-        previous assessments to restore or merge data.
+        previous assessments to restore or merge data.{' '}
+        {/*
+         * Pointer to the workbook section at the foot of this page.
+         *
+         * The section itself stays where it is — it should not displace the actual exports, which
+         * are what most people come here for — but measured on the deployed site it sat at 92% of
+         * the page, below both columns, which made "primary placement" a claim the layout did not
+         * support. An in-flow anchor costs nothing and makes it findable without scrolling.
+         *
+         * A plain fragment anchor, with no `onClick` and no `preventDefault`. An earlier revision
+         * intercepted the click to avoid minting a URL that did not work on reload — see the effect
+         * near the top of this component, which fixes that properly instead. Intercepting was worse
+         * than the problem it solved: `preventDefault` fires on Cmd/Ctrl+click too, so asking for a
+         * background tab yanked the current page down 1,071px instead, and middle-click bypassed the
+         * handler entirely and opened the un-handled URL anyway. So the interception could not
+         * actually prevent the bad URL, it could only break the good interactions.
+         */}
+        <Link href={`#${OFFLINE_WORKBOOK_SECTION_ID}`}>
+          Looking for the offline Excel workbook? It is at the bottom of this page.
+        </Link>
       </Typography>
 
       {/* Stats Summary - same as Dashboard */}
@@ -577,14 +631,45 @@ export default function ImportExport(): JSX.Element {
       </Grid>
 
       {/*
-       * Offline workbook — the primary download link (plan Section 5.5).
+       * Offline workbook — the section the intro links down to (plan Section 5.5). This was
+       * originally designated the *primary* download placement; the Landing hero holds that now,
+       * for the reasons in the intro comment above.
        *
        * Its own full-width section rather than a third card in "Other Export Formats", because it
        * is not an export. Every card up there serialises the state's own data and is gated on
        * `hasData`; this is a blank template, identical for everyone and always available. Filing it
        * among the exports would imply it contained their assessment.
        */}
-      <Paper sx={{ p: 3, mt: 4 }} component="section" aria-labelledby="offline-workbook-h">
+      {/*
+       * `tabIndex={-1}` makes the region focusable without putting it in the tab order, and it is
+       * doing real work on both arrival paths: the browser focuses a fragment target only if it is
+       * focusable, so this is what makes a plain anchor click move focus here and not just the
+       * viewport. Without it a keyboard user would resume tabbing from the link near the top of the
+       * page and walk the whole export list to reach what they asked for.
+       *
+       * The ring is kept, not suppressed. A first pass set `outline: 'none'` on `:focus`, reasoning
+       * that a scroll destination is not an interactive control — but measurement showed the section
+       * matches `:focus-visible` when it is reached from the keyboard, so that rule removed the only
+       * signal a keyboard user gets that focus jumped 1,000px down the page. Scoped to
+       * `:focus-visible` so a mouse arrival stays quiet, and styled to match the theme's convention
+       * for focus rings rather than inventing one.
+       */}
+      <Paper
+        sx={{
+          p: 3,
+          mt: 4,
+          '&:focus': { outline: 'none' },
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: 2,
+          },
+        }}
+        component="section"
+        id={OFFLINE_WORKBOOK_SECTION_ID}
+        tabIndex={-1}
+        aria-labelledby="offline-workbook-h"
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <TableViewIcon aria-hidden="true" sx={{ mr: 1, color: 'primary.main', fontSize: 28 }} />
           <Typography variant="h5" component="h2" id="offline-workbook-h">

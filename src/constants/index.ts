@@ -63,6 +63,19 @@ export {
 export { WORKBOOK_APPROX_SIZE, WORKBOOK_FILE_TYPE, WORKBOOK_FILENAME } from './workbook';
 
 /**
+ * DOM id of the workbook section on the Import & Export page.
+ *
+ * Named here rather than written as a literal because it is referenced three times — the pointer
+ * link's `href`, the section's own `id`, and the `getElementById` in the effect that makes
+ * `…/import-export#offline-workbook-section` work as a URL — and a mismatch between any two of them
+ * fails silently. The link would still look and behave like a link, and do nothing.
+ *
+ * In this file rather than in `./workbook` because a DOM id has no build-time consumer. `./workbook`
+ * exists to be importable from plain Node, and only what `scripts/` actually needs belongs there.
+ */
+export const OFFLINE_WORKBOOK_SECTION_ID = 'offline-workbook-section';
+
+/**
  * URL the in-app download links point at.
  *
  * Built from `import.meta.env.BASE_URL`, which Vite sets from `base` and which always ends in a

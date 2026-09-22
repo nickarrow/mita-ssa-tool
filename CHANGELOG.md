@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1] - 2026-09-22
+
+Follow-up to the 4.1.0 pilot deploy. 4.1.0 put the offline Excel workbook in the tool for the first
+time, and watching the deployed site showed the links were somewhere nobody would look: all three
+sat 80-92% of the way down their pages, and nothing on any first screen mentioned Excel. That is the
+wrong outcome for the one audience the workbook exists for — states that cannot use a browser-based
+tool at all, who would have concluded the tool did not suit them and left before scrolling that far.
+
+Its own version rather than an edit to 4.1.0, because 4.1.0 is already deployed and a state may
+already be looking at it. Two builds sharing a version number is the traceability problem the 4.1.0
+notes below complain about, and repeating it here would be careless.
+
+### Changed
+
+- **The workbook download is now offered on the home page, in the opening choice beside "Get
+  Started"** rather than near the foot of the page. It stays a secondary option, since most states
+  can use the browser tool. The duplicate link lower down the home page is gone
+- Import & Export keeps its workbook section and gains a link at the top of the page pointing down to
+  it, so it is findable without scrolling the export list. That link is now shareable too: opening
+  the page at `#offline-workbook-section` scrolls to the section instead of landing at the top
+- The home page heading, tagline and spacing now size to the screen, so the opening choice sits
+  higher on a phone. It is still below the first screen there — the header, the two required notices
+  and the footer leave a 287px content window at 375×667 — but roughly a sixth of the way down the
+  page rather than four-fifths
+
 ## [4.1.0] - 2026-09-22
 
 Pilot clearance release. Everything in it exists to get the tool and the offline workbook
@@ -31,10 +56,11 @@ Scope record and decision log: `docs/decisions/PILOT_CLEARANCE_PLAN.md`.
 
 ### Added
 
-- **The offline Excel workbook can now be downloaded from inside the tool**, on Import & Export,
-  the home page, and the Guide. It is a blank workbook covering the whole assessment for anyone who
-  cannot use a browser-based tool, and each link says what it is and roughly how large it is before
-  you click. Previously the workbook existed but nothing in the app linked to it
+- **The offline Excel workbook can now be downloaded from inside the tool**, on Import & Export, the
+  home page, and the Guide. It is a blank workbook covering the whole assessment for anyone who
+  cannot use a browser-based tool, and each link is accompanied by what it is and roughly how large
+  it is, so you know before you click. Previously the workbook existed but nothing in the app linked
+  to it
 - **The tool now genuinely works offline.** It always said it did, and it did not — there was no
   service worker, so a reload without a connection failed (OBS-22). Open it once with a
   connection and it now loads and runs with no network at all, including the offline Excel

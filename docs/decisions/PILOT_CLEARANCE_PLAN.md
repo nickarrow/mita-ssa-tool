@@ -123,13 +123,13 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    git branch --show-current && git status --short && git log --oneline -4
    npm run typecheck && npm run lint && npm test && npm run audit:code
    ```
-4. Also read `docs/CODEBASE_OBSERVATIONS.md` — **44 `OBS-*` entries, 20 resolved**, referenced
+4. Also read `docs/CODEBASE_OBSERVATIONS.md` — **46 `OBS-*` entries, 20 resolved**, referenced
    throughout this plan. Resolved: OBS-1, 2, 3, 6, 7, 17, 21, 22, 24, 25, 28, 29, 30, 31, 32, 34,
    37, 38, 39, 40 — each carrying a `**Resolved` marker naming the wave, so the file can be
    scanned rather than cross-referenced against this one. **OBS-16 is only _partially_ resolved**
    (one of its four bullets); earlier revisions of this plan listed it as closed, which was wrong.
 
-   Wave 8 added four, all unresolved and all worth reading before touching the relevant area:
+   Wave 8 added six, all unresolved and all worth reading before touching the relevant area:
 
    | New    | What                                                                                                                |
    | ------ | ------------------------------------------------------------------------------------------------------------------- |
@@ -137,6 +137,13 @@ meeting. Check off tasks as they complete. Every wave ends with the repo green.
    | OBS-42 | A static `role="alert"` on Landing is a live region that never fires, and breaks any "count the live regions" check |
    | OBS-43 | An unknown assessment id renders a blank page: no heading, no error. Pairs with OBS-36                              |
    | OBS-44 | Every deploy makes offline clients re-download the workbook, because its bytes shift per build                      |
+   | OBS-45 | Stat-card numbers styled as headings — hidden by the **same** missing axe tag as OBS-41                             |
+   | OBS-46 | At 375px the `AppBar`, notices and footer take 57% of the viewport, leaving `<main>` 287px                          |
+
+   OBS-41 and OBS-45 share a root cause worth acting on as its own piece of work: adding
+   `experimental` to the axe tag set turns on both rules, and two Level-A criteria with real
+   failures were sitting behind that single missing word. OBS-46 is the constraint behind any
+   "above the fold" claim about any page on a phone, including the workbook link's.
 
    Also still open and worth a decision before real state data exists: OBS-33 (collapsed panels
    stay mounted) and OBS-35 (the duplicate-rating path).
@@ -182,10 +189,40 @@ drive it. Seed data straight into IndexedDB rather than clicking through the UI:
 **Always clear the five stores afterwards** — the user's browser profile persists, and
 leaving seed data behind pollutes their view of the tool.
 
+**Since Wave 8 the app has a service worker, and it will serve you a stale build.** Rebuild,
+reload `vite preview`, and the page you measure is the **previous** build — precached and served
+from `workbox-precache-v2-http://localhost:4173/`. There is no error and nothing looks wrong; the
+measurements are simply of code you replaced. Verified the hard way: a `py: '11px'` override read
+back as `12px` and a responsive `h1` read back at its desktop size. Before any post-rebuild
+measurement, clear it and reload:
+
+```js
+// In browser_evaluate, then navigate again.
+async () => {
+  for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+  for (const k of await caches.keys()) await caches.delete(k);
+};
+```
+
+Cheaper still: assert a canary in the same `browser_evaluate` that takes the measurement — read
+back one computed value you know only the new build produces, so a stale read fails loudly instead
+of quietly.
+
 **axe cannot evaluate colour contrast under jsdom.** It needs a canvas to sample rendered
 pixels, which is what the "getContext not implemented" notice in test output means. Any
 `toHaveNoViolations()` assertion in this repo silently skips contrast. Measure it in a real
 browser by reading `getComputedStyle` and computing the ratio.
+
+**Contrast over a gradient has to be measured from pixels, and the sample is easy to poison.**
+axe reports `color-contrast` as `incomplete`, not passing or failing, whenever the background is a
+gradient — the whole Landing hero is one, so five nodes there are permanently unevaluated. To
+measure: blank the text (`el.style.color = 'transparent'` across the container), screenshot, and
+sample the background under each text box, then composite the foreground yourself if the element
+carries an `opacity`. Sampling a screenshot **with** the text present reads antialiased glyph edges
+as background and inflates the result — that produced a 4.18:1 scare where the real value was
+4.91:1. And quote one sample point per element: a first pass paired a border read at the button's
+midpoint with a background read at its edge, reporting 4.17:1 for a border that is 4.00:1 where it
+matters.
 
 **Dev mode already runs axe and logs violations to the console** (`main.tsx` wires
 `@axe-core/react`). Reading the browser console while clicking around is free findings.
@@ -666,14 +703,50 @@ comparison, and records which primitive is authoritative.
   suite imports the generator's modules through Vite's transform and builds a workbook in
   memory, so it would not catch a failure of Node's native type stripping — the reason 22.18
   is the floor
-- In-app download links: Import/Export page (primary), Landing page (Decision 10), Guide.
-  **Done in Wave 8.** On Import/Export it is a full-width section of its own rather than a third
-  card among "Other Export Formats" — every card there serialises the state's own data and is gated
-  on `hasData`, so filing a blank template among them would imply it contained their assessment. All
-  three links carry the file type and approximate size in the accessible name, since a download is a
-  commitment and the visible label alone says neither. The URL is built from
+- In-app download links: **Landing hero (primary)**, Import/Export, Guide.
+  **Done in Wave 8, repositioned immediately after the deploy.** On Import/Export it is a full-width
+  section of its own rather than a third card among "Other Export Formats" — every card there
+  serialises the state's own data and is gated on `hasData`, so filing a blank template among them
+  would imply it contained their assessment. All three links carry the file type and approximate size
+  as an `aria-describedby` **description** pointing at a visible caption, not in the accessible name:
+  a download is a commitment and the visible label alone says neither, but folding the size into an
+  `aria-label` broke WCAG 2.5.3 (see the comment in `ImportExport.tsx`). The URL is built from
   `import.meta.env.BASE_URL`, verified to resolve under the Pages subpath rather than the origin —
   the same defect class as OBS-28
+- **Why "primary" moved from Import/Export to the Landing hero.** Measured on the deployed site,
+  the three links sat at 80%, 92% and 81% of the way down their respective pages, and nothing above
+  the fold on any page mentioned Excel. Naming Import/Export the primary placement was a claim the
+  layout did not support, and it was the wrong page besides: the workbook exists for someone who
+  **cannot use a browser-based tool at all**, and that person has no reason to navigate to a page
+  about exporting data from the tool they have already concluded they cannot use. So the hero now
+  carries it, as the deliberately _secondary_ affordance beside "Get Started" — outlined against the
+  filled primary, second in the tab order, because most states can use the browser tool and this
+  should not read as an equal recommendation. The old lower-Landing link is gone rather than kept
+  in both places: it repeated the same visible text for the same audience two screens apart.
+  Import/Export keeps its section and gains an above-the-fold link pointing down to it
+- **What the repositioning actually achieved, stated narrowly.** Measured against the real scroller
+  on a local build: the hero link is 26% down the page at 1280×720 with 128px of slack, and 16% down
+  at 375×667 — where it is still 170px below the fold. On a phone "above the fold" is not reachable
+  from this component: the `AppBar`, the two CMS notice bands and the footer take 380px of 667,
+  leaving `<main>` 287px (**OBS-46**). The hero was made responsive anyway, which moved the link from
+  80% of the page to 16%; the remaining gap needs a responsive nav, which is its own piece of work.
+  Recorded this way because the first version of the comment claimed the fold outright, and one
+  viewport check would have contradicted it
+- **The Import/Export pointer is a plain fragment anchor, plus a mount effect that makes the URL
+  work.** The anchor alone was not enough: the app is client-rendered, so the browser resolves the
+  fragment before the target exists, and `ScrollToTop` then resets `<main>` on mount — meaning
+  `…/import-export#offline-workbook-section` opened cold, reloaded, or shared with a colleague landed
+  at the top of the page with an unexplained hash. The effect handles that case, keyed on
+  `useLocation().hash` and deferred a frame so it does not race `ScrollToTop`. The section carries
+  `tabIndex={-1}`, which is what lets the browser move focus there and not just the viewport.
+  **Rejected: intercepting the click with `preventDefault` and scrolling by hand.** It was the first
+  attempt, and it could not do the job it was for — `preventDefault` also fires on Cmd/Ctrl+click, so
+  asking for a background tab yanked the current page down instead, while middle-click bypassed the
+  handler entirely and opened the un-handled URL anyway. It broke the good interactions without
+  preventing the bad URL. Verified on the anchor-plus-effect version: cold load, plain click and
+  Cmd+click into a background tab all end scrolled to the section with focus on it, and the original
+  tab does not move on a Cmd+click. One consequence to know: a plain click now adds a history entry,
+  and Back clears the hash without restoring the scroller, since `ScrollToTop` keys on `pathname`
 - ExcelJS is a `devDependency`. It never enters the browser bundle of an offline-first
   PWA, and its supply-chain exposure is limited to CI. Worth knowing: upstream `exceljs`
   has been dormant since v4.4.0 (October 2023). Still MIT and widely used; acceptable for
@@ -927,7 +1000,9 @@ front of Excel, which are called out as such.
 - [x] Document the go-live switch: setting `VITE_DRAFT_MODE=false` in `deploy.yml` removes
       the disclaimer from the app and all exports in one change (Decision 13)
 - [x] Add the generator plus validation tests to `ci.yml`
-- [x] Download links: Import/Export (primary), Landing (Decision 10), Guide
+- [x] Download links: Landing hero (primary), Import/Export, Guide. Shipped with Import/Export
+      as the primary and all three below the fold; **repositioned after the deploy** once measurement
+      showed they sat 80-92% of the way down their pages (Section 5.5)
 - [x] Handle dev mode: the workbook is a gitignored build output, so `npm run dev` has no
       file and the three links would 404. Add a `predev` generation step or a graceful message.
       **Both, and the premise was wrong in a way that mattered.** It does not 404 — Vite's SPA
@@ -954,9 +1029,18 @@ front of Excel, which are called out as such.
       clean at 0, **94/94 mutations** proved failable via `prove-assertions.ts` on a clean tree, and
       **41/41** arithmetic checks in Excel. The Excel gate was run even though the only
       generator-emitted change this wave was `00_README`'s version cell, so the shipped workbook is
-      verified at the version actually going out
-- [ ] Manual smoke on a `workflow_dispatch` deploy: banner on every page, workbook
-      downloads and opens cleanly, exports carry the notice
+      verified at the version actually going out. **Re-run at 4.1.1** after the post-deploy version
+      bump moved that same cell again — 41/41, and all 5 rounding fixtures still diverge as
+      `00_README` documents. Cheap insurance rather than a real risk (`getAppVersion()` has one call
+      site and feeds a text cell), but steering §16 makes any change to generator output the trigger,
+      and "it is only a version string" is exactly the reasoning that lets a gate rot
+- [x] Manual smoke on a `workflow_dispatch` deploy: banner on every page, workbook
+      downloads and opens cleanly, exports carry the notice. **Done on the live site.** Service
+      worker activated at scope `/mita-ssa-tool/` with 12 precached entries including the workbook
+      and favicon, both CMS notices on all five pages, three working download links, footer reads
+      4.1.0, `<title>` carries `(Predecisional)`. The smoke found one thing no local check could:
+      all three download links sat 80-92% of the way down their pages, which is what prompted the
+      repositioning recorded in Section 5.5
 - [x] `CHANGELOG.md`: fold the `[Unreleased]` section into a version entry. Wave 5 already
       populated it, because that wave changes the Technology figure a state submits to CMS and
       shipping Drop 1 with no record of that would have been wrong
@@ -976,24 +1060,31 @@ front of Excel, which are called out as such.
       workbook's `06_Maturity_Profile` supersedes what it was for. Flagged in the handoff email so
       she can object; git retains it either way
 - [x] Update `docs/CODEBASE_OBSERVATIONS.md` — most entries are already marked resolved as
-      their wave landed; check nothing from Waves 6-8 is left unrecorded. **Now 44 entries, 20
-      resolved.** Wave 8 closed OBS-22, OBS-28 and OBS-37, and added four: OBS-41 (WCAG 2.5.3 is
+      their wave landed; check nothing from Waves 6-8 is left unrecorded. **Now 46 entries, 20
+      resolved.** Wave 8 closed OBS-22, OBS-28 and OBS-37, and added six: OBS-41 (WCAG 2.5.3 is
       unenforced and three controls were failing it), OBS-42 (a static `role="alert"` on Landing),
       OBS-43 (unknown assessment id renders a blank page), OBS-44 (every deploy re-downloads the
-      workbook to offline clients)
+      workbook to offline clients), and — both from the post-deploy link repositioning — OBS-45
+      (stat-card numbers styled as headings, hidden by the same missing axe tag as OBS-41) and
+      OBS-46 (at 375px the app chrome leaves `<main>` only 287px)
 - [x] Version bump and `npm install --package-lock-only`. **4.0.0 → 4.1.0**, MINOR: user-facing
       features were added and no data format changed, so nothing migrates and existing assessments
-      are untouched
+      are untouched. Then **4.1.0 → 4.1.1** for the post-deploy link repositioning — PATCH, and a
+      second version rather than an edit to the 4.1.0 entry because 4.1.0 was already deployed and
+      being looked at. Two builds sharing one version number is precisely the traceability problem
+      the 4.1.0 notes complain about for the September 11 fixes, which arrived stamped `4.0.0`
 - [x] Draft the follow-up email to Shelley (Section 7). **Drafted in 7.1**, covering every bullet
       above plus the four Wave 8 additions she has not seen, and flagging the deleted CSV template so
       she can object. Not sent
-- [ ] **Tag the release — steering §13 step 5, deliberately deferred to last.** Steps 1-3 (version,
-      lockfile, CHANGELOG) are done, and this wave's docs commit serves as step 4's release commit.
-      The tag is held back until the deploy is verified, so `v4.1.0` points at what actually shipped
-      rather than at a commit that might need a follow-up fix. Worth knowing while doing it:
+- [ ] **Tag the releases — steering §13 step 5, deliberately deferred to last.** Steps 1-3 (version,
+      lockfile, CHANGELOG) are done for both versions, and each version's docs commit serves as step
+      4's release commit. Holding the tags until each deploy is verified is what made the deferral
+      worth it: the 4.1.0 deploy produced a follow-up, so **two** tags are now owed rather than one —
+      `v4.1.0` at `cf27c56`, which is exactly the commit that was deployed and verified, and `v4.1.1`
+      at the repositioning commit once that is deployed. Worth knowing while doing it:
       **`git tag -l` currently returns nothing** — v4.0.0 shipped untagged, so there is no prior tag
       to pattern-match against, and `v4.1.0` will be the repository's first. Pushing a tag is a
-      publish action, so it goes out with the push rather than ahead of it
+      publish action, so tags go out with the push rather than ahead of it
 
 ---
 
@@ -2858,7 +2949,8 @@ evidence, and three of these came from _this project's own_ documentation.
 - **Four observations were logged, not fixed** — OBS-41 through OBS-44. OBS-43 (an unknown assessment
   id shows a permanent "Loading assessment…" spinner) is the one most likely to be hit by a real
   pilot user with a stale bookmark, and it wants pairing with OBS-36 as a single empty-and-error-state
-  pass.
+  pass. (**Two more, OBS-45 and OBS-46, came out of the post-deploy work recorded in 8o.** Section 2
+  carries the running total; this subsection is as of the wave's own close.)
 
 ### Still open when this wave closed
 
@@ -2867,3 +2959,47 @@ dispatches by `workflow_dispatch` from this branch, against the fork explicitly 
 email drafted in Section 7.1. The `v4.1.0` tag is deliberately held until the deploy is verified, so
 it points at what actually shipped; the repository has **no tags at all** today, so it will be the
 first.
+
+**Two of the three have since happened.** The push and the deploy landed, the deploy was verified,
+and that verification produced the follow-up recorded in 8o — which is why two tags are now owed
+rather than one. See the Section 6 tag checklist for the current position.
+
+**The email is still unsent** (Sections 7.1 and the Wave 8 checklist both say so), and it now needs a
+4.1.1 paragraph before it goes: Shelley's copy of the story ends at the 4.1.0 deploy, so the draft
+describes download links in positions they are no longer in.
+
+---
+
+### 8o. Post-deploy — the workbook link was in the wrong place (v4.1.1)
+
+Recorded separately from 8n because it happened **after** Wave 8 closed and after the deploy, and
+because the way it was found is the transferable part.
+
+**The finding could only come from the deployed site.** Every local check passed, three times over,
+on a feature that shipped links nobody would look at: all three sat 80-92% of the way down their
+pages and nothing on any first screen mentioned Excel. No test, no axe run and no build gate has an
+opinion about where on a page a link is, and the wave's own record listed "three working download
+links" as a satisfied smoke item. It took a human looking at the live site and asking "is it anywhere
+else? should it be?".
+
+**Three adversarial review rounds on a change of about 120 lines**, returning 11, 12 and 9 items.
+The pattern across all three is the same and worth naming, because it is not about this change:
+**most of the real defects were false factual claims in my own comments and docs, not broken code.**
+A contrast figure that paired a border sample with a background sample from a different place. A band
+table that did not sum to the total asserted two lines above it. An `AppBar` height attributed to
+flex wrapping when `flex-wrap` computes to `nowrap`. A comment describing an `onClick` handler that
+had been deleted. Each one would have been believed by whoever read it next.
+
+**Two behavioural defects were also real**, and both were mine from the round before: intercepting
+the pointer click broke Cmd+click while failing to prevent the URL it existed to prevent, and
+suppressing the section's focus outline removed the ring in exactly the keyboard case it claimed not
+to affect.
+
+**A verification hazard the service worker introduced.** From Wave 8 onwards, `vite preview` serves
+the _precached previous_ build after a rebuild. Several measurements were silently of code already
+replaced. The fix, now in the Section 1 toolbox, is to unregister and clear caches before each pass
+and to assert a canary value in the same evaluate — so a stale read fails loudly.
+
+**What shipped:** the hero link on Landing (secondary to "Get Started"), the old lower-Landing link
+removed, a fragment link at the top of Import/Export plus the effect that makes that URL work, a
+responsive hero, and v4.1.1. Plus OBS-45 and OBS-46, neither fixed.
